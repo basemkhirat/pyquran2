@@ -1,0 +1,24 @@
+export interface Word {
+    surah: number;
+    ayah: number;
+    word_index: number;
+    emlaey_text: string;
+    uthmani_text: string;
+}
+
+export interface WordResult {
+    surah: number;
+    ayah: number;
+    word_index: number;
+    transcribed: string;
+    expected: string;
+    char_score: number;
+    diacritic_score: number;
+    total_score: number;
+    status: "correct" | "incorrect" | "skipped";
+}
+
+export interface Chapter {
+    number: number;
+    name: string;
+}

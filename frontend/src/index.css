@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #10b981;
+  --color-primary-dark: #059669;
+  --color-primary-light: #34d399;
+  --color-surface: #0f172a;
+  --color-surface-elevated: #1e293b;
+  --color-surface-card: #1e293b;
+  --color-surface-hover: #334155;
+  --color-border: #334155;
+  --color-border-light: #475569;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+  --color-gold: #d4a853;
+  --color-gold-light: #f0d78c;
+
+  --font-arabic: "Amiri", "Noto Naskh Arabic", serif;
+  --font-ui: "Inter", "Segoe UI", sans-serif;
+}
+
+@font-face {
+  font-family: "Amiri";
+  src: url("https://fonts.gstatic.com/s/amiri/v27/J7aRnpd8CGxBHqEq.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Amiri";
+  src: url("https://fonts.gstatic.com/s/amiri/v27/J7acnpd8CGxBHp2VkZY.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-ui);
+  background: linear-gradient(135deg, #0c1222 0%, #0f172a 50%, #0c1a2e 100%);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+}
+
+/* Pulsing border for active word */
+@keyframes pulse-border {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(212, 168, 83, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(212, 168, 83, 0.8);
+  }
+}
+
+.word-active {
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+/* Mic pulse animation */
+@keyframes mic-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.mic-recording {
+  animation: mic-pulse 1.5s infinite;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
