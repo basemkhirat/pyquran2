@@ -1,4 +1,5 @@
 import logging
+import re
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -6,6 +7,33 @@ import numpy as np
 from backend.config import config
 
 logger = logging.getLogger(__name__)
+
+# Minimum audio duration (seconds) for Whisper to work reliably
+_MIN_WHISPER_DURATION = 1.0
+
+# Keep only Arabic characters, diacritics, and spaces
+_NON_ARABIC_RE = re.compile(r'[^\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\s]')
+
+
+def _preprocess_audio(audio: np.ndarray) -> np.ndarray:
+    """Normalize volume and pad short audio to minimum duration."""
+    # Normalize to [-1, 1] range
+    peak = np.max(np.abs(audio))
+    if peak > 1e-7:
+        audio = audio / peak
+
+    # Pad with silence if too short for Whisper
+    min_samples = int(config.audio_sample_rate * _MIN_WHISPER_DURATION)
+    if len(audio) < min_samples:
+        audio = np.pad(audio, (0, min_samples - len(audio)))
+
+    return audio
+
+
+def _clean_arabic(text: str) -> str:
+    """Remove non-Arabic characters and collapse whitespace."""
+    text = _NON_ARABIC_RE.sub('', text)
+    return re.sub(r'\s+', ' ', text).strip()
 
 # ── Backend interface ──────────────────────────────────────────────
 
@@ -23,12 +51,15 @@ class WhisperCppBackend(TranscriberBackend):
         self._model = Model(config.whisper_model_path, n_threads=4)
 
     def transcribe(self, audio: np.ndarray, initial_prompt: str = "") -> str:
+        audio = _preprocess_audio(audio)
         segments = self._model.transcribe(
             audio,
             language="ar",
             initial_prompt=initial_prompt,
+            beam_size=5,
         )
-        return " ".join(seg.text.strip() for seg in segments if seg.text.strip())
+        text = " ".join(seg.text.strip() for seg in segments if seg.text.strip())
+        return _clean_arabic(text)
 
 
 # ── MLX backend (mlx-whisper) ─────────────────────────────────────
@@ -41,6 +72,7 @@ class MlxBackend(TranscriberBackend):
 
     def transcribe(self, audio: np.ndarray, initial_prompt: str = "") -> str:
         import mlx_whisper
+        audio = _preprocess_audio(audio)
         result = mlx_whisper.transcribe(
             audio,
             path_or_hf_repo=self._model_path,
@@ -50,8 +82,9 @@ class MlxBackend(TranscriberBackend):
             no_speech_threshold=0.6,
             compression_ratio_threshold=2.4,
             word_timestamps=False,
+            condition_on_previous_text=False,
         )
-        return result.get("text", "").strip()
+        return _clean_arabic(result.get("text", "").strip())
 
 
 # ── Factory / singleton ───────────────────────────────────────────

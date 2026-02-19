@@ -217,21 +217,24 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         wf.writeframes(pcm16.tobytes())
     logger.info(f"Saved audio chunk: {wav_path} ({audio_duration:.2f}s)")
 
-    # Build context prompt from remaining words in current verse
+    # Build context prompt: previous words for continuity + remaining words in verse
     current_word = words[idx]
-    context_words = [
+    prev_words = [w["emlaey_text"] for w in words[max(0, idx - 3):idx]]
+    remaining_words = [
         w["emlaey_text"] for w in words[idx:]
         if w["ayah"] == current_word["ayah"]
     ]
-    initial_prompt = " ".join(context_words)
+    initial_prompt = " ".join(prev_words + remaining_words)
 
     # Transcribe
     logger.info(f"Transcribing {audio_duration:.2f}s of audio for [{sid}]...")
+    logger.info(f"  Initial prompt: '{initial_prompt}'")
+    logger.info(f"  Expected word #{idx}: '{current_word['emlaey_text']}'")
     t0 = time.time()
     text = await asyncio.to_thread(transcriber.transcribe, audio, initial_prompt)
     text = text.strip()
     t_transcribe = time.time() - t0
-    logger.info(f"Transcribed [{sid}] in {t_transcribe:.2f}s: '{text}' (expected: '{current_word['emlaey_text']}')")
+    logger.info(f"  Result in {t_transcribe:.2f}s: '{text}'")
 
     if not text:
         return
