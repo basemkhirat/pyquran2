@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SessionSetup } from "./components/SessionSetup";
 import { VerseDisplay } from "./components/VerseDisplay";
 import { RecordingControls } from "./components/RecordingControls";
@@ -10,10 +10,16 @@ export default function App() {
     sessionStatus,
     addWordResult,
     setSessionStatus,
+    setLastTranscription,
+    lastTranscription,
     reset,
     currentWordIndex,
     words,
   } = useSessionStore();
+
+  // Subtitle auto-fade timer
+  const [subtitleVisible, setSubtitleVisible] = useState(false);
+  const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Socket event listeners
   useEffect(() => {
@@ -41,18 +47,34 @@ export default function App() {
       console.error("Session error:", data?.reason);
     };
 
+    const onTranscription = (data: any) => {
+      if (data?.text) {
+        setLastTranscription(data.text);
+        setSubtitleVisible(true);
+        // Clear previous timer
+        if (fadeTimer.current) clearTimeout(fadeTimer.current);
+        // Auto-fade after 3 seconds
+        fadeTimer.current = setTimeout(() => {
+          setSubtitleVisible(false);
+        }, 3000);
+      }
+    };
+
     socket.on("word_result", onWordResult);
     socket.on("session_complete", onSessionComplete);
     socket.on("timeout", onTimeout);
     socket.on("session_error", onSessionError);
+    socket.on("transcription", onTranscription);
 
     return () => {
       socket.off("word_result", onWordResult);
       socket.off("session_complete", onSessionComplete);
       socket.off("timeout", onTimeout);
       socket.off("session_error", onSessionError);
+      socket.off("transcription", onTranscription);
+      if (fadeTimer.current) clearTimeout(fadeTimer.current);
     };
-  }, [words, addWordResult, setSessionStatus, reset]);
+  }, [words, addWordResult, setSessionStatus, setLastTranscription, reset]);
 
   // Auto-complete: reset to idle when all words are processed
   useEffect(() => {
@@ -74,6 +96,17 @@ export default function App() {
       {sessionStatus === "recording" && (
         <div className="py-8">
           <VerseDisplay />
+
+          {/* Live transcription subtitle */}
+          {lastTranscription && (
+            <div
+              className={`subtitle-toast ${subtitleVisible ? "subtitle-visible" : "subtitle-hidden"
+                }`}
+            >
+              <span className="subtitle-text">{lastTranscription}</span>
+            </div>
+          )}
+
           <RecordingControls />
         </div>
       )}

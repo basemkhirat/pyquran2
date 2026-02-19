@@ -239,6 +239,9 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
     if not text:
         return
 
+    # Emit raw transcription for live subtitle display
+    await sio.emit("transcription", {"text": text}, room=sid)
+
     transcribed_words = text.split()
 
     # Score each transcribed word against expected sequence

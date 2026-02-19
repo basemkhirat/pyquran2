@@ -9,12 +9,14 @@ interface SessionState {
     currentWordIndex: number;
     wordResults: Record<number, WordResult>;
     sessionStatus: SessionStatus;
+    lastTranscription: string | null;
 
     setSelectedRange: (range: { surah: number; startAyah: number; endAyah: number }) => void;
     setWords: (words: Word[]) => void;
     setCurrentWordIndex: (index: number) => void;
     addWordResult: (index: number, result: WordResult) => void;
     setSessionStatus: (status: SessionStatus) => void;
+    setLastTranscription: (text: string | null) => void;
     advanceWord: () => void;
     reset: () => void;
     getCorrectCount: () => number;
@@ -28,6 +30,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     currentWordIndex: 0,
     wordResults: {},
     sessionStatus: "idle",
+    lastTranscription: null,
 
     setSelectedRange: (range) => set({ selectedRange: range }),
     setWords: (words) => set({ words, currentWordIndex: 0, wordResults: {} }),
@@ -42,6 +45,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
                     : state.currentWordIndex,
         })),
     setSessionStatus: (status) => set({ sessionStatus: status }),
+    setLastTranscription: (text) => set({ lastTranscription: text }),
     advanceWord: () => set((state) => ({ currentWordIndex: state.currentWordIndex + 1 })),
     reset: () =>
         set({
@@ -50,6 +54,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             currentWordIndex: 0,
             wordResults: {},
             sessionStatus: "idle",
+            lastTranscription: null,
         }),
 
     getCorrectCount: () => {
