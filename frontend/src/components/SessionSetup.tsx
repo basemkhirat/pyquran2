@@ -5,6 +5,15 @@ import { socket } from "../lib/socket";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { Mic, MicOff } from "lucide-react";
 import { cn } from "../lib/cn";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Arabic names for surahs
 const SURAH_NAMES: Record<number, string> = {
@@ -120,10 +129,10 @@ export function SessionSetup() {
         return () => { cancelled = true; };
     }, [surah, startAyah, endAyah, verseCount, setSelectedRange, setWords, setSessionStatus]);
 
-    const selectClass =
-        "bg-surface/80 border border-border rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-gold/50 focus:border-gold outline-none transition-all font-[var(--font-arabic)] text-sm";
+    const triggerClass =
+        "min-w-[140px] font-[var(--font-arabic)] bg-surface/80 border-border focus-visible:ring-gold/50 focus-visible:border-gold h-9";
     const inputClass =
-        "bg-surface/80 border border-border rounded-lg px-3 py-2 text-text-primary text-center focus:ring-2 focus:ring-gold/50 focus:border-gold outline-none transition-all text-sm w-20 spinner-left";
+        "w-20 text-center font-[var(--font-arabic)] bg-surface/80 border-border focus-visible:ring-gold/50 focus-visible:border-gold h-9 spinner-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
     return (
         <div className="sticky top-0 z-20 bg-surface/90 backdrop-blur-xl border-b border-border/50 px-4 py-3" dir="ltr">
@@ -154,41 +163,41 @@ export function SessionSetup() {
                 {/* Right: chapter, start verse, end verse (order: chapter first, then من, then إلى) */}
                 <div className="flex items-center gap-4 flex-row-reverse">
                     <div className="flex items-center gap-2 flex-row-reverse">
-                        <label className="text-xs text-text-secondary whitespace-nowrap">السورة</label>
-                        <select
-                            value={surah}
-                            onChange={(e) => setSurah(Number(e.target.value))}
-                            className={`${selectClass} min-w-[140px]`}
-                            dir="rtl"
-                        >
-                            {chapters.map((ch) => (
-                                <option key={ch.number} value={ch.number}>
-                                    {ch.number}. {SURAH_NAMES[ch.number] || ch.name}
-                                </option>
-                            ))}
-                        </select>
+                        <Label className="text-xs text-text-secondary whitespace-nowrap">السورة</Label>
+                        <Select value={String(surah)} onValueChange={(v) => setSurah(Number(v))}>
+                            <SelectTrigger className={triggerClass} dir="rtl">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent dir="rtl" className="font-[var(--font-arabic)] bg-surface-elevated border-border text-text-primary shadow-lg backdrop-blur-sm text-right">
+                                {chapters.map((ch) => (
+                                    <SelectItem key={ch.number} value={String(ch.number)} className="font-[var(--font-arabic)] justify-end text-right">
+                                        {ch.number}. {SURAH_NAMES[ch.number] || ch.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="flex items-center gap-2 flex-row-reverse">
-                        <label className="text-xs text-text-secondary whitespace-nowrap">من</label>
-                        <input
+                        <Label className="text-xs text-text-secondary whitespace-nowrap">من</Label>
+                        <Input
                             type="number"
                             min={1}
                             max={verseCount}
                             value={startAyah}
-                            onChange={(e) => setStartAyah(Math.max(1, Math.min(verseCount, Number(e.target.value))))}
+                            onChange={(e) => setStartAyah(Math.max(1, Math.min(verseCount, Number(e.target.value) || 1)))}
                             className={inputClass}
                         />
                     </div>
 
                     <div className="flex items-center gap-2 flex-row-reverse">
-                        <label className="text-xs text-text-secondary whitespace-nowrap">إلى</label>
-                        <input
+                        <Label className="text-xs text-text-secondary whitespace-nowrap">إلى</Label>
+                        <Input
                             type="number"
                             min={startAyah}
                             max={verseCount}
                             value={endAyah}
-                            onChange={(e) => setEndAyah(Math.max(startAyah, Math.min(verseCount, Number(e.target.value))))}
+                            onChange={(e) => setEndAyah(Math.max(startAyah, Math.min(verseCount, Number(e.target.value) || endAyah)))}
                             className={inputClass}
                         />
                     </div>

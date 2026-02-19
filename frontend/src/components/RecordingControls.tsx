@@ -1,11 +1,8 @@
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
-import { useSessionStore } from "../stores/session";
 import { cn } from "../lib/cn";
 
 export function RecordingControls() {
     const { isRecording, volume } = useAudioRecorder();
-    const { currentWordIndex, words } = useSessionStore();
-    const isComplete = currentWordIndex >= words.length;
 
     return (
         <div className="flex flex-col items-center gap-6 mt-8">
