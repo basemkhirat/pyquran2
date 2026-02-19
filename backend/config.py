@@ -10,6 +10,7 @@ class Config:
     transcription_backend: str = os.getenv("TRANSCRIPTION_BACKEND", "whisper_cpp")
     whisper_model_path: str = os.getenv("WHISPER_MODEL_PATH", "./whisper_cpp/epoch-best/ggml-model.bin")
     mlx_model_path: str = os.getenv("MLX_MODEL_PATH", "./mlx_models/epoch-best")
+    hf_model_path: str = os.getenv("HF_MODEL_PATH", "./guff/whisper-quran-v1")
     hafs_json_path: str = os.getenv("HAFS_JSON_PATH", "./assets/narrations/hafs.json")
     weight_char: float = float(os.getenv("WEIGHT_CHAR", "0.6"))
     weight_diacritic: float = float(os.getenv("WEIGHT_DIACRITIC", "0.4"))

@@ -87,6 +87,53 @@ class MlxBackend(TranscriberBackend):
         return _clean_arabic(result.get("text", "").strip())
 
 
+# ── HuggingFace Transformers backend ──────────────────────────────
+
+class HuggingFaceBackend(TranscriberBackend):
+    def __init__(self):
+        import torch
+        from transformers import WhisperForConditionalGeneration, WhisperProcessor
+
+        self._model_path = config.hf_model_path
+        logger.info("Loading HuggingFace Whisper model from %s", self._model_path)
+
+        self._processor = WhisperProcessor.from_pretrained(self._model_path)
+        self._model = WhisperForConditionalGeneration.from_pretrained(self._model_path)
+
+        # Use GPU if available, otherwise CPU
+        self._device = "cuda" if torch.cuda.is_available() else "cpu"
+        self._model.to(self._device)
+        self._model.eval()
+
+        # Pre-compute forced decoder IDs for Arabic transcription
+        self._forced_decoder_ids = self._processor.get_decoder_prompt_ids(
+            language="ar", task="transcribe"
+        )
+
+    def transcribe(self, audio: np.ndarray, initial_prompt: str = "") -> str:
+        import torch
+
+        audio = _preprocess_audio(audio)
+
+        input_features = self._processor(
+            audio,
+            sampling_rate=config.audio_sample_rate,
+            return_tensors="pt",
+        ).input_features.to(self._device)
+
+        with torch.no_grad():
+            predicted_ids = self._model.generate(
+                input_features,
+                forced_decoder_ids=self._forced_decoder_ids,
+            )
+
+        text = self._processor.batch_decode(
+            predicted_ids, skip_special_tokens=True
+        )[0].strip()
+
+        return _clean_arabic(text)
+
+
 # ── Factory / singleton ───────────────────────────────────────────
 
 _backend: TranscriberBackend | None = None
@@ -94,6 +141,7 @@ _backend: TranscriberBackend | None = None
 _BACKENDS = {
     "whisper_cpp": WhisperCppBackend,
     "mlx": MlxBackend,
+    "huggingface": HuggingFaceBackend,
 }
 
 
