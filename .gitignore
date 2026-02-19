@@ -7,3 +7,4 @@ dist/
 .DS_Store
 mlx_models/
 whisper_cpp/
+backend/chunks/
