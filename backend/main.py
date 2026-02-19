@@ -66,6 +66,7 @@ async def connect(sid, environ):
         "current_index": 0,
         "vad": VADProcessor(),
         "timeout_task": None,
+        "transcribing": False,
     }
 
 
@@ -174,6 +175,20 @@ async def _process_speech(sid: str, audio: np.ndarray):
     if not session:
         return
 
+    # Prevent concurrent transcriptions for the same session
+    if session.get("transcribing"):
+        logger.info(f"Skipping segment for [{sid}] — transcription already in progress")
+        return
+    session["transcribing"] = True
+
+    try:
+        await _do_process_speech(sid, session, audio)
+    finally:
+        session["transcribing"] = False
+
+
+async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
+    """Inner transcription logic (called under the transcribing guard)."""
     idx = session["current_index"]
     words = session["words"]
     if idx >= len(words):
@@ -185,6 +200,9 @@ async def _process_speech(sid: str, audio: np.ndarray):
     if audio_duration < 0.5:
         logger.info(f"Audio too short ({audio_duration:.2f}s), skipping transcription")
         return
+
+    # Reset VAD immediately so new audio starts fresh
+    session["vad"].reset()
 
     # Save audio chunk to disk for testing/debugging
     chunks_dir = os.path.join(os.path.dirname(__file__), "chunks")
@@ -246,7 +264,6 @@ async def _process_speech(sid: str, audio: np.ndarray):
             break  # Stop processing further transcribed words on incorrect
 
     session["current_index"] = idx
-    session["vad"].reset()
 
     if idx >= len(words):
         await sio.emit("session_complete", {}, room=sid)
