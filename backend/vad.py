@@ -1,4 +1,5 @@
 import logging
+from collections import deque
 
 import numpy as np
 import torch
@@ -20,6 +21,9 @@ MIN_SPEECH_FRAMES = 6
 # Minimum audio duration in seconds to send to Whisper
 MIN_AUDIO_DURATION = 0.5
 
+# How much pre-speech audio to keep (captures natural word onset)
+PRE_SPEECH_BUFFER_SEC = 0.3
+
 
 class VADProcessor:
     """Processes streamed PCM16 audio chunks and detects speech boundaries."""
@@ -29,7 +33,10 @@ class VADProcessor:
         self.sample_rate = config.audio_sample_rate
         self.silence_timeout = config.silence_timeout_ms / 1000.0
 
-        self.audio_buffer: list[np.ndarray] = []
+        self.audio_buffer: list[np.ndarray] = []  # only filled during speech
+        self._pre_buffer: deque[np.ndarray] = deque()  # rolling buffer for speech onset
+        self._pre_buffer_samples = 0
+        self._max_pre_samples = int(self.sample_rate * PRE_SPEECH_BUFFER_SEC)
         self.is_speaking = False
         self.last_speech_time = 0.0
         self.speech_frame_count = 0
@@ -39,6 +46,8 @@ class VADProcessor:
 
     def reset(self):
         self.audio_buffer = []
+        self._pre_buffer.clear()
+        self._pre_buffer_samples = 0
         self.is_speaking = False
         self.last_speech_time = 0.0
         self.speech_frame_count = 0
@@ -61,7 +70,18 @@ class VADProcessor:
 
         audio_int16 = np.frombuffer(pcm16_bytes, dtype=np.int16)
         audio_float = audio_int16.astype(np.float32) / 32768.0
-        self.audio_buffer.append(audio_float)
+
+        # Buffer strategy: only accumulate in audio_buffer during speech.
+        # Before speech, keep a small rolling pre-buffer for onset capture.
+        if self.is_speaking:
+            self.audio_buffer.append(audio_float)
+        else:
+            self._pre_buffer.append(audio_float)
+            self._pre_buffer_samples += len(audio_float)
+            # Trim pre-buffer to max size
+            while self._pre_buffer_samples > self._max_pre_samples and self._pre_buffer:
+                removed = self._pre_buffer.popleft()
+                self._pre_buffer_samples -= len(removed)
 
         # Prepend remainder from previous call
         samples = np.concatenate([self._remainder, audio_float])
@@ -84,6 +104,11 @@ class VADProcessor:
         if speech_detected_in_chunk:
             if not self.is_speaking:
                 logger.debug("Speech started")
+                # Promote pre-buffer into audio_buffer to capture onset
+                self.audio_buffer = list(self._pre_buffer)
+                self.audio_buffer.append(audio_float)
+                self._pre_buffer.clear()
+                self._pre_buffer_samples = 0
             self.is_speaking = True
             self.last_speech_time = current_time
             return None
@@ -119,6 +144,8 @@ class VADProcessor:
             return self._extract_segment()
         # Discard if not enough speech
         self.audio_buffer = []
+        self._pre_buffer.clear()
+        self._pre_buffer_samples = 0
         self.is_speaking = False
         self.speech_frame_count = 0
         self._remainder = np.array([], dtype=np.float32)
@@ -132,6 +159,8 @@ class VADProcessor:
         self._processing = True
         segment = np.concatenate(self.audio_buffer)
         self.audio_buffer = []
+        self._pre_buffer.clear()
+        self._pre_buffer_samples = 0
         self.is_speaking = False
         self.speech_frame_count = 0
         self._remainder = np.array([], dtype=np.float32)
