@@ -106,7 +106,6 @@ class VADProcessor:
                 logger.debug("Speech started")
                 # Promote pre-buffer into audio_buffer to capture onset
                 self.audio_buffer = list(self._pre_buffer)
-                self.audio_buffer.append(audio_float)
                 self._pre_buffer.clear()
                 self._pre_buffer_samples = 0
             self.is_speaking = True
