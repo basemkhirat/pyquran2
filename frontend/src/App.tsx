@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { SessionSetup } from "./components/SessionSetup";
 import { VerseDisplay } from "./components/VerseDisplay";
-import { RecordingControls } from "./components/RecordingControls";
 import { useSessionStore } from "./stores/session";
 import { socket } from "./lib/socket";
 
@@ -92,9 +91,9 @@ export default function App() {
       {/* Setup bar — always visible */}
       <SessionSetup />
 
-      {/* Verse display & recording controls — shown when active */}
+      {/* Verse display — shown when active */}
       {sessionStatus === "recording" && (
-        <div className="py-8">
+        <div className="py-6">
           <VerseDisplay />
 
           {/* Live transcription subtitle */}
@@ -106,8 +105,6 @@ export default function App() {
               <span className="subtitle-text">{lastTranscription}</span>
             </div>
           )}
-
-          <RecordingControls />
         </div>
       )}
     </div>

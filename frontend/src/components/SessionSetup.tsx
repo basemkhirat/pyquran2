@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Chapter } from "../types";
 import { useSessionStore } from "../stores/session";
 import { socket } from "../lib/socket";
-import { Play } from "lucide-react";
+import { useAudioRecorder } from "../hooks/useAudioRecorder";
+import { Mic, MicOff } from "lucide-react";
+import { cn } from "../lib/cn";
 
 // Arabic names for surahs
 const SURAH_NAMES: Record<number, string> = {
@@ -31,17 +33,42 @@ const SURAH_NAMES: Record<number, string> = {
     111: "المسد", 112: "الإخلاص", 113: "الفلق", 114: "الناس",
 };
 
+/** Read initial values from URL search params */
+function getUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+        surah: params.has("surah") ? Number(params.get("surah")) : null,
+        start: params.has("start") ? Number(params.get("start")) : null,
+        end: params.has("end") ? Number(params.get("end")) : null,
+    };
+}
+
+/** Update URL without page reload */
+function setUrlParams(surah: number, start: number, end: number) {
+    const params = new URLSearchParams();
+    params.set("surah", String(surah));
+    params.set("start", String(start));
+    params.set("end", String(end));
+    window.history.replaceState(null, "", `?${params.toString()}`);
+}
+
 export function SessionSetup() {
+    const urlParams = getUrlParams();
     const [chapters, setChapters] = useState<Chapter[]>([]);
-    const [surah, setSurah] = useState(1);
-    const [startAyah, setStartAyah] = useState(1);
-    const [endAyah, setEndAyah] = useState(7);
+    const [surah, setSurah] = useState(urlParams.surah ?? 1);
+    const [startAyah, setStartAyah] = useState(urlParams.start ?? 1);
+    const [endAyah, setEndAyah] = useState(urlParams.end ?? 7);
     const [verseCount, setVerseCount] = useState(7);
-    const [loading, setLoading] = useState(false);
+    const initialLoadDone = useRef(false);
 
-    const { setSelectedRange, setWords, setSessionStatus, sessionStatus } = useSessionStore();
+    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words } = useSessionStore();
+    const { isRecording, startRecording, stopRecording } = useAudioRecorder();
+    const isComplete = words.length > 0 && currentWordIndex >= words.length;
 
-    const isActive = sessionStatus === "recording";
+    const toggleRecording = () => {
+        if (isRecording) stopRecording();
+        else startRecording();
+    };
 
     useEffect(() => {
         fetch("/api/chapters")
@@ -55,95 +82,117 @@ export function SessionSetup() {
             .then((r) => r.json())
             .then((d) => {
                 setVerseCount(d.count);
-                setStartAyah(1);
-                setEndAyah(d.count);
+                // On first load, keep URL-provided values; otherwise reset
+                if (!initialLoadDone.current) {
+                    initialLoadDone.current = true;
+                    const p = getUrlParams();
+                    setStartAyah(p.start ? Math.min(p.start, d.count) : 1);
+                    setEndAyah(p.end ? Math.min(p.end, d.count) : d.count);
+                } else {
+                    setStartAyah(1);
+                    setEndAyah(d.count);
+                }
             })
             .catch(console.error);
     }, [surah]);
 
-    const handleStart = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(
-                `/api/words?surah=${surah}&start_ayah=${startAyah}&end_ayah=${endAyah}`
-            );
-            const words = await res.json();
+    // Sync state to URL
+    useEffect(() => {
+        setUrlParams(surah, startAyah, endAyah);
+    }, [surah, startAyah, endAyah]);
 
-            setSelectedRange({ surah, startAyah, endAyah });
-            setWords(words);
-            setSessionStatus("recording");
-
-            if (!socket.connected) socket.connect();
-            socket.emit("start_session", { surah, startAyah, endAyah });
-        } catch (err) {
-            console.error("Failed to start session:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    useEffect(() => {
+        if (verseCount === 0 || startAyah > endAyah) return;
+        let cancelled = false;
+        fetch(`/api/words?surah=${surah}&start_ayah=${startAyah}&end_ayah=${endAyah}`)
+            .then((r) => r.json())
+            .then((words) => {
+                if (cancelled) return;
+                setSelectedRange({ surah, startAyah, endAyah });
+                setWords(words);
+                setSessionStatus("recording");
+                if (!socket.connected) socket.connect();
+                socket.emit("start_session", { surah, startAyah, endAyah });
+            })
+            .catch((err) => {
+                if (!cancelled) console.error("Failed to load verses:", err);
+            });
+        return () => { cancelled = true; };
+    }, [surah, startAyah, endAyah, verseCount, setSelectedRange, setWords, setSessionStatus]);
 
     const selectClass =
         "bg-surface/80 border border-border rounded-lg px-3 py-2 text-text-primary focus:ring-2 focus:ring-gold/50 focus:border-gold outline-none transition-all font-[var(--font-arabic)] text-sm";
     const inputClass =
-        "bg-surface/80 border border-border rounded-lg px-3 py-2 text-text-primary text-center focus:ring-2 focus:ring-gold/50 focus:border-gold outline-none transition-all text-sm w-20";
+        "bg-surface/80 border border-border rounded-lg px-3 py-2 text-text-primary text-center focus:ring-2 focus:ring-gold/50 focus:border-gold outline-none transition-all text-sm w-20 spinner-left";
 
     return (
-        <div className="sticky top-0 z-20 bg-surface/90 backdrop-blur-xl border-b border-border/50 px-4 py-3">
-            <div className="max-w-4xl mx-auto flex flex-wrap items-center gap-3">
-                {/* Surah select */}
-                <div className="flex items-center gap-2">
-                    <label className="text-xs text-text-secondary whitespace-nowrap">السورة</label>
-                    <select
-                        value={surah}
-                        onChange={(e) => setSurah(Number(e.target.value))}
-                        disabled={isActive}
-                        className={`${selectClass} min-w-[140px] disabled:opacity-50`}
+        <div className="sticky top-0 z-20 bg-surface/90 backdrop-blur-xl border-b border-border/50 px-4 py-3" dir="ltr">
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-nowrap">
+                {/* Left: mic + divider */}
+                <div className="flex items-center gap-4 shrink-0">
+                    <button
+                        onClick={toggleRecording}
+                        disabled={isComplete}
+                        className={cn(
+                            "relative w-11 h-11 rounded-full flex items-center justify-center transition-all",
+                            isRecording
+                                ? "bg-error mic-recording"
+                                : isComplete
+                                    ? "bg-surface-hover border border-border text-text-muted cursor-not-allowed"
+                                    : "bg-gradient-to-br from-gold to-gold-light hover:opacity-90 shadow-md shadow-gold/20",
+                        )}
                     >
-                        {chapters.map((ch) => (
-                            <option key={ch.number} value={ch.number}>
-                                {ch.number}. {SURAH_NAMES[ch.number] || ch.name}
-                            </option>
-                        ))}
-                    </select>
+                        {isRecording ? (
+                            <MicOff className="w-5 h-5 text-white" />
+                        ) : (
+                            <Mic className={cn("w-5 h-5", isComplete ? "text-text-muted" : "text-surface")} />
+                        )}
+                    </button>
+                    <div className="h-5 w-px bg-border" aria-hidden />
                 </div>
 
-                {/* Start verse */}
-                <div className="flex items-center gap-2">
-                    <label className="text-xs text-text-secondary whitespace-nowrap">من</label>
-                    <input
-                        type="number"
-                        min={1}
-                        max={verseCount}
-                        value={startAyah}
-                        onChange={(e) => setStartAyah(Math.max(1, Math.min(verseCount, Number(e.target.value))))}
-                        disabled={isActive}
-                        className={`${inputClass} disabled:opacity-50`}
-                    />
-                </div>
+                {/* Right: chapter, start verse, end verse (order: chapter first, then من, then إلى) */}
+                <div className="flex items-center gap-4 flex-row-reverse">
+                    <div className="flex items-center gap-2 flex-row-reverse">
+                        <label className="text-xs text-text-secondary whitespace-nowrap">السورة</label>
+                        <select
+                            value={surah}
+                            onChange={(e) => setSurah(Number(e.target.value))}
+                            className={`${selectClass} min-w-[140px]`}
+                            dir="rtl"
+                        >
+                            {chapters.map((ch) => (
+                                <option key={ch.number} value={ch.number}>
+                                    {ch.number}. {SURAH_NAMES[ch.number] || ch.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
-                {/* End verse */}
-                <div className="flex items-center gap-2">
-                    <label className="text-xs text-text-secondary whitespace-nowrap">إلى</label>
-                    <input
-                        type="number"
-                        min={startAyah}
-                        max={verseCount}
-                        value={endAyah}
-                        onChange={(e) => setEndAyah(Math.max(startAyah, Math.min(verseCount, Number(e.target.value))))}
-                        disabled={isActive}
-                        className={`${inputClass} disabled:opacity-50`}
-                    />
-                </div>
+                    <div className="flex items-center gap-2 flex-row-reverse">
+                        <label className="text-xs text-text-secondary whitespace-nowrap">من</label>
+                        <input
+                            type="number"
+                            min={1}
+                            max={verseCount}
+                            value={startAyah}
+                            onChange={(e) => setStartAyah(Math.max(1, Math.min(verseCount, Number(e.target.value))))}
+                            className={inputClass}
+                        />
+                    </div>
 
-                {/* Start button */}
-                <button
-                    onClick={handleStart}
-                    disabled={loading || isActive}
-                    className="flex items-center gap-2 bg-gradient-to-l from-gold to-gold-light text-surface font-bold px-5 py-2 rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-md shadow-gold/20"
-                >
-                    <Play className="w-4 h-4" />
-                    {loading ? "جاري..." : "ابدأ"}
-                </button>
+                    <div className="flex items-center gap-2 flex-row-reverse">
+                        <label className="text-xs text-text-secondary whitespace-nowrap">إلى</label>
+                        <input
+                            type="number"
+                            min={startAyah}
+                            max={verseCount}
+                            value={endAyah}
+                            onChange={(e) => setEndAyah(Math.max(startAyah, Math.min(verseCount, Number(e.target.value))))}
+                            className={inputClass}
+                        />
+                    </div>
+                </div>
             </div>
         </div>
     );
