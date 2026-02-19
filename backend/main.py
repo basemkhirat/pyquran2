@@ -244,6 +244,30 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
 
     transcribed_words = text.split()
 
+    # --- Backtrack detection: skip repeated already-correct words ---
+    lookback = min(idx, len(transcribed_words))  # how far back we can check
+    skip_count = 0
+
+    if lookback > 0:
+        # Try matching the longest possible prefix of transcribed_words
+        # against the already-correct words ending at idx
+        for prefix_len in range(lookback, 0, -1):
+            prev_slice = words[idx - prefix_len : idx]
+            candidate = transcribed_words[:prefix_len]
+
+            all_match = all(
+                scorer.score_word(prev_slice[j]["emlaey_text"], candidate[j])["total_score"]
+                >= config.score_threshold
+                for j in range(prefix_len)
+            )
+            if all_match:
+                skip_count = prefix_len
+                break
+
+    if skip_count > 0:
+        logger.info(f"  Backtrack detected: skipping {skip_count} repeated word(s)")
+        transcribed_words = transcribed_words[skip_count:]
+
     # Score each transcribed word against expected sequence
     for t_word in transcribed_words:
         if idx >= len(words):
