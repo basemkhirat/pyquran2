@@ -89,11 +89,13 @@ export function VerseDisplay() {
                                         </div>
                                     )}
 
-                                    {/* Score display */}
+                                    {/* Score display: char, diacritics, total */}
                                     {result && result.status !== "skipped" && (
-                                        <span className="text-[10px] text-text-muted mt-0.5">
-                                            {Math.round(result.total_score * 100)}%
-                                        </span>
+                                        <div className="flex flex-col items-center gap-0.5 mt-1 text-[10px] text-text-muted">
+                                            <span title="Character score">Char: {Math.round(result.char_score * 100)}%</span>
+                                            <span title="Diacritics score">Diac: {Math.round(result.diacritic_score * 100)}%</span>
+                                            <span className="text-text-muted/80" title="Total score">{Math.round(result.total_score * 100)}%</span>
+                                        </div>
                                     )}
                                 </div>
                             );
