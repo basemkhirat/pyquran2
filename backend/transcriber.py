@@ -11,18 +11,26 @@ logger = logging.getLogger(__name__)
 # Minimum audio duration (seconds) for Whisper to work reliably
 _MIN_WHISPER_DURATION = 1.0
 
+# Silence padding (seconds) added before and after audio for better Whisper
+# onset/offset detection — prevents clipping first/last syllables.
+_PAD_DURATION = 0.3
+
 # Keep only Arabic characters, diacritics, and spaces
 _NON_ARABIC_RE = re.compile(r'[^\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\s]')
 
 
 def _preprocess_audio(audio: np.ndarray) -> np.ndarray:
-    """Normalize volume and pad short audio to minimum duration."""
+    """Normalize volume, add silence padding, and enforce minimum duration."""
     # Normalize to [-1, 1] range
     peak = np.max(np.abs(audio))
     if peak > 1e-7:
         audio = audio / peak
 
-    # Pad with silence if too short for Whisper
+    # Add silence padding on both sides so Whisper can detect speech edges
+    pad_samples = int(config.audio_sample_rate * _PAD_DURATION)
+    audio = np.pad(audio, (pad_samples, pad_samples))
+
+    # Pad with more silence if still too short for Whisper
     min_samples = int(config.audio_sample_rate * _MIN_WHISPER_DURATION)
     if len(audio) < min_samples:
         audio = np.pad(audio, (0, min_samples - len(audio)))
@@ -112,6 +120,7 @@ class HuggingFaceBackend(TranscriberBackend):
 
     def transcribe(self, audio: np.ndarray, initial_prompt: str = "") -> str:
         import torch
+        import zlib
 
         audio = _preprocess_audio(audio)
 
@@ -121,15 +130,41 @@ class HuggingFaceBackend(TranscriberBackend):
             return_tensors="pt",
         ).input_features.to(self._device)
 
+        # Build generation kwargs for optimal Arabic Quran recognition
+        gen_kwargs = {
+            # "forced_decoder_ids": self._forced_decoder_ids,
+            "num_beams": 5,
+            "do_sample": False,
+            # "no_repeat_ngram_size": 3,
+            "max_new_tokens": 256,
+            "language": "ar",
+        }
+
+        # Use initial_prompt as decoder prefix for verse context guidance
+        # if initial_prompt:
+        #     prompt_ids = self._processor.get_prompt_ids(
+        #         initial_prompt, return_tensors="pt"
+        #     ).to(self._device)
+        #     gen_kwargs["prompt_ids"] = prompt_ids
+
         with torch.no_grad():
-            predicted_ids = self._model.generate(
-                input_features,
-                forced_decoder_ids=self._forced_decoder_ids,
-            )
+            predicted_ids = self._model.generate(input_features, **gen_kwargs)
 
         text = self._processor.batch_decode(
             predicted_ids, skip_special_tokens=True
         )[0].strip()
+
+        # Discard hallucinated/repetitive output (compression ratio check)
+        if text:
+            compressed = len(zlib.compress(text.encode("utf-8")))
+            raw = len(text.encode("utf-8"))
+            ratio = raw / compressed if compressed > 0 else 0.0
+            if ratio > 2.4:
+                logger.warning(
+                    "Discarding hallucinated output (ratio=%.2f): '%s'",
+                    ratio, text,
+                )
+                return ""
 
         return _clean_arabic(text)
 
