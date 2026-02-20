@@ -5,6 +5,7 @@ from backend.scorer import (
     compute_char_score,
     compute_diacritic_score,
     compute_total_score,
+    correct_word,
     score_word,
     align_multi_word,
 )
@@ -72,6 +73,21 @@ class TestTotalScore:
 
     def test_zero(self):
         assert compute_total_score(0.0, 0.0) == pytest.approx(0.0)
+
+
+class TestCorrectWord:
+    def test_exact_match_returns_expected(self):
+        assert correct_word("بِسْمِ", "بِسْمِ", 2) == "بِسْمِ"
+
+    def test_one_edit_within_budget_returns_expected(self):
+        assert correct_word("بِسْمِ", "بسن", 2) == "بِسْمِ"  # one substitution
+
+    def test_over_budget_returns_transcribed(self):
+        assert correct_word("بِسْمِ", "كتب", 2) == "كتب"
+
+    def test_zero_edits_only_exact(self):
+        assert correct_word("بسم", "بسم", 0) == "بسم"
+        assert correct_word("بسم", "بسن", 0) == "بسن"
 
 
 class TestScoreWord:

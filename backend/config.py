@@ -15,8 +15,10 @@ class Config:
     weight_char: float = float(os.getenv("WEIGHT_CHAR", "0.6"))
     weight_diacritic: float = float(os.getenv("WEIGHT_DIACRITIC", "0.4"))
     score_threshold: float = float(os.getenv("SCORE_THRESHOLD", "0.5"))
+    max_edits_for_correction: int = int(os.getenv("MAX_EDITS_FOR_CORRECTION", "2"))
     silence_timeout_ms: int = int(os.getenv("SILENCE_TIMEOUT_MS", "3000"))
     audio_sample_rate: int = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
+    max_prompt_next_words: int = int(os.getenv("MAX_PROMPT_NEXT_WORDS", "0"))
 
 
 config = Config()

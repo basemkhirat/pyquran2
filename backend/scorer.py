@@ -1,6 +1,6 @@
 import re
 from typing import List, Dict, Any
-from jiwer import cer
+from jiwer import cer, process_characters
 from pyarabic import araby
 from backend.config import config
 
@@ -38,6 +38,18 @@ def compute_diacritic_score(expected: str, transcribed: str) -> float:
 
 def compute_total_score(char_score: float, diacritic_score: float) -> float:
     return (config.weight_char * char_score) + (config.weight_diacritic * diacritic_score)
+
+
+def correct_word(expected: str, transcribed: str, max_edits: int) -> str:
+    """If transcribed is within max_edits (add/delete/substitute) of expected, return expected; else return transcribed.
+    Uses same normalization as character scoring (strip diacritics)."""
+    exp = strip_diacritics(expected).strip()
+    trans = strip_diacritics(transcribed).strip()
+    if not exp:
+        return expected if not trans else transcribed
+    out = process_characters(exp, trans)
+    total_edits = out.substitutions + out.insertions + out.deletions
+    return expected if total_edits <= max_edits else transcribed
 
 
 def score_word(expected: str, transcribed: str) -> Dict[str, float]:

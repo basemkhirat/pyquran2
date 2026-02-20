@@ -217,13 +217,13 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         wf.writeframes(pcm16.tobytes())
     logger.info(f"Saved audio chunk: {wav_path} ({audio_duration:.2f}s)")
 
-    # Build context prompt: previous words for continuity + remaining words in verse
+    # Build context prompt: previous words for continuity + optional next words (capped)
     current_word = words[idx]
     prev_words = [w["emlaey_text"] for w in words[max(0, idx - 3):idx]]
     remaining_words = [
         w["emlaey_text"] for w in words[idx:]
         if w["ayah"] == current_word["ayah"]
-    ]
+    ][: config.max_prompt_next_words]
     initial_prompt = " ".join(prev_words + remaining_words)
 
     # Transcribe
@@ -256,7 +256,12 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
             candidate = transcribed_words[:prefix_len]
 
             all_match = all(
-                scorer.score_word(prev_slice[j]["emlaey_text"], candidate[j])["total_score"]
+                scorer.score_word(
+                    prev_slice[j]["emlaey_text"],
+                    scorer.correct_word(
+                        prev_slice[j]["emlaey_text"], candidate[j], config.max_edits_for_correction
+                    ),
+                )["total_score"]
                 >= config.score_threshold
                 for j in range(prefix_len)
             )
@@ -274,14 +279,17 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
             break
 
         word = words[idx]
-        scores = scorer.score_word(word["emlaey_text"], t_word)
+        t_corrected = scorer.correct_word(
+            word["emlaey_text"], t_word, config.max_edits_for_correction
+        )
+        scores = scorer.score_word(word["emlaey_text"], t_corrected)
         status = "correct" if scores["total_score"] >= config.score_threshold else "incorrect"
 
         await sio.emit("word_result", {
             "surah": word["surah"],
             "ayah": word["ayah"],
             "word_index": word["word_index"],
-            "transcribed": t_word,
+            "transcribed": t_corrected,
             "expected": word["emlaey_text"],
             **scores,
             "status": status,

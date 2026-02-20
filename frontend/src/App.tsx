@@ -11,8 +11,6 @@ export default function App() {
     setSessionStatus,
     setLastTranscription,
     lastTranscription,
-    reset,
-    currentWordIndex,
     words,
   } = useSessionStore();
 
@@ -35,7 +33,7 @@ export default function App() {
     };
 
     const onSessionComplete = () => {
-      reset();
+      // Keep verse display and results visible; no reset so no blank screen
     };
 
     const onTimeout = () => {
@@ -73,18 +71,7 @@ export default function App() {
       socket.off("transcription", onTranscription);
       if (fadeTimer.current) clearTimeout(fadeTimer.current);
     };
-  }, [words, addWordResult, setSessionStatus, setLastTranscription, reset]);
-
-  // Auto-complete: reset to idle when all words are processed
-  useEffect(() => {
-    if (
-      sessionStatus === "recording" &&
-      words.length > 0 &&
-      currentWordIndex >= words.length
-    ) {
-      reset();
-    }
-  }, [currentWordIndex, words.length, sessionStatus, reset]);
+  }, [words, addWordResult, setSessionStatus, setLastTranscription]);
 
   return (
     <div className="min-h-screen">

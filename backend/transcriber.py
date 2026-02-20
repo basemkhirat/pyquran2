@@ -134,7 +134,7 @@ class HuggingFaceBackend(TranscriberBackend):
         gen_kwargs = {
             # "forced_decoder_ids": self._forced_decoder_ids,
             "num_beams": 5,
-            "do_sample": False,
+            # "do_sample": False,
             # "no_repeat_ngram_size": 3,
             "max_new_tokens": 256,
             "language": "ar",
