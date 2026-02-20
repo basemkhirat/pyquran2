@@ -283,6 +283,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
             word["emlaey_text"], t_word, config.max_edits_for_correction
         )
         scores = scorer.score_word(word["emlaey_text"], t_corrected)
+        # Diacritic score must use raw transcription: correct_word returns expected when
+        # base letters match, which would otherwise give 100% diacritics for wrong tashkeel.
+        ds = scorer.compute_diacritic_score(word["emlaey_text"], t_word)
+        scores["diacritic_score"] = round(ds, 3)
+        scores["total_score"] = round(scorer.compute_total_score(scores["char_score"], ds), 3)
         status = "correct" if scores["total_score"] >= config.score_threshold else "incorrect"
 
         await sio.emit("word_result", {
