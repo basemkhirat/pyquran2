@@ -9,3 +9,4 @@ mlx_models/
 whisper_cpp/
 backend/chunks/
 guff/
+models/

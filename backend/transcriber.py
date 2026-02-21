@@ -130,12 +130,10 @@ class HuggingFaceBackend(TranscriberBackend):
             return_tensors="pt",
         ).input_features.to(self._device)
 
-        # Build generation kwargs for optimal Arabic Quran recognition
+        # Use forced_decoder_ids for Arabic (avoids outdated generation_config.lang_to_id on fine-tuned models)
         gen_kwargs = {
             # "forced_decoder_ids": self._forced_decoder_ids,
             "num_beams": 5,
-            # "do_sample": False,
-            # "no_repeat_ngram_size": 3,
             "max_new_tokens": 256,
             "language": "ar",
         }
