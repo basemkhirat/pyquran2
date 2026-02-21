@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+Use python venv directory as your python environment to run any python code

@@ -239,9 +239,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
     if not text:
         return
 
-    # Emit raw transcription for live subtitle display
-    await sio.emit("transcription", {"text": text}, room=sid)
-
     transcribed_words = text.split()
 
     # --- Backtrack detection: skip repeated already-correct words ---
@@ -273,7 +270,8 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         logger.info(f"  Backtrack detected: skipping {skip_count} repeated word(s)")
         transcribed_words = transcribed_words[skip_count:]
 
-    # Score each transcribed word against expected sequence
+    # Score each transcribed word against expected sequence; collect corrected text for subtitle
+    corrected_parts: list[str] = []
     for t_word in transcribed_words:
         if idx >= len(words):
             break
@@ -290,6 +288,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         scores["total_score"] = round(scorer.compute_total_score(scores["char_score"], ds), 3)
         status = "correct" if scores["total_score"] >= config.score_threshold else "incorrect"
 
+        corrected_parts.append(t_corrected)
         await sio.emit("word_result", {
             "surah": word["surah"],
             "ayah": word["ayah"],
@@ -305,6 +304,10 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
             idx += 1
         else:
             break  # Stop processing further transcribed words on incorrect
+
+    # Emit corrected transcription for live subtitle (so frontend shows post-correction text)
+    if corrected_parts:
+        await sio.emit("transcription", {"text": " ".join(corrected_parts)}, room=sid)
 
     session["current_index"] = idx
 
