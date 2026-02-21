@@ -75,4 +75,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         if (values.length === 0) return 0;
         return values.reduce((sum, r) => sum + r.diacritic_score, 0) / values.length;
     },
+
+    getAverageAcousticScore: () => {
+        const { wordResults } = get();
+        const values = Object.values(wordResults).filter((r) => r.acoustic_score != null);
+        if (values.length === 0) return undefined;
+        return values.reduce((sum, r) => sum + (r.acoustic_score ?? 0), 0) / values.length;
+    },
 }));

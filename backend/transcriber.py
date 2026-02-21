@@ -131,6 +131,9 @@ class HuggingFaceBackend(TranscriberBackend):
         ).input_features.to(self._device)
 
         # Use forced_decoder_ids for Arabic (avoids outdated generation_config.lang_to_id on fine-tuned models)
+        # Clear model's max_length so only max_new_tokens is used (avoids HF warning about both being set)
+        if getattr(self._model.generation_config, "max_length", None) is not None:
+            self._model.generation_config.max_length = None
         gen_kwargs = {
             # "forced_decoder_ids": self._forced_decoder_ids,
             "num_beams": 5,

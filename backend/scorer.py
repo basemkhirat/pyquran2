@@ -36,8 +36,13 @@ def compute_diacritic_score(expected: str, transcribed: str) -> float:
     return max(0.0, 1.0 - error_rate)
 
 
-def compute_total_score(char_score: float, diacritic_score: float) -> float:
-    return (config.weight_char * char_score) + (config.weight_diacritic * diacritic_score)
+def compute_total_score(
+    char_score: float, diacritic_score: float, acoustic_score: float | None = None
+) -> float:
+    total = (config.weight_char * char_score) + (config.weight_diacritic * diacritic_score)
+    if acoustic_score is not None and config.enable_acoustic_score:
+        total += config.weight_acoustic * acoustic_score
+    return total
 
 
 def correct_word(expected: str, transcribed: str, max_edits: int) -> str:

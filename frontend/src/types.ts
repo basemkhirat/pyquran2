@@ -15,6 +15,7 @@ export interface WordResult {
     char_score: number;
     diacritic_score: number;
     total_score: number;
+    acoustic_score?: number;
     status: "correct" | "incorrect" | "skipped";
 }
 

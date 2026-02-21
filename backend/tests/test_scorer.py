@@ -1,4 +1,6 @@
 import pytest
+
+from backend.config import config
 from backend.scorer import (
     strip_diacritics,
     extract_diacritics,
@@ -73,6 +75,21 @@ class TestTotalScore:
 
     def test_zero(self):
         assert compute_total_score(0.0, 0.0) == pytest.approx(0.0)
+
+    def test_acoustic_none_unchanged(self):
+        assert compute_total_score(1.0, 0.5, None) == pytest.approx(
+            compute_total_score(1.0, 0.5)
+        )
+
+    def test_acoustic_included_when_enabled(self, monkeypatch):
+        monkeypatch.setattr(config, "enable_acoustic_score", True)
+        monkeypatch.setattr(config, "weight_char", 0.5)
+        monkeypatch.setattr(config, "weight_diacritic", 0.2)
+        monkeypatch.setattr(config, "weight_acoustic", 0.3)
+        score = compute_total_score(0.0, 0.0, 1.0)
+        assert score == pytest.approx(0.3)
+        score = compute_total_score(1.0, 1.0, 1.0)
+        assert score == pytest.approx(0.5 + 0.2 + 0.3)
 
 
 class TestCorrectWord:

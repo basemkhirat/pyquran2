@@ -13,6 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config import config
 from backend import quran_data, transcriber, scorer
 from backend.vad import VADProcessor
+if config.enable_acoustic_score:
+    from backend import acoustic_scorer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -270,9 +272,19 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         logger.info(f"  Backtrack detected: skipping {skip_count} repeated word(s)")
         transcribed_words = transcribed_words[skip_count:]
 
+    # Acoustic scores (one per expected word for this chunk) when enabled
+    acoustic_scores: list[float] = []
+    if config.enable_acoustic_score:
+        n_words_chunk = min(len(transcribed_words), len(words) - idx)
+        expected_chunk = [words[idx + i]["emlaey_text"] for i in range(n_words_chunk)]
+        if expected_chunk:
+            acoustic_scores = await asyncio.to_thread(
+                acoustic_scorer.get_acoustic_scores, audio, expected_chunk
+            )
+
     # Score each transcribed word against expected sequence; collect corrected text for subtitle
     corrected_parts: list[str] = []
-    for t_word in transcribed_words:
+    for i, t_word in enumerate(transcribed_words):
         if idx >= len(words):
             break
 
@@ -285,11 +297,16 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         # base letters match, which would otherwise give 100% diacritics for wrong tashkeel.
         ds = scorer.compute_diacritic_score(word["emlaey_text"], t_word)
         scores["diacritic_score"] = round(ds, 3)
-        scores["total_score"] = round(scorer.compute_total_score(scores["char_score"], ds), 3)
+        ac = (acoustic_scores[i] if i < len(acoustic_scores) else None) if config.enable_acoustic_score else None
+        if ac is not None:
+            scores["acoustic_score"] = round(ac, 3)
+        scores["total_score"] = round(
+            scorer.compute_total_score(scores["char_score"], ds, ac), 3
+        )
         status = "correct" if scores["total_score"] >= config.score_threshold else "incorrect"
 
         corrected_parts.append(t_corrected)
-        await sio.emit("word_result", {
+        payload: Dict[str, Any] = {
             "surah": word["surah"],
             "ayah": word["ayah"],
             "word_index": word["word_index"],
@@ -297,7 +314,8 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
             "expected": word["emlaey_text"],
             **scores,
             "status": status,
-        }, room=sid)
+        }
+        await sio.emit("word_result", payload, room=sid)
 
         # Only advance to next word if correct; incorrect words must be retried
         if status == "correct":
