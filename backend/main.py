@@ -108,6 +108,7 @@ async def start_session(sid, data):
     words = quran_data.get_words(surah, start_ayah, end_ayah)
     session = sessions.get(sid)
     if not session:
+        await sio.emit("session_error", {"reason": "not_connected"}, room=sid)
         return
 
     session["words"] = words
@@ -248,15 +249,32 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
     ][: config.max_prompt_next_words]
     initial_prompt = " ".join(prev_words + remaining_words)
 
-    # Transcribe
+    # Build max expected chunk for parallel wav2vec when acoustic scoring is enabled
+    remaining = len(words) - idx
+    expected_chunk_max = (
+        [words[idx + i]["emlaey_text"] for i in range(min(remaining, 20))]
+        if config.enable_acoustic_score and remaining > 0
+        else []
+    )
+
+    # Transcribe (and run wav2vec in parallel when acoustic scoring enabled)
     logger.info(f"Transcribing {audio_duration:.2f}s of audio for [{sid}]...")
     logger.info(f"  Initial prompt: '{initial_prompt}'")
     logger.info(f"  Expected word #{idx}: '{current_word['emlaey_text']}'")
     t0 = time.time()
-    text = await asyncio.to_thread(transcriber.transcribe, audio, initial_prompt)
-    text = text.strip()
-    t_transcribe = time.time() - t0
-    logger.info(f"  Transcription took {t_transcribe:.2f}s: '{text}'")
+    if config.enable_acoustic_score and expected_chunk_max:
+        whisper_task = asyncio.to_thread(transcriber.transcribe, audio, initial_prompt)
+        wav2vec_task = asyncio.to_thread(
+            acoustic_scorer.get_acoustic_scores, audio, expected_chunk_max
+        )
+        text, acoustic_scores_full = await asyncio.gather(whisper_task, wav2vec_task)
+        text = text.strip()
+        logger.info(f"  Whisper + wav2vec (parallel) took {time.time() - t0:.2f}s: '{text}'")
+    else:
+        text = await asyncio.to_thread(transcriber.transcribe, audio, initial_prompt)
+        text = text.strip()
+        acoustic_scores_full = []
+        logger.info(f"  Transcription took {time.time() - t0:.2f}s: '{text}'")
 
     if not text:
         return
@@ -292,17 +310,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         logger.info(f"  Backtrack detected: skipping {skip_count} repeated word(s)")
         transcribed_words = transcribed_words[skip_count:]
 
-    # Acoustic scores (one per expected word for this chunk) when enabled
+    # Slice parallel wav2vec scores to actual chunk size (after backtrack)
     acoustic_scores: list[float] = []
-    if config.enable_acoustic_score:
+    if config.enable_acoustic_score and acoustic_scores_full:
         n_words_chunk = min(len(transcribed_words), len(words) - idx)
-        expected_chunk = [words[idx + i]["emlaey_text"] for i in range(n_words_chunk)]
-        if expected_chunk:
-            t_wav2vec = time.time()
-            acoustic_scores = await asyncio.to_thread(
-                acoustic_scorer.get_acoustic_scores, audio, expected_chunk
-            )
-            logger.info(f"  Wav2vec2 took {time.time() - t_wav2vec:.2f}s")
+        acoustic_scores = acoustic_scores_full[:n_words_chunk]
 
     # Score each transcribed word against expected sequence; collect corrected text for subtitle
     corrected_parts: list[str] = []
@@ -345,10 +357,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
             idx += 1
         else:
             break  # Stop processing further transcribed words on incorrect
-
-    # Emit corrected transcription for live subtitle (skip when word result details are sent)
-    # if corrected_parts and not config.send_word_result_details:
-        # await sio.emit("transcription", {"text": " ".join(corrected_parts)}, room=sid)
 
     session["current_index"] = idx
 

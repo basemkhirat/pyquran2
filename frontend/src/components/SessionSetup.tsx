@@ -77,8 +77,22 @@ export function SessionSetup() {
     const isComplete = words.length > 0 && currentWordIndex >= words.length;
 
     const toggleRecording = () => {
-        if (isRecording) stopRecording();
-        else startRecording();
+        if (isRecording) {
+            stopRecording();
+            return;
+        }
+        if (words.length === 0) return;
+        const payload = { chapter_number: surah, start_verse_number: startAyah, end_verse_number: endAyah };
+        if (socket.connected) {
+            socket.emit("start_session", payload);
+            startRecording();
+        } else {
+            socket.connect();
+            socket.once("connect", () => {
+                socket.emit("start_session", payload);
+                startRecording();
+            });
+        }
     };
 
     useEffect(() => {
@@ -128,8 +142,6 @@ export function SessionSetup() {
                 setSelectedRange({ surah, startAyah, endAyah });
                 setWords(words);
                 setSessionStatus("recording");
-                if (!socket.connected) socket.connect();
-                socket.emit("start_session", { chapter_number: surah, start_verse_number: startAyah, end_verse_number: endAyah });
             })
             .catch((err) => {
                 if (!cancelled) console.error("Failed to load verses:", err);

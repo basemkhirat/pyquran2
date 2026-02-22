@@ -104,45 +104,6 @@ body {
   border-radius: 3px;
 }
 
-/* Live transcription subtitle toast */
-.subtitle-toast {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  pointer-events: none;
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-
-.subtitle-visible {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.subtitle-hidden {
-  opacity: 0;
-  transform: translateX(-50%) translateY(8px);
-}
-
-.subtitle-text {
-  display: inline-block;
-  padding: 10px 24px;
-  font-family: var(--font-arabic);
-  font-size: 1.25rem;
-  line-height: 1.6;
-  color: #f0d78c;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(212, 168, 83, 0.25);
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 0 12px rgba(212, 168, 83, 0.1);
-  white-space: nowrap;
-  max-width: 90vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Move number input spinner arrows to the left */
 .spinner-left {
   direction: rtl;

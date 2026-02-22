@@ -113,40 +113,36 @@ class HuggingFaceBackend(TranscriberBackend):
         self._model.to(self._device)
         self._model.eval()
 
-        # Pre-compute forced decoder IDs for Arabic transcription
-        self._forced_decoder_ids = self._processor.get_decoder_prompt_ids(
-            language="ar", task="transcribe"
-        )
-
     def transcribe(self, audio: np.ndarray, initial_prompt: str = "") -> str:
         import torch
         import zlib
+        from transformers import GenerationConfig
 
         audio = _preprocess_audio(audio)
 
-        input_features = self._processor(
+        proc = self._processor(
             audio,
             sampling_rate=config.audio_sample_rate,
             return_tensors="pt",
-        ).input_features.to(self._device)
+            return_attention_mask=True,
+        )
+        input_features = proc.input_features.to(self._device)
+        attention_mask = proc.get("attention_mask")
+        if attention_mask is not None:
+            attention_mask = attention_mask.to(self._device)
+        else:
+            # Fallback: full mask so pad_token/eos warning is avoided
+            attention_mask = torch.ones(
+                1, input_features.shape[2], dtype=torch.long, device=self._device
+            )
 
-        # Use forced_decoder_ids for Arabic (avoids outdated generation_config.lang_to_id on fine-tuned models)
-        # Clear model's max_length so only max_new_tokens is used (avoids HF warning about both being set)
-        if getattr(self._model.generation_config, "max_length", None) is not None:
-            self._model.generation_config.max_length = None
+        # Single GenerationConfig: language/task (not deprecated forced_decoder_ids), only max_new_tokens (no max_length)
+        cfg = {**self._model.generation_config.to_dict(), "max_new_tokens": 256, "max_length": None, "num_beams": 5, "language": "ar", "task": "transcribe"}
+        generation_config = GenerationConfig.from_dict(cfg)
         gen_kwargs = {
-            # "forced_decoder_ids": self._forced_decoder_ids,
-            "num_beams": 5,
-            "max_new_tokens": 256,
-            "language": "ar",
+            "generation_config": generation_config,
+            "attention_mask": attention_mask,
         }
-
-        # Use initial_prompt as decoder prefix for verse context guidance
-        # if initial_prompt:
-        #     prompt_ids = self._processor.get_prompt_ids(
-        #         initial_prompt, return_tensors="pt"
-        #     ).to(self._device)
-        #     gen_kwargs["prompt_ids"] = prompt_ids
 
         with torch.no_grad():
             predicted_ids = self._model.generate(input_features, **gen_kwargs)

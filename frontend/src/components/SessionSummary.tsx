@@ -39,12 +39,17 @@ export function SessionSummary() {
         setWords(incorrectWords);
         setSessionStatus("recording");
 
-        if (!socket.connected) socket.connect();
-        socket.emit("start_session", {
+        const payload = {
             chapter_number: selectedRange.surah,
             start_verse_number: selectedRange.startAyah,
             end_verse_number: selectedRange.endAyah,
-        });
+        };
+        if (socket.connected) {
+            socket.emit("start_session", payload);
+        } else {
+            socket.connect();
+            socket.once("connect", () => socket.emit("start_session", payload));
+        }
     };
 
     // Color for overall score
