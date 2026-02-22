@@ -28,6 +28,11 @@ def _get_model():
     return _model, _processor
 
 
+def load_model():
+    """Load wav2vec2 model (call at server startup to avoid first-request latency)."""
+    _get_model()
+
+
 def _decode_audio(audio: np.ndarray) -> str:
     """Run wav2vec2 on 16kHz float32 mono audio and return decoded text."""
     model, processor = _get_model()

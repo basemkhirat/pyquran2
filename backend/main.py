@@ -38,6 +38,14 @@ socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 sessions: Dict[str, Dict[str, Any]] = {}
 
 
+@app.on_event("startup")
+async def startup():
+    if config.enable_acoustic_score:
+        logger.info("Preloading wav2vec2 model...")
+        await asyncio.to_thread(acoustic_scorer.load_model)
+        logger.info("Wav2vec2 model ready.")
+
+
 # ===================== REST Endpoints =====================
 
 @app.get("/api/chapters")
