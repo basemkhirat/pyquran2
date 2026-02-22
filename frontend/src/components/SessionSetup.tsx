@@ -89,22 +89,28 @@ export function SessionSetup() {
     }, []);
 
     useEffect(() => {
+        let cancelled = false;
         fetch(`/api/verse-count?surah=${surah}`)
             .then((r) => r.json())
             .then((d) => {
+                if (cancelled) return;
                 setVerseCount(d.count);
                 // On first load, keep URL-provided values; otherwise reset
                 if (!initialLoadDone.current) {
                     initialLoadDone.current = true;
                     const p = getUrlParams();
-                    setStartAyah(p.start ? Math.min(p.start, d.count) : 1);
-                    setEndAyah(p.end ? Math.min(p.end, d.count) : d.count);
+                    setStartAyah(p.start != null ? Math.min(p.start, d.count) : 1);
+                    setEndAyah(p.end != null ? Math.min(p.end, d.count) : d.count);
                 } else {
                     setStartAyah(1);
                     setEndAyah(d.count);
                 }
             })
             .catch(console.error);
+        return () => {
+            cancelled = true;
+            initialLoadDone.current = false; // Reset so remount (e.g. Strict Mode) respects URL again
+        };
     }, [surah]);
 
     // Sync state to URL
