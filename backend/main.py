@@ -40,6 +40,9 @@ sessions: Dict[str, Dict[str, Any]] = {}
 
 @app.on_event("startup")
 async def startup():
+    logger.info("Preloading Whisper/transcription model...")
+    await asyncio.to_thread(transcriber.load_model)
+    logger.info("Whisper model ready.")
     if config.enable_acoustic_score:
         logger.info("Preloading wav2vec2 model...")
         await asyncio.to_thread(acoustic_scorer.load_model)

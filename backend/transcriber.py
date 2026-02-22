@@ -196,6 +196,11 @@ def _get_backend() -> TranscriberBackend:
     return _backend
 
 
+def load_model():
+    """Load Whisper/transcription backend (call at server startup to avoid first-request latency)."""
+    _get_backend()
+
+
 def transcribe(audio: np.ndarray, initial_prompt: str = "") -> str:
     """Transcribe a 16kHz float32 mono audio buffer to text.
 
