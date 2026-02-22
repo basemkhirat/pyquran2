@@ -256,7 +256,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
     text = await asyncio.to_thread(transcriber.transcribe, audio, initial_prompt)
     text = text.strip()
     t_transcribe = time.time() - t0
-    logger.info(f"  Result in {t_transcribe:.2f}s: '{text}'")
+    logger.info(f"  Transcription took {t_transcribe:.2f}s: '{text}'")
 
     if not text:
         return
@@ -298,9 +298,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         n_words_chunk = min(len(transcribed_words), len(words) - idx)
         expected_chunk = [words[idx + i]["emlaey_text"] for i in range(n_words_chunk)]
         if expected_chunk:
+            t_wav2vec = time.time()
             acoustic_scores = await asyncio.to_thread(
                 acoustic_scorer.get_acoustic_scores, audio, expected_chunk
             )
+            logger.info(f"  Wav2vec2 took {time.time() - t_wav2vec:.2f}s")
 
     # Score each transcribed word against expected sequence; collect corrected text for subtitle
     corrected_parts: list[str] = []
