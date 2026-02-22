@@ -170,7 +170,7 @@ export function SessionSetup() {
                             </SelectTrigger>
                             <SelectContent dir="rtl" className="font-[var(--font-arabic)] bg-surface-elevated border-border text-text-primary shadow-lg backdrop-blur-sm text-right">
                                 {chapters.map((ch) => (
-                                    <SelectItem key={ch.number} value={String(ch.number)} className="font-[var(--font-arabic)] justify-end text-right">
+                                    <SelectItem key={ch.number} value={String(ch.number)} className="font-[var(--font-arabic)]">
                                         {ch.number}. {SURAH_NAMES[ch.number] || ch.name}
                                     </SelectItem>
                                 ))}
