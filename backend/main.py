@@ -215,18 +215,18 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
     # Reset VAD immediately so new audio starts fresh
     session["vad"].reset()
 
-    # Save audio chunk to disk for testing/debugging
-    chunks_dir = os.path.join(os.path.dirname(__file__), "chunks")
-    os.makedirs(chunks_dir, exist_ok=True)
-    ts = time.strftime("%Y%m%d_%H%M%S")
-    wav_path = os.path.join(chunks_dir, f"{ts}_{sid[:8]}_w{idx}.wav")
-    pcm16 = (audio * 32768).astype(np.int16)
-    with wave.open(wav_path, "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(config.audio_sample_rate)
-        wf.writeframes(pcm16.tobytes())
-    logger.info(f"Saved audio chunk: {wav_path} ({audio_duration:.2f}s)")
+    if config.save_audio_chunks:
+        chunks_dir = os.path.join(os.path.dirname(__file__), "chunks")
+        os.makedirs(chunks_dir, exist_ok=True)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        wav_path = os.path.join(chunks_dir, f"{ts}_{sid[:8]}_w{idx}.wav")
+        pcm16 = (audio * 32768).astype(np.int16)
+        with wave.open(wav_path, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(config.audio_sample_rate)
+            wf.writeframes(pcm16.tobytes())
+        logger.info(f"Saved audio chunk: {wav_path} ({audio_duration:.2f}s)")
 
     # Build context prompt: previous words for continuity + optional next words (capped)
     current_word = words[idx]
