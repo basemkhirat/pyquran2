@@ -92,7 +92,7 @@ export function useAudioRecorder() {
             streamRef.current = null;
         }
 
-        socket.emit("stop_recording");
+        socket.emit("stop_session");
         setIsRecording(false);
         setVolume(0);
     }, []);

@@ -3,7 +3,7 @@ import type { Chapter } from "../types";
 import { useSessionStore } from "../stores/session";
 import { socket } from "../lib/socket";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, SkipForward } from "lucide-react";
 import { cn } from "../lib/cn";
 import {
     Select,
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Arabic names for surahs
 const SURAH_NAMES: Record<number, string> = {
@@ -72,6 +73,7 @@ export function SessionSetup() {
 
     const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words } = useSessionStore();
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
+    const canSkip = isRecording && words.length > 0 && currentWordIndex < words.length;
     const isComplete = words.length > 0 && currentWordIndex >= words.length;
 
     const toggleRecording = () => {
@@ -121,7 +123,7 @@ export function SessionSetup() {
                 setWords(words);
                 setSessionStatus("recording");
                 if (!socket.connected) socket.connect();
-                socket.emit("start_session", { surah, startAyah, endAyah });
+                socket.emit("start_session", { chapter_number: surah, start_verse_number: startAyah, end_verse_number: endAyah });
             })
             .catch((err) => {
                 if (!cancelled) console.error("Failed to load verses:", err);
@@ -137,8 +139,8 @@ export function SessionSetup() {
     return (
         <div className="sticky top-0 z-20 bg-surface/90 backdrop-blur-xl border-b border-border/50 px-4 py-3" dir="ltr">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-nowrap">
-                {/* Left: mic + divider */}
-                <div className="flex items-center gap-4 shrink-0">
+                {/* Left: mic, skip (when session started), divider */}
+                <div className="flex items-center gap-3 shrink-0">
                     <button
                         onClick={toggleRecording}
                         disabled={isComplete}
@@ -157,6 +159,32 @@ export function SessionSetup() {
                             <Mic className={cn("w-5 h-5", isComplete ? "text-text-muted" : "text-surface")} />
                         )}
                     </button>
+                    {isRecording && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                    <button
+                                        type="button"
+                                        dir="rtl"
+                                        aria-label="تخطي الكلمة"
+                                        onClick={() => socket.emit("skip_word")}
+                                        disabled={!canSkip}
+                                        className={cn(
+                                            "relative w-11 h-11 rounded-full flex items-center justify-center transition-all border",
+                                            canSkip
+                                                ? "border-border bg-surface/80 text-text-secondary hover:bg-surface-hover hover:text-gold hover:border-gold/40"
+                                                : "border-border bg-surface/80 text-text-muted opacity-60 cursor-not-allowed",
+                                        )}
+                                    >
+                                        <SkipForward className="w-5 h-5 scale-x-[-1]" />
+                                    </button>
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="font-[var(--font-arabic)]" dir="rtl">
+                                تخطي الكلمة
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
                     <div className="h-5 w-px bg-border" aria-hidden />
                 </div>
 

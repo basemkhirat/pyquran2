@@ -41,9 +41,9 @@ export function SessionSummary() {
 
         if (!socket.connected) socket.connect();
         socket.emit("start_session", {
-            surah: selectedRange.surah,
-            startAyah: selectedRange.startAyah,
-            endAyah: selectedRange.endAyah,
+            chapter_number: selectedRange.surah,
+            start_verse_number: selectedRange.startAyah,
+            end_verse_number: selectedRange.endAyah,
         });
     };
 

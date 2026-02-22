@@ -24,6 +24,8 @@ class Config:
     silence_timeout_ms: int = int(os.getenv("SILENCE_TIMEOUT_MS", "3000"))
     audio_sample_rate: int = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
     max_prompt_next_words: int = int(os.getenv("MAX_PROMPT_NEXT_WORDS", "0"))
+    # When True, word_result includes transcribed, expected, char_score, diacritic_score, total_score, acoustic_score.
+    send_word_result_details: bool = os.getenv("SEND_WORD_RESULT_DETAILS", "false").lower() in ("1", "true", "yes")
 
 
 config = Config()

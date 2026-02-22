@@ -8,7 +8,6 @@ export default function App() {
   const {
     sessionStatus,
     addWordResult,
-    setSessionStatus,
     setLastTranscription,
     lastTranscription,
     words,
@@ -23,9 +22,9 @@ export default function App() {
     const onWordResult = (data: any) => {
       const idx = words.findIndex(
         (w) =>
-          w.surah === data.surah &&
-          w.ayah === data.ayah &&
-          w.word_index === data.word_index
+          w.surah === data.chapter_number &&
+          w.ayah === data.verse_number &&
+          w.word_index === data.word_number
       );
       if (idx !== -1) {
         addWordResult(idx, data);
@@ -58,20 +57,20 @@ export default function App() {
     };
 
     socket.on("word_result", onWordResult);
-    socket.on("session_complete", onSessionComplete);
+    socket.on("session_stopped", onSessionComplete);
     socket.on("timeout", onTimeout);
     socket.on("session_error", onSessionError);
     socket.on("transcription", onTranscription);
 
     return () => {
       socket.off("word_result", onWordResult);
-      socket.off("session_complete", onSessionComplete);
+      socket.off("session_stopped", onSessionComplete);
       socket.off("timeout", onTimeout);
       socket.off("session_error", onSessionError);
       socket.off("transcription", onTranscription);
       if (fadeTimer.current) clearTimeout(fadeTimer.current);
     };
-  }, [words, addWordResult, setSessionStatus, setLastTranscription]);
+  }, [words, addWordResult, setLastTranscription]);
 
   return (
     <div className="min-h-screen">

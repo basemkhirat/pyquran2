@@ -16,19 +16,18 @@ This document describes how to integrate a mobile app with the socket server: co
 
 | Event | Payload | When |
 |-------|---------|------|
-| `start_session` | `{ surah: Int, startAyah: Int, endAyah: Int }` | After connection; starts a session for the given range. |
+| `start_session` | `{ chapter_number: Int, start_verse_number: Int, end_verse_number: Int }` | After connection; starts a session for the given range. |
 | `audio_chunk` | **Binary:** PCM 16-bit mono, 16 kHz (see Audio format below) | Stream repeatedly while the user is speaking (e.g. every ~100–150 ms). |
-| `stop_recording` | (none or empty) | When the user stops recording; server flushes VAD and may emit one more `word_result` or `session_complete`. |
+| `stop_session` | (none or empty) | When the user stops the session; server flushes VAD and may emit one more `word_result` or `session_stopped`. |
 | `skip_word` | (none or empty) | Skip the current word; server emits `word_result` with `status: "skipped"` and advances. |
 
 ## 4. Server → Client (on) events
 
 | Event | Payload | Meaning |
 |-------|---------|--------|
-| `session_started` | `{ total_words: Int }` | Session is ready; total number of words in the session. |
-| `word_result` | `{ surah, ayah, word_index, transcribed, expected, char_score, diacritic_score, total_score, status, [acoustic_score] }` | One word result. `status` is `"correct"`, `"incorrect"`, or `"skipped"`. |
-| `transcription` | `{ text: String }` | Live subtitle (corrected text) for the last transcribed segment. |
-| `session_complete` | `{}` | All words are done (or stream ended past the last word). |
+| `session_started` | `{}` | Session is ready; start streaming audio. |
+| `word_result` | `{ chapter_number, verse_number, word_number, status }` | One word result. `status` is `"correct"`, `"incorrect"`, or `"skipped"`. |
+| `session_stopped` | `{}` | All words are done (or stream ended past the last word). |
 | `timeout` | `{ word_index: Int }` | Prolonged silence; prompt the user to try again for the current word. |
 | `session_error` | `{ reason?: String }` | Error (e.g. invalid range). |
 
@@ -42,13 +41,12 @@ This document describes how to integrate a mobile app with the socket server: co
 ## 6. Recommended flow (sequence)
 
 1. Connect to the socket server when the user is ready to start a session.
-2. Emit `start_session` with `{ surah, startAyah, endAyah }`.
+2. Emit `start_session` with `{ chapter_number, start_verse_number, end_verse_number }`.
 3. On `session_started`, start capturing the microphone and streaming chunks via `audio_chunk`.
 4. On each `word_result`, update the UI (highlight word, show score/status).
-5. On `transcription`, show the live subtitle if desired.
-6. On `timeout`, prompt the user to try again for the current word.
-7. On `session_complete`, stop sending chunks and show the summary.
-8. When the user stops: emit `stop_recording`. To run another session, emit `start_session` again (you can stay connected).
+5. On `timeout`, prompt the user to try again for the current word.
+6. On `session_stopped`, stop sending chunks and show the summary.
+7. When the user stops: emit `stop_session`. To run another session, emit `start_session` again (you can stay connected).
 
 ## 7. Sequence diagram
 
@@ -60,17 +58,16 @@ sequenceDiagram
     Mobile->>Server: connect (Socket.IO)
     Server-->>Mobile: connected
 
-    Mobile->>Server: start_session(surah, startAyah, endAyah)
-    Server-->>Mobile: session_started(total_words)
+    Mobile->>Server: start_session(chapter_number, start_verse_number, end_verse_number)
+    Server-->>Mobile: session_started
 
     loop While user speaks
         Mobile->>Server: audio_chunk(binary PCM16)
         Server-->>Mobile: word_result (when word recognized)
-        Server-->>Mobile: transcription (live subtitle)
     end
 
-    Mobile->>Server: stop_recording
-    Server-->>Mobile: word_result / session_complete (if any)
+    Mobile->>Server: stop_session
+    Server-->>Mobile: word_result / session_stopped (if any)
 
     Note over Server: Optional: timeout on silence
     Server-->>Mobile: timeout(word_index)
@@ -78,5 +75,5 @@ sequenceDiagram
     Mobile->>Server: skip_word (optional)
     Server-->>Mobile: word_result(status: skipped)
 
-    Server-->>Mobile: session_complete
+    Server-->>Mobile: session_stopped
 ```

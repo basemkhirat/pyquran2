@@ -64,16 +64,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     getAverageCharScore: () => {
         const { wordResults } = get();
-        const values = Object.values(wordResults);
+        const values = Object.values(wordResults).filter((r) => r.char_score != null);
         if (values.length === 0) return 0;
-        return values.reduce((sum, r) => sum + r.char_score, 0) / values.length;
+        return values.reduce((sum, r) => sum + (r.char_score ?? 0), 0) / values.length;
     },
 
     getAverageDiacriticScore: () => {
         const { wordResults } = get();
-        const values = Object.values(wordResults);
+        const values = Object.values(wordResults).filter((r) => r.diacritic_score != null);
         if (values.length === 0) return 0;
-        return values.reduce((sum, r) => sum + r.diacritic_score, 0) / values.length;
+        return values.reduce((sum, r) => sum + (r.diacritic_score ?? 0), 0) / values.length;
     },
 
     getAverageAcousticScore: () => {

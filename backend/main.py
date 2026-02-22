@@ -83,9 +83,9 @@ async def disconnect(sid):
 @sio.event
 async def start_session(sid, data):
     """Initialize a recitation session with selected verse range."""
-    surah = data["surah"]
-    start_ayah = data["startAyah"]
-    end_ayah = data["endAyah"]
+    surah = data["chapter_number"]
+    start_ayah = data["start_verse_number"]
+    end_ayah = data["end_verse_number"]
 
     words = quran_data.get_words(surah, start_ayah, end_ayah)
     session = sessions.get(sid)
@@ -101,7 +101,7 @@ async def start_session(sid, data):
         session["timeout_task"].cancel()
 
     logger.info(f"Session started for {sid}: Surah {surah}, Ayah {start_ayah}-{end_ayah}, {len(words)} words")
-    await sio.emit("session_started", {"total_words": len(words)}, room=sid)
+    await sio.emit("session_started", {}, room=sid)
 
     # Start silence timeout watcher
     session["timeout_task"] = asyncio.create_task(_silence_watcher(sid))
@@ -116,7 +116,7 @@ async def audio_chunk(sid, data):
 
     idx = session["current_index"]
     if idx >= len(session["words"]):
-        await sio.emit("session_complete", {}, room=sid)
+        await sio.emit("session_stopped", {}, room=sid)
         return
 
     vad = session["vad"]
@@ -138,28 +138,30 @@ async def skip_word(sid, _data=None):
         return
 
     word = session["words"][idx]
-    await sio.emit("word_result", {
-        "surah": word["surah"],
-        "ayah": word["ayah"],
-        "word_index": word["word_index"],
-        "transcribed": "",
-        "expected": word["emlaey_text"],
-        "char_score": 0.0,
-        "diacritic_score": 0.0,
-        "total_score": 0.0,
+    payload: Dict[str, Any] = {
+        "chapter_number": word["surah"],
+        "verse_number": word["ayah"],
+        "word_number": word["word_index"],
         "status": "skipped",
-    }, room=sid)
+    }
+    if config.send_word_result_details:
+        payload["transcribed"] = ""
+        payload["expected"] = word["emlaey_text"]
+        payload["char_score"] = 0.0
+        payload["diacritic_score"] = 0.0
+        payload["total_score"] = 0.0
+    await sio.emit("word_result", payload, room=sid)
 
     session["current_index"] += 1
     session["vad"].reset()
 
     if session["current_index"] >= len(session["words"]):
-        await sio.emit("session_complete", {}, room=sid)
+        await sio.emit("session_stopped", {}, room=sid)
 
 
 @sio.event
-async def stop_recording(sid, _data=None):
-    """Stop recording and flush any remaining audio."""
+async def stop_session(sid, _data=None):
+    """Stop session and flush any remaining audio."""
     session = sessions.get(sid)
     if not session:
         return
@@ -194,7 +196,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
     idx = session["current_index"]
     words = session["words"]
     if idx >= len(words):
-        await sio.emit("session_complete", {}, room=sid)
+        await sio.emit("session_stopped", {}, room=sid)
         return
 
     # Check minimum audio duration (0.5 seconds)
@@ -307,14 +309,15 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
 
         corrected_parts.append(t_corrected)
         payload: Dict[str, Any] = {
-            "surah": word["surah"],
-            "ayah": word["ayah"],
-            "word_index": word["word_index"],
-            "transcribed": t_corrected,
-            "expected": word["emlaey_text"],
-            **scores,
+            "chapter_number": word["surah"],
+            "verse_number": word["ayah"],
+            "word_number": word["word_index"],
             "status": status,
         }
+        if config.send_word_result_details:
+            payload["transcribed"] = t_corrected
+            payload["expected"] = word["emlaey_text"]
+            payload.update(scores)
         await sio.emit("word_result", payload, room=sid)
 
         # Only advance to next word if correct; incorrect words must be retried
@@ -330,7 +333,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
     session["current_index"] = idx
 
     if idx >= len(words):
-        await sio.emit("session_complete", {}, room=sid)
+        await sio.emit("session_stopped", {}, room=sid)
 
 
 async def _silence_watcher(sid: str):

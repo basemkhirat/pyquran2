@@ -7,14 +7,14 @@ export interface Word {
 }
 
 export interface WordResult {
-    surah: number;
-    ayah: number;
-    word_index: number;
-    transcribed: string;
-    expected: string;
-    char_score: number;
-    diacritic_score: number;
-    total_score: number;
+    chapter_number: number;
+    verse_number: number;
+    word_number: number;
+    transcribed?: string;
+    expected?: string;
+    char_score?: number;
+    diacritic_score?: number;
+    total_score?: number;
     acoustic_score?: number;
     status: "correct" | "incorrect" | "skipped";
 }

@@ -89,14 +89,12 @@ export function VerseDisplay() {
                                         </div>
                                     )}
 
-                                    {/* Score display: char, diacritics, acoustic (optional), total */}
-                                    {result && result.status !== "skipped" && (
+                                    {/* Score display: only when server sends details */}
+                                    {result && result.status !== "skipped" && result.total_score != null && (
                                         <div className="flex flex-col items-center gap-0.5 mt-1 text-[10px] text-text-muted">
-                                            <span title="Character score">Char: {Math.round(result.char_score * 100)}%</span>
-                                            <span title="Diacritics score">Diac: {Math.round(result.diacritic_score * 100)}%</span>
-                                            {result.acoustic_score != null && (
-                                                <span title="Acoustic score">Ac: {Math.round(result.acoustic_score * 100)}%</span>
-                                            )}
+                                            {result.char_score != null && <span title="Character score">Char: {Math.round(result.char_score * 100)}%</span>}
+                                            {result.diacritic_score != null && <span title="Diacritics score">Diac: {Math.round(result.diacritic_score * 100)}%</span>}
+                                            {result.acoustic_score != null && <span title="Acoustic score">Ac: {Math.round(result.acoustic_score * 100)}%</span>}
                                             <span className="text-text-muted/80" title="Total score">{Math.round(result.total_score * 100)}%</span>
                                         </div>
                                     )}
