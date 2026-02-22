@@ -10,7 +10,17 @@ This document describes how to integrate a mobile app with the socket server: co
 ## 2. Connection
 
 - Use a Socket.IO client for your platform (e.g. Swift, Kotlin/Java).
-- Connect to the base URL with `transports: ["websocket"]`. You can connect when the user is ready to start a session or when the relevant screen loads. There is no authentication in the current implementation.
+- Connect to the base URL with `transports: ["websocket"]`. You can connect when the user is ready to start a session or when the relevant screen loads.
+
+### Authentication
+
+When the server has `SOCKET_AUTH_API_KEY` set, clients must send the same value in the handshake under `auth.api_key`. Example client options:
+
+```js
+auth: { api_key: "your-secret" }
+```
+
+If the key is missing or wrong, the server rejects the connection (e.g. with `ConnectionRefusedError`). When `SOCKET_AUTH_API_KEY` is not set, no authentication is required.
 
 ## 3. Client → Server (emit) events
 

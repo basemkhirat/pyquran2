@@ -7,6 +7,7 @@ from typing import Dict, Any
 
 import numpy as np
 import socketio
+from socketio.exceptions import ConnectionRefusedError
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -61,7 +62,13 @@ def api_verse_count(surah: int = Query(...)):
 # ===================== Socket.IO Events =====================
 
 @sio.event
-async def connect(sid, environ):
+async def connect(sid, environ, auth):
+    if config.socket_auth_api_key:
+        if not isinstance(auth, dict):
+            raise ConnectionRefusedError("authentication_failed")
+        key = auth.get("api_key") or auth.get("apiKey")
+        if key != config.socket_auth_api_key:
+            raise ConnectionRefusedError("authentication_failed")
     logger.info(f"Client connected: {sid}")
     sessions[sid] = {
         "words": [],

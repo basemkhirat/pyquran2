@@ -26,6 +26,8 @@ class Config:
     max_prompt_next_words: int = int(os.getenv("MAX_PROMPT_NEXT_WORDS", "0"))
     # When True, word_result includes transcribed, expected, char_score, diacritic_score, total_score, acoustic_score.
     send_word_result_details: bool = os.getenv("SEND_WORD_RESULT_DETAILS", "false").lower() in ("1", "true", "yes")
+    # When set, socket connections must send this value in handshake auth.api_key; when empty, auth is disabled.
+    socket_auth_api_key: str = os.getenv("SOCKET_AUTH_API_KEY", "")
 
 
 config = Config()
