@@ -28,7 +28,6 @@ This document describes how to integrate a mobile app with the socket server: co
 | `session_started` | `{}` | Session is ready; start streaming audio. |
 | `word_result` | `{ chapter_number, verse_number, word_number, status }` | One word result. `status` is `"correct"`, `"incorrect"`, or `"skipped"`. |
 | `session_stopped` | `{}` | All words are done (or stream ended past the last word). |
-| `timeout` | `{ word_index: Int }` | Prolonged silence; prompt the user to try again for the current word. |
 | `session_error` | `{ reason?: String }` | Error (e.g. invalid range). |
 
 ## 5. Audio format
@@ -43,10 +42,9 @@ This document describes how to integrate a mobile app with the socket server: co
 1. Connect to the socket server when the user is ready to start a session.
 2. Emit `start_session` with `{ chapter_number, start_verse_number, end_verse_number }`.
 3. On `session_started`, start capturing the microphone and streaming chunks via `audio_chunk`.
-4. On each `word_result`, update the UI (highlight word, show score/status).
-5. On `timeout`, prompt the user to try again for the current word.
-6. On `session_stopped`, stop sending chunks and show the summary.
-7. When the user stops: emit `stop_session`. To run another session, emit `start_session` again (you can stay connected).
+4. On each `word_result`, update the UI (highlight word based on status: correct, incorrect, skipped).
+5. When the user wants to stop the session: emit `stop_session`.
+6. On `session_stopped`, stop sending chunks.
 
 ## 7. Sequence diagram
 
@@ -68,9 +66,6 @@ sequenceDiagram
 
     Mobile->>Server: stop_session
     Server-->>Mobile: word_result / session_stopped (if any)
-
-    Note over Server: Optional: timeout on silence
-    Server-->>Mobile: timeout(word_index)
 
     Mobile->>Server: skip_word (optional)
     Server-->>Mobile: word_result(status: skipped)
