@@ -333,9 +333,9 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         else:
             break  # Stop processing further transcribed words on incorrect
 
-    # Emit corrected transcription for live subtitle (so frontend shows post-correction text)
-    if corrected_parts:
-        await sio.emit("transcription", {"text": " ".join(corrected_parts)}, room=sid)
+    # Emit corrected transcription for live subtitle (skip when word result details are sent)
+    # if corrected_parts and not config.send_word_result_details:
+        # await sio.emit("transcription", {"text": " ".join(corrected_parts)}, room=sid)
 
     session["current_index"] = idx
 
