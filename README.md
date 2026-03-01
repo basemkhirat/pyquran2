@@ -1,4 +1,4 @@
-# PyQuran2
+# Quran2
 
 Quran voice recognition app: React frontend with real-time recording and a FastAPI + Socket.IO backend for transcription and scoring.
 

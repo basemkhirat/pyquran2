@@ -110,6 +110,9 @@ async def start_session(sid, data):
     if not session:
         await sio.emit("session_error", {"reason": "not_connected"}, room=sid)
         return
+    if not words:
+        await sio.emit("session_error", {"reason": "invalid_range"}, room=sid)
+        return
 
     session["words"] = words
     session["current_index"] = 0
@@ -188,6 +191,7 @@ async def stop_session(sid, _data=None):
     segment = session["vad"].flush()
     if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
         await _process_speech(sid, segment)
+    await sio.emit("session_stopped", {}, room=sid)
 
 
 # ===================== Internal Helpers =====================
