@@ -48,9 +48,18 @@ Then open the URL shown (usually http://localhost:5173). The Vite dev server pro
 | frontend | `npm run preview`    | Preview production build       |
 | frontend | `npm run lint`       | Run ESLint                     |
 
-## Environment (backend)
+## Environment
 
-Optional; defaults work for local development. Create a `.env` in the project root if needed:
+Create a `.env` in the project root if needed. Backend and frontend (Vite) both read from the project root `.env`.
+
+### Frontend (socket client)
+
+| Variable               | Default                         | Description |
+|------------------------|---------------------------------|-------------|
+| `VITE_SOCKET_URL`      | dev: `http://localhost:8000`, prod: same origin | Socket server URL |
+| `VITE_SOCKET_API_KEY` | —                               | Must match backend `SOCKET_AUTH_API_KEY` when auth is enabled |
+
+### Backend
 
 | Variable               | Default                         | Description                    |
 |------------------------|---------------------------------|--------------------------------|
