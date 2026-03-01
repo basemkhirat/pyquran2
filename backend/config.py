@@ -7,7 +7,7 @@ load_dotenv()
 
 @dataclass
 class Config:
-    transcription_backend: str = os.getenv("TRANSCRIPTION_BACKEND", "whisper_cpp")
+    transcription_backend: str = os.getenv("TRANSCRIPTION_BACKEND", "huggingface")
     whisper_model_path: str = os.getenv("WHISPER_MODEL_PATH", "./whisper_cpp/epoch-best/ggml-model.bin")
     mlx_model_path: str = os.getenv("MLX_MODEL_PATH", "./mlx_models/epoch-best")
     hf_model_path: str = os.getenv("HF_MODEL_PATH", "./guff/whisper-quran-v1")
