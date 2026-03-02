@@ -48,6 +48,17 @@ Then open the URL shown (usually http://localhost:5173). The Vite dev server pro
 | frontend | `npm run preview`    | Preview production build       |
 | frontend | `npm run lint`       | Run ESLint                     |
 
+## Deploy to Modal.com (GPU)
+
+From the project root (after `pip install modal` and `modal token new`):
+
+```bash
+modal serve modal_app.py   # dev: ephemeral URL, live reload
+modal deploy modal_app.py  # prod: persistent URL
+```
+
+See `modal_app.py` for setup (create a Secret in the Modal dashboard for env vars). Use the printed URL as `VITE_SOCKET_URL` in your frontend.
+
 ## Environment
 
 Create a `.env` in the project root if needed. Backend and frontend (Vite) both read from the project root `.env`.

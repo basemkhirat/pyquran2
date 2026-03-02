@@ -4,6 +4,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Project root (parent of backend/) so relative paths work when cwd is not project root (e.g. Modal)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _resolve_path(path: str) -> str:
+    """Resolve relative file paths against project root."""
+    if path.startswith("."):
+        return os.path.abspath(os.path.join(_PROJECT_ROOT, path))
+    return path
+
 
 @dataclass
 class Config:
@@ -34,6 +44,14 @@ class Config:
     socket_auth_api_key: str = os.getenv("SOCKET_AUTH_API_KEY", "")
     # When True, save each transcribed audio chunk to backend/chunks/ for testing/debugging.
     save_audio_chunks: bool = os.getenv("SAVE_AUDIO_CHUNKS", "false").lower() in ("1", "true", "yes")
+
+    def __post_init__(self) -> None:
+        """Resolve relative paths so they work when cwd is not project root (e.g. Modal)."""
+        self.whisper_model_path = _resolve_path(self.whisper_model_path)
+        self.mlx_model_path = _resolve_path(self.mlx_model_path)
+        self.hf_model_path = _resolve_path(self.hf_model_path)
+        self.hafs_json_path = _resolve_path(self.hafs_json_path)
+        self.wav2vec2_lm_path = _resolve_path(self.wav2vec2_lm_path)
 
 
 config = Config()

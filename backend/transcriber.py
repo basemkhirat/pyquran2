@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from abc import ABC, abstractmethod
 
@@ -7,6 +8,16 @@ import numpy as np
 from backend.config import config
 
 logger = logging.getLogger(__name__)
+
+# Project root (parent of backend/) for resolving relative model paths (e.g. on Modal)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _resolve_model_path(path: str) -> str:
+    """Resolve relative local paths against project root so they work in any cwd (e.g. Modal)."""
+    if path.startswith(".") or path.startswith("/"):
+        return os.path.abspath(os.path.join(_PROJECT_ROOT, path))
+    return path
 
 # Minimum audio duration (seconds) for Whisper to work reliably
 _MIN_WHISPER_DURATION = 1.0
@@ -102,7 +113,7 @@ class HuggingFaceBackend(TranscriberBackend):
         import torch
         from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
-        self._model_path = config.hf_model_path
+        self._model_path = _resolve_model_path(config.hf_model_path)
         logger.info("Loading HuggingFace Whisper model from %s", self._model_path)
 
         self._processor = WhisperProcessor.from_pretrained(self._model_path)
