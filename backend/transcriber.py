@@ -58,52 +58,7 @@ def _clean_arabic(text: str) -> str:
 
 class TranscriberBackend(ABC):
     @abstractmethod
-    def transcribe(self, audio: np.ndarray, initial_prompt: str = "") -> str: ...
-
-
-# ── whisper.cpp backend (pywhispercpp) ─────────────────────────────
-
-class WhisperCppBackend(TranscriberBackend):
-    def __init__(self):
-        from pywhispercpp.model import Model
-        logger.info("Loading whisper.cpp model from %s", config.whisper_model_path)
-        self._model = Model(config.whisper_model_path, n_threads=4)
-
-    def transcribe(self, audio: np.ndarray, initial_prompt: str = "") -> str:
-        audio = _preprocess_audio(audio)
-        segments = self._model.transcribe(
-            audio,
-            language="ar",
-            initial_prompt=initial_prompt,
-            beam_size=5,
-        )
-        text = " ".join(seg.text.strip() for seg in segments if seg.text.strip())
-        return _clean_arabic(text)
-
-
-# ── MLX backend (mlx-whisper) ─────────────────────────────────────
-
-class MlxBackend(TranscriberBackend):
-    def __init__(self):
-        import mlx_whisper  # noqa: F401 – validate availability
-        self._model_path = config.mlx_model_path
-        logger.info("Using MLX whisper model at %s", self._model_path)
-
-    def transcribe(self, audio: np.ndarray, initial_prompt: str = "") -> str:
-        import mlx_whisper
-        audio = _preprocess_audio(audio)
-        result = mlx_whisper.transcribe(
-            audio,
-            path_or_hf_repo=self._model_path,
-            language="ar",
-            initial_prompt=initial_prompt,
-            temperature=0.0,
-            no_speech_threshold=0.6,
-            compression_ratio_threshold=2.4,
-            word_timestamps=False,
-            condition_on_previous_text=False,
-        )
-        return _clean_arabic(result.get("text", "").strip())
+    def transcribe(self, audio: np.ndarray) -> str: ...
 
 
 # ── HuggingFace Transformers backend ──────────────────────────────
@@ -124,7 +79,7 @@ class HuggingFaceBackend(TranscriberBackend):
         self._model.to(self._device)
         self._model.eval()
 
-    def transcribe(self, audio: np.ndarray, initial_prompt: str = "") -> str:
+    def transcribe(self, audio: np.ndarray) -> str:
         import torch
         import zlib
         from transformers import GenerationConfig
@@ -163,16 +118,16 @@ class HuggingFaceBackend(TranscriberBackend):
         )[0].strip()
 
         # Discard hallucinated/repetitive output (compression ratio check)
-        if text:
-            compressed = len(zlib.compress(text.encode("utf-8")))
-            raw = len(text.encode("utf-8"))
-            ratio = raw / compressed if compressed > 0 else 0.0
-            if ratio > 2.4:
-                logger.warning(
-                    "Discarding hallucinated output (ratio=%.2f): '%s'",
-                    ratio, text,
-                )
-                return ""
+        # if text:
+        #     compressed = len(zlib.compress(text.encode("utf-8")))
+        #     raw = len(text.encode("utf-8"))
+        #     ratio = raw / compressed if compressed > 0 else 0.0
+        #     if ratio > 2.4:
+        #         logger.warning(
+        #             "Discarding hallucinated output (ratio=%.2f): '%s'",
+        #             ratio, text,
+        #         )
+        #         return ""
 
         return _clean_arabic(text)
 
@@ -181,25 +136,11 @@ class HuggingFaceBackend(TranscriberBackend):
 
 _backend: TranscriberBackend | None = None
 
-_BACKENDS = {
-    "whisper_cpp": WhisperCppBackend,
-    "mlx": MlxBackend,
-    "huggingface": HuggingFaceBackend,
-}
-
-
 def _get_backend() -> TranscriberBackend:
     global _backend
     if _backend is None:
-        name = config.transcription_backend
-        cls = _BACKENDS.get(name)
-        if cls is None:
-            raise ValueError(
-                f"Unknown transcription backend '{name}'. "
-                f"Choose from: {', '.join(_BACKENDS)}"
-            )
-        logger.info("Initializing transcription backend: %s", name)
-        _backend = cls()
+        logger.info("Initializing transcription backend: huggingface")
+        _backend = HuggingFaceBackend()
     return _backend
 
 
@@ -208,14 +149,13 @@ def load_model():
     _get_backend()
 
 
-def transcribe(audio: np.ndarray, initial_prompt: str = "") -> str:
+def transcribe(audio: np.ndarray) -> str:
     """Transcribe a 16kHz float32 mono audio buffer to text.
 
     Args:
         audio: numpy float32 array of audio samples at 16kHz.
-        initial_prompt: context prompt (e.g. current verse text) to improve accuracy.
 
     Returns:
         Transcribed text string.
     """
-    return _get_backend().transcribe(audio, initial_prompt)
+    return _get_backend().transcribe(audio)

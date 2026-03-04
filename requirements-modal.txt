@@ -1,4 +1,4 @@
-# Modal.com deploy: same as requirements.txt but without mlx-whisper (macOS-only).
+# Modal.com deploy: same as requirements.txt (Hugging Face Whisper only).
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 python-socketio>=5.11.0
@@ -9,6 +9,5 @@ pyarabic>=0.6.15
 torch>=2.9.0
 torchaudio>=2.9.0
 silero-vad>=5.1
-pywhispercpp>=1.2.0
 transformers>=4.40.0
 pyctcdecode>=0.5.0

@@ -244,14 +244,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
             wf.writeframes(pcm16.tobytes())
         logger.info(f"Saved audio chunk: {wav_path} ({audio_duration:.2f}s)")
 
-    # Build context prompt: previous words for continuity + optional next words (capped)
     current_word = words[idx]
-    prev_words = [w["emlaey_text"] for w in words[max(0, idx - 3):idx]]
-    remaining_words = [
-        w["emlaey_text"] for w in words[idx:]
-        if w["ayah"] == current_word["ayah"]
-    ][: config.max_prompt_next_words]
-    initial_prompt = " ".join(prev_words + remaining_words)
 
     # Build max expected chunk for parallel wav2vec when acoustic scoring is enabled
     remaining = len(words) - idx
@@ -263,11 +256,10 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
 
     # Transcribe (and run wav2vec in parallel when acoustic scoring enabled)
     logger.info(f"Transcribing {audio_duration:.2f}s of audio for [{sid}]...")
-    logger.info(f"  Initial prompt: '{initial_prompt}'")
     logger.info(f"  Expected word #{idx}: '{current_word['emlaey_text']}'")
     t0 = time.time()
     if config.enable_acoustic_score and expected_chunk_max:
-        whisper_task = asyncio.to_thread(transcriber.transcribe, audio, initial_prompt)
+        whisper_task = asyncio.to_thread(transcriber.transcribe, audio)
         wav2vec_task = asyncio.to_thread(
             acoustic_scorer.get_acoustic_scores, audio, expected_chunk_max
         )
@@ -275,7 +267,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         text = text.strip()
         logger.info(f"  Whisper + wav2vec (parallel) took {time.time() - t0:.2f}s: '{text}'")
     else:
-        text = await asyncio.to_thread(transcriber.transcribe, audio, initial_prompt)
+        text = await asyncio.to_thread(transcriber.transcribe, audio)
         text = text.strip()
         acoustic_scores_full = []
         logger.info(f"  Transcription took {time.time() - t0:.2f}s: '{text}'")

@@ -74,10 +74,7 @@ Create a `.env` in the project root if needed. Backend and frontend (Vite) both 
 
 | Variable               | Default                         | Description                    |
 |------------------------|---------------------------------|--------------------------------|
-| `TRANSCRIPTION_BACKEND`| `whisper_cpp`                   | `whisper_cpp`, `mlx`, or `hf`  |
-| `WHISPER_MODEL_PATH`   | `./whisper_cpp/epoch-best/ggml-model.bin` | Whisper-CPP model path |
-| `MLX_MODEL_PATH`       | `./mlx_models/epoch-best`       | MLX Whisper model path        |
-| `HF_MODEL_PATH`        | `./guff/whisper-quran-v1`       | Hugging Face model path       |
+| `HF_MODEL_PATH`        | `./guff/whisper-quran-v1`       | Hugging Face Whisper model path |
 | `HAFS_JSON_PATH`       | `./assets/narrations/hafs.json` | Hafs narration data           |
 | `WEIGHT_CHAR`          | `0.6`                           | Character score weight        |
 | `WEIGHT_DIACRITIC`     | `0.4`                           | Diacritic score weight        |

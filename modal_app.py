@@ -4,7 +4,7 @@ Deploy pyquran2 (FastAPI + Socket.IO + Whisper) to Modal.com with GPU.
 Setup:
   1. pip install modal && modal token new
   2. In Modal dashboard (modal.com): create a Secret with your env vars
-     (TRANSCRIPTION_BACKEND, HF_MODEL_PATH, HAFS_JSON_PATH, SOCKET_AUTH_API_KEY, etc.).
+     (HF_MODEL_PATH, HAFS_JSON_PATH, SOCKET_AUTH_API_KEY, etc.).
      Add HF_TOKEN (Hugging Face token) for higher rate limits and faster model downloads.
   3. From project root:
      modal serve modal_app.py   # dev: ephemeral URL, live reload
@@ -15,7 +15,7 @@ Use the printed URL as VITE_SOCKET_URL in your frontend.
 
 import modal
 
-# Dependencies for Modal (no mlx-whisper; use hf or whisper_cpp on Linux GPU).
+# Dependencies for Modal (Hugging Face Whisper on Linux GPU).
 # add_local_* must be last; use copy=True on the requirements file so we can run pip before it.
 IMAGE = (
     modal.Image.debian_slim()

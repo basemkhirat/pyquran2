@@ -17,9 +17,6 @@ def _resolve_path(path: str) -> str:
 
 @dataclass
 class Config:
-    transcription_backend: str = os.getenv("TRANSCRIPTION_BACKEND", "huggingface")
-    whisper_model_path: str = os.getenv("WHISPER_MODEL_PATH", "./whisper_cpp/epoch-best/ggml-model.bin")
-    mlx_model_path: str = os.getenv("MLX_MODEL_PATH", "./mlx_models/epoch-best")
     hf_model_path: str = os.getenv("HF_MODEL_PATH", "./guff/whisper-quran-v1")
     hafs_json_path: str = os.getenv("HAFS_JSON_PATH", "./assets/narrations/hafs.json")
     weight_char: float = float(os.getenv("WEIGHT_CHAR", "0.6"))
@@ -37,7 +34,6 @@ class Config:
     max_edits_for_correction: int = int(os.getenv("MAX_EDITS_FOR_CORRECTION", "2"))
     silence_timeout_ms: int = int(os.getenv("SILENCE_TIMEOUT_MS", "3000"))
     audio_sample_rate: int = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
-    max_prompt_next_words: int = int(os.getenv("MAX_PROMPT_NEXT_WORDS", "0"))
     # When True, word_result includes transcribed, expected, char_score, diacritic_score, total_score, acoustic_score.
     send_word_result_details: bool = os.getenv("SEND_WORD_RESULT_DETAILS", "false").lower() in ("1", "true", "yes")
     # When set, socket connections must send this value in handshake auth.api_key; when empty, auth is disabled.
@@ -47,8 +43,6 @@ class Config:
 
     def __post_init__(self) -> None:
         """Resolve relative paths so they work when cwd is not project root (e.g. Modal)."""
-        self.whisper_model_path = _resolve_path(self.whisper_model_path)
-        self.mlx_model_path = _resolve_path(self.mlx_model_path)
         self.hf_model_path = _resolve_path(self.hf_model_path)
         self.hafs_json_path = _resolve_path(self.hafs_json_path)
         self.wav2vec2_lm_path = _resolve_path(self.wav2vec2_lm_path)
