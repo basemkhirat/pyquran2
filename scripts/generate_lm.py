@@ -102,7 +102,7 @@ def build_simple_arpa(lines: list[str], output_path: str):
             bigram_counts[bg] = bigram_counts.get(bg, 0) + 1
             total_bigrams += 1
 
-    n_unigrams = len(word_counts) + 2  # +2 for <s> and </s>
+    n_unigrams = len(word_counts) + 3  # +3 for <s>, </s>, and <unk>
     n_bigrams = len(bigram_counts)
 
     print(
@@ -119,6 +119,7 @@ def build_simple_arpa(lines: list[str], output_path: str):
         # Special tokens with backoff weight
         f.write("-1\t<s>\t0\n")
         f.write("-1\t</s>\n")
+        f.write("-100\t<unk>\n")
 
         # Word-level log probabilities with backoff weight 0
         for word, count in sorted(word_counts.items()):
