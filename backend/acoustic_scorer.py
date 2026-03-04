@@ -43,6 +43,9 @@ def _get_decoder():
     if _decoder is not None:
         return _decoder
 
+    # Suppress noisy pyctcdecode alphabet INFO/WARNING messages (expected for Arabic models)
+    logging.getLogger("pyctcdecode.alphabet").setLevel(logging.ERROR)
+
     from pyctcdecode import build_ctcdecoder
 
     _, processor = _get_model()
