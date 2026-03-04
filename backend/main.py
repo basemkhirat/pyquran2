@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import config
 from backend import quran_data, transcriber, scorer
+from backend.terminal_arabic import display_arabic
 from backend.vad import VADProcessor
 if config.enable_acoustic_score:
     from backend import acoustic_scorer
@@ -256,7 +257,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
 
     # Transcribe (and run wav2vec in parallel when acoustic scoring enabled)
     logger.info(f"Transcribing {audio_duration:.2f}s of audio for [{sid}]...")
-    logger.info(f"  Expected word #{idx}: '{current_word['emlaey_text']}'")
+    logger.info(f"  Expected word #{idx}: '%s'", display_arabic(current_word["emlaey_text"]))
     t0 = time.time()
     if config.enable_acoustic_score and expected_chunk_max:
         whisper_task = asyncio.to_thread(transcriber.transcribe, audio)
@@ -265,12 +266,12 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         )
         text, acoustic_scores_full = await asyncio.gather(whisper_task, wav2vec_task)
         text = text.strip()
-        logger.info(f"  Whisper + wav2vec (parallel) took {time.time() - t0:.2f}s: '{text}'")
+        logger.info("  Whisper + wav2vec (parallel) took %.2fs: '%s'", time.time() - t0, display_arabic(text))
     else:
         text = await asyncio.to_thread(transcriber.transcribe, audio)
         text = text.strip()
         acoustic_scores_full = []
-        logger.info(f"  Transcription took {time.time() - t0:.2f}s: '{text}'")
+        logger.info("  Transcription took %.2fs: '%s'", time.time() - t0, display_arabic(text))
 
     if not text:
         return

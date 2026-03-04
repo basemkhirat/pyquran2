@@ -14,6 +14,7 @@ from jiwer import cer
 
 from backend.config import config
 from backend.scorer import strip_diacritics
+from backend.terminal_arabic import display_arabic
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +124,7 @@ def _decode_audio(audio: np.ndarray) -> str:
     logits_np = logits.cpu().numpy()[0]
     text = decoder.decode(logits_np, beam_width=config.wav2vec2_beam_width)
     text = text.strip()
-    logger.info("  wav2vec2 decoded: '%s'", text)
+    logger.info("  wav2vec2 decoded: '%s'", display_arabic(text))
     return text
 
 
@@ -169,6 +170,6 @@ def get_acoustic_scores(audio: np.ndarray, expected_words: List[str]) -> List[fl
         scores.append(best_score)
         logger.debug(
             "  acoustic: expected='%s' best_match='%s' score=%.2f",
-            expected, best_word, best_score,
+            display_arabic(expected), display_arabic(best_word), best_score,
         )
     return scores
