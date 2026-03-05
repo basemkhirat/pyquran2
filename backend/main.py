@@ -91,6 +91,7 @@ async def connect(sid, environ, auth):
         "vad": VADProcessor(),
         "timeout_task": None,
         "transcribing": False,
+        "allow_mistakes": False,
     }
 
 
@@ -121,6 +122,7 @@ async def start_session(sid, data):
     session["words"] = words
     session["current_index"] = 0
     session["vad"].reset()
+    session["allow_mistakes"] = data.get("allow_mistakes", False)
 
     # Cancel any existing timeout task
     if session.get("timeout_task"):
@@ -380,11 +382,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
             payload.update(scores)
         await sio.emit("word_result", payload, room=sid)
 
-        # Only advance to next word if correct; incorrect words must be retried
-        if status == "correct":
+        # Advance to next word if correct, or if allow_mistakes is enabled
+        if status == "correct" or session.get("allow_mistakes", False):
             idx += 1
         else:
-            break  # Stop processing further transcribed words on incorrect
+            break
 
     session["current_index"] = idx
 

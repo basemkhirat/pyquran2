@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 
 // Arabic names for surahs
 const SURAH_NAMES: Record<number, string> = {
@@ -71,7 +72,7 @@ export function SessionSetup() {
     const [verseCount, setVerseCount] = useState(7);
     const initialLoadDone = useRef(false);
 
-    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words } = useSessionStore();
+    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, allowMistakes, setAllowMistakes } = useSessionStore();
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
     const isSessionActive = isRecording;
     const canSkip = isRecording && words.length > 0 && currentWordIndex < words.length;
@@ -83,7 +84,7 @@ export function SessionSetup() {
             return;
         }
         if (words.length === 0) return;
-        const payload = { chapter_number: surah, start_verse_number: startAyah, end_verse_number: endAyah };
+        const payload = { chapter_number: surah, start_verse_number: startAyah, end_verse_number: endAyah, allow_mistakes: allowMistakes };
         if (socket.connected) {
             socket.emit("start_session", payload);
             startRecording();
@@ -205,6 +206,21 @@ export function SessionSetup() {
                         </Tooltip>
                     )}
                     <div className="h-5 w-px bg-border" aria-hidden />
+
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    checked={allowMistakes}
+                                    onCheckedChange={setAllowMistakes}
+                                    disabled={isSessionActive}
+                                />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="font-[var(--font-arabic)]" dir="rtl">
+                            استمر رغم الأخطاء
+                        </TooltipContent>
+                    </Tooltip>
                 </div>
 
                 {/* Right: chapter, start verse, end verse (order: chapter first, then من, then إلى) */}

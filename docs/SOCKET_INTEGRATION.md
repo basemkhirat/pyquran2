@@ -26,7 +26,7 @@ If the key is missing or wrong, the server rejects the connection (e.g. with `Co
 
 | Event | Payload | When |
 |-------|---------|------|
-| `start_session` | `{ chapter_number: Int, start_verse_number: Int, end_verse_number: Int }` | After connection; starts a session for the given range. |
+| `start_session` | `{ chapter_number: Int, start_verse_number: Int, end_verse_number: Int, allow_mistakes?: Bool }` | After connection; starts a session for the given range. `allow_mistakes` (default `false`) allows continuing to next words even when incorrect. |
 | `audio_chunk` | **Binary:** PCM 16-bit mono, 16 kHz (see Audio format below) | Stream repeatedly while the user is speaking (e.g. every ~100–150 ms). |
 | `stop_session` | (none or empty) | When the user stops the session; server flushes VAD and may emit one more `word_result` or `session_stopped`. |
 | `skip_word` | (none or empty) | Skip the current word; server emits `word_result` with `status: "skipped"` and advances. |
@@ -43,14 +43,14 @@ If the key is missing or wrong, the server rejects the connection (e.g. with `Co
 ## 5. Audio format
 
 - **Format:** PCM, 16-bit signed integer, little-endian, **mono**, **16 kHz**.
-- **Chunk:** Send raw bytes (e.g. `Data` / `ByteArray` or your platform’s equivalent). **No WAV header.** The server expects raw PCM16 bytes.
-- **Chunk size:** Send every ~100–200 ms (e.g. 2400 samples = 4800 bytes for ~150 ms). Use the Socket.IO client’s binary emit for the `audio_chunk` event.
+- **Chunk:** Send raw bytes (e.g. `Data` / `ByteArray` or your platform's equivalent). **No WAV header.** The server expects raw PCM16 bytes.
+- **Chunk size:** Send every ~100–200 ms (e.g. 2400 samples = 4800 bytes for ~150 ms). Use the Socket.IO client's binary emit for the `audio_chunk` event.
 - **Capture:** Configure your audio pipeline for 16 kHz, 1 channel, and convert to Int16 if the API provides Float32.
 
 ## 6. Recommended flow (sequence)
 
 1. Connect to the socket server when the user is ready to start a session.
-2. Emit `start_session` with `{ chapter_number, start_verse_number, end_verse_number }`.
+2. Emit `start_session` with `{ chapter_number, start_verse_number, end_verse_number, allow_mistakes? }`.
 3. On `session_started`, start capturing the microphone and streaming chunks via `audio_chunk`.
 4. On each `word_result`, update the UI (highlight word based on status: correct, incorrect, skipped).
 5. When the user wants to stop the session: emit `stop_session`.
@@ -66,7 +66,7 @@ sequenceDiagram
     Mobile->>Server: connect (Socket.IO)
     Server-->>Mobile: connected
 
-    Mobile->>Server: start_session(chapter_number, start_verse_number, end_verse_number)
+    Mobile->>Server: start_session(chapter_number, start_verse_number, end_verse_number, allow_mistakes?)
     Server-->>Mobile: session_started
 
     loop While user speaks

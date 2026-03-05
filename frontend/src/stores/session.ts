@@ -9,12 +9,14 @@ interface SessionState {
     currentWordIndex: number;
     wordResults: Record<number, WordResult>;
     sessionStatus: SessionStatus;
+    allowMistakes: boolean;
 
     setSelectedRange: (range: { surah: number; startAyah: number; endAyah: number }) => void;
     setWords: (words: Word[]) => void;
     setCurrentWordIndex: (index: number) => void;
     addWordResult: (index: number, result: WordResult) => void;
     setSessionStatus: (status: SessionStatus) => void;
+    setAllowMistakes: (allow: boolean) => void;
     advanceWord: () => void;
     reset: () => void;
     getCorrectCount: () => number;
@@ -28,6 +30,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     currentWordIndex: 0,
     wordResults: {},
     sessionStatus: "idle",
+    allowMistakes: false,
 
     setSelectedRange: (range) => set({ selectedRange: range }),
     setWords: (words) => set({ words, currentWordIndex: 0, wordResults: {} }),
@@ -35,13 +38,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     addWordResult: (index, result) =>
         set((state) => ({
             wordResults: { ...state.wordResults, [index]: result },
-            // Only advance to next word if correct or skipped; incorrect stays on same word
             currentWordIndex:
-                result.status === "correct" || result.status === "skipped"
+                result.status === "correct" || result.status === "skipped" || state.allowMistakes
                     ? Math.max(state.currentWordIndex, index + 1)
                     : state.currentWordIndex,
         })),
     setSessionStatus: (status) => set({ sessionStatus: status }),
+    setAllowMistakes: (allow) => set({ allowMistakes: allow }),
     advanceWord: () => set((state) => ({ currentWordIndex: state.currentWordIndex + 1 })),
     reset: () =>
         set({
@@ -50,6 +53,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             currentWordIndex: 0,
             wordResults: {},
             sessionStatus: "idle",
+            allowMistakes: false,
         }),
 
     getCorrectCount: () => {

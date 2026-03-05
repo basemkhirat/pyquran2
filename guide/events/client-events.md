@@ -17,6 +17,7 @@ After connecting to the socket, when the user is ready to begin reciting.
   chapter_number: number;      // Surah number (1-114)
   start_verse_number: number;  // Starting ayah number
   end_verse_number: number;    // Ending ayah number
+  allow_mistakes?: boolean;    // Optional: continue to next words even when incorrect (default: false)
 }
 ```
 
@@ -28,7 +29,8 @@ After connecting to the socket, when the user is ready to begin reciting.
 socket.emit("start_session", {
   chapter_number: 1,        // Al-Fatiha
   start_verse_number: 1,    // First verse
-  end_verse_number: 7       // Last verse
+  end_verse_number: 7,      // Last verse
+  allow_mistakes: false     // Optional: continue despite incorrect words
 });
 ```
 
@@ -36,7 +38,8 @@ socket.emit("start_session", {
 socket.emit("start_session", [
     "chapter_number": 1,
     "start_verse_number": 1,
-    "end_verse_number": 7
+    "end_verse_number": 7,
+    "allow_mistakes": false  // Optional
 ])
 ```
 
@@ -45,6 +48,7 @@ val payload = JSONObject().apply {
     put("chapter_number", 1)
     put("start_verse_number", 1)
     put("end_verse_number", 7)
+    put("allow_mistakes", false)  // Optional
 }
 socket.emit("start_session", payload)
 ```
@@ -53,7 +57,8 @@ socket.emit("start_session", payload)
 socket.emit('start_session', {
   'chapter_number': 1,
   'start_verse_number': 1,
-  'end_verse_number': 7
+  'end_verse_number': 7,
+  'allow_mistakes': false,  // Optional
 });
 ```
 
@@ -68,6 +73,7 @@ The server responds with [`session_started`](/events/server-events#session-start
 - Wait for `session_started` before streaming audio
 - Only one session can be active per connection at a time
 - The server loads the words for the specified range and prepares the recognition pipeline
+- When `allow_mistakes` is `true`, the session advances to the next word even when a word is marked incorrect (default behavior requires correct pronunciation before advancing)
 
 
 ## 2. audio_chunk
