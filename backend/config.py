@@ -33,6 +33,7 @@ class Config:
     wav2vec2_lm_alpha: float = float(os.getenv("WAV2VEC2_LM_ALPHA", "0.5"))
     wav2vec2_lm_beta: float = float(os.getenv("WAV2VEC2_LM_BETA", "1.5"))
     score_threshold: float = float(os.getenv("SCORE_THRESHOLD", "0.5"))
+    pass_on_any_score: bool = os.getenv("PASS_ON_ANY_SCORE", "false").lower() in ("1", "true", "yes")
     max_edits_for_correction: int = int(os.getenv("MAX_EDITS_FOR_CORRECTION", "2"))
     silence_timeout_ms: int = int(os.getenv("SILENCE_TIMEOUT_MS", "3000"))
     audio_sample_rate: int = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))

@@ -302,6 +302,8 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
     if lookback > 0:
         # Try matching the longest possible prefix of transcribed_words
         # against the already-correct words ending at idx
+        # Use text_score for backtrack detection (acoustic scores not available for past words)
+        score_key = "text_score" if config.pass_on_any_score else "total_score"
         for prefix_len in range(lookback, 0, -1):
             prev_slice = words[idx - prefix_len : idx]
             candidate = transcribed_words[:prefix_len]
@@ -312,7 +314,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
                     scorer.correct_word(
                         prev_slice[j]["emlaey_text"], candidate[j], config.max_edits_for_correction
                     ),
-                )["total_score"]
+                )[score_key]
                 >= config.score_threshold
                 for j in range(prefix_len)
             )
@@ -356,7 +358,14 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         scores["total_score"] = round(
             scorer.compute_total_score(scores["char_score"], ds, ac), 3
         )
-        status = "correct" if scores["total_score"] >= config.score_threshold else "incorrect"
+        
+        # Determine if word is correct based on scoring mode
+        if config.pass_on_any_score:
+            text_pass = config.enable_text_score and ts >= config.score_threshold
+            acoustic_pass = ac is not None and ac >= config.score_threshold
+            status = "correct" if (text_pass or acoustic_pass) else "incorrect"
+        else:
+            status = "correct" if scores["total_score"] >= config.score_threshold else "incorrect"
 
         corrected_parts.append(t_corrected)
         payload: Dict[str, Any] = {
