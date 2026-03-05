@@ -1,6 +1,5 @@
 import { useSessionStore } from "../stores/session";
 import { cn } from "../lib/cn";
-import { Check, X, Minus } from "lucide-react";
 
 export function VerseDisplay() {
     const { words, currentWordIndex, wordResults } = useSessionStore();
@@ -36,6 +35,7 @@ export function VerseDisplay() {
                             const result = wordResults[globalIdx];
                             const isActive = globalIdx === currentWordIndex;
                             const isPast = globalIdx < currentWordIndex;
+                            const isInterim = result?.is_interim === true;
 
                             return (
                                 <div
@@ -43,13 +43,15 @@ export function VerseDisplay() {
                                     className={cn(
                                         "relative inline-flex flex-col items-center px-3 py-2 rounded-xl transition-all duration-300",
                                         // Base dimmed state
-                                        !isPast && !isActive && "opacity-40",
+                                        !isPast && !isActive && !isInterim && !result && "opacity-40",
                                         // Active word
-                                        isActive && "word-active bg-gold/10 border border-gold/40 opacity-100",
-                                        // Correct
-                                        result?.status === "correct" && "bg-success/10 border border-success/30 opacity-100",
-                                        // Incorrect
-                                        result?.status === "incorrect" && "bg-error/10 border border-error/30 opacity-100",
+                                        isActive && !result && "word-active bg-gold/10 border border-gold/40 opacity-100",
+                                        // Interim (unconfirmed) — white pulsing
+                                        isInterim && "word-interim bg-white/5 border border-white/30 opacity-90",
+                                        // Confirmed correct
+                                        !isInterim && result?.status === "correct" && "bg-success/10 border border-success/30 opacity-100",
+                                        // Confirmed incorrect
+                                        !isInterim && result?.status === "incorrect" && "bg-error/10 border border-error/30 opacity-100",
                                         // Skipped
                                         result?.status === "skipped" && "bg-surface-hover/50 border border-border opacity-70"
                                     )}
@@ -58,36 +60,18 @@ export function VerseDisplay() {
                                     <span
                                         className={cn(
                                             "text-2xl leading-relaxed font-[var(--font-arabic)] select-none",
-                                            result?.status === "correct" && "text-success",
-                                            result?.status === "incorrect" && "text-error",
+                                            // Interim text color — white
+                                            isInterim && "text-white",
+                                            // Confirmed colors
+                                            !isInterim && result?.status === "correct" && "text-success",
+                                            !isInterim && result?.status === "incorrect" && "text-error",
                                             result?.status === "skipped" && "text-text-muted",
-                                            isActive && "text-gold-light",
+                                            isActive && !result && "text-gold-light",
                                             !result && !isActive && "text-text-primary"
                                         )}
                                     >
                                         {word.uthmani_text}
                                     </span>
-
-                                    {/* Status indicator */}
-                                    {result && (
-                                        <div className="absolute -top-2 -left-2">
-                                            {result.status === "correct" && (
-                                                <div className="w-5 h-5 rounded-full bg-success flex items-center justify-center">
-                                                    <Check className="w-3 h-3 text-white" />
-                                                </div>
-                                            )}
-                                            {result.status === "incorrect" && (
-                                                <div className="w-5 h-5 rounded-full bg-error flex items-center justify-center">
-                                                    <X className="w-3 h-3 text-white" />
-                                                </div>
-                                            )}
-                                            {result.status === "skipped" && (
-                                                <div className="w-5 h-5 rounded-full bg-text-muted flex items-center justify-center">
-                                                    <Minus className="w-3 h-3 text-white" />
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
 
                                     {/* Score display: only when server sends details */}
                                     {result && result.status !== "skipped" && result.total_score != null && (

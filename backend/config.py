@@ -43,6 +43,12 @@ class Config:
     socket_auth_api_key: str = os.getenv("SOCKET_AUTH_API_KEY", "")
     # When True, save each transcribed audio chunk to backend/chunks/ for testing/debugging.
     save_audio_chunks: bool = os.getenv("SAVE_AUDIO_CHUNKS", "false").lower() in ("1", "true", "yes")
+    # Streaming mode: transcribe at fixed intervals instead of waiting for silence
+    streaming_enabled: bool = os.getenv("STREAMING_ENABLED", "true").lower() in ("1", "true", "yes")
+    # Interval in ms between streaming transcription runs
+    streaming_interval_ms: int = int(os.getenv("STREAMING_INTERVAL_MS", "1500"))
+    # Minimum audio buffer (seconds) before first streaming transcription
+    streaming_min_audio_sec: float = float(os.getenv("STREAMING_MIN_AUDIO_SEC", "0.8"))
 
     def __post_init__(self) -> None:
         """Resolve relative paths so they work when cwd is not project root (e.g. Modal)."""

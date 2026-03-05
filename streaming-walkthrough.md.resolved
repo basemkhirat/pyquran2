@@ -1,0 +1,64 @@
+# Walkthrough: Streaming Audio Transcription
+
+## Summary
+
+Replaced the silence-based "wait for speech end → transcribe" model with continuous streaming transcription. Words now appear **during speech** every 1.5s instead of only after the user stops speaking.
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| [config.py](file:///Users/basem/Websites/pyquran2/backend/config.py) | Added `streaming_enabled`, `streaming_interval_ms`, `streaming_min_audio_sec` |
+| [vad.py](file:///Users/basem/Websites/pyquran2/backend/vad.py) | Added streaming methods: [accumulate_chunk()](file:///Users/basem/Websites/pyquran2/backend/vad.py#203-253), [get_accumulated_audio()](file:///Users/basem/Websites/pyquran2/backend/vad.py#259-264), [detect_speech_end()](file:///Users/basem/Websites/pyquran2/backend/vad.py#272-283), [streaming_flush()](file:///Users/basem/Websites/pyquran2/backend/vad.py#284-294) |
+| [main.py](file:///Users/basem/Websites/pyquran2/backend/main.py) | New [_streaming_transcription_loop()](file:///Users/basem/Websites/pyquran2/backend/main.py#241-301), updated [audio_chunk](file:///Users/basem/Websites/pyquran2/backend/main.py#149-177) handler, interim/final word result flow |
+| [.env](file:///Users/basem/Websites/pyquran2/.env) | Added streaming config env vars |
+| [.env.example](file:///Users/basem/Websites/pyquran2/.env.example) | Added streaming config env vars |
+
+## How It Works
+
+```mermaid
+sequenceDiagram
+    participant FE as Frontend
+    participant BE as Backend
+    participant VAD as VADProcessor
+    participant ASR as Whisper/Wav2Vec2
+
+    FE->>BE: audio_chunk (every 150ms)
+    BE->>VAD: accumulate_chunk()
+    Note over VAD: Detects speech start
+
+    loop Every 1500ms (streaming_interval_ms)
+        BE->>VAD: get_accumulated_audio()
+        BE->>ASR: transcribe(audio)
+        ASR-->>BE: transcribed words
+        BE->>FE: word_result (confirmed, is_interim=false)
+        BE->>FE: word_result (last word, is_interim=true)
+    end
+
+    Note over VAD: Detects silence (~480ms)
+    BE->>VAD: streaming_flush()
+    BE->>ASR: transcribe(final audio)
+    BE->>FE: word_result (all confirmed, is_interim=false)
+```
+
+### Key Behavior
+
+- **Interim last word**: Each streaming cycle marks the last recognized word as `is_interim: true`. This word may change in the next cycle as more audio context arrives.
+- **Self-correction**: The next cycle re-transcribes the full accumulated buffer, so if the last word was wrong, it gets corrected automatically.
+- **Speech end detection**: Uses consecutive silent VAD frames (15 frames ≈ 480ms) instead of wall-clock time for reliable detection.
+- **Backward compatible**: Set `STREAMING_ENABLED=false` to revert to the old silence-based behavior.
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `STREAMING_ENABLED` | `true` | Enable streaming mode |
+| `STREAMING_INTERVAL_MS` | `1500` | Transcription interval during speech |
+| `STREAMING_MIN_AUDIO_SEC` | `0.8` | Min audio before first transcription |
+
+## Verification
+
+- ✅ Config loads correctly with all 3 new options
+- ✅ VAD streaming methods ([accumulate_chunk](file:///Users/basem/Websites/pyquran2/backend/vad.py#203-253), [get_accumulated_audio](file:///Users/basem/Websites/pyquran2/backend/vad.py#259-264), [detect_speech_end](file:///Users/basem/Websites/pyquran2/backend/vad.py#272-283)) work
+- ✅ Existing scorer tests pass (23/25 — 2 pre-existing failures from mismatched weight defaults)
+- ⬜ Manual testing required: start backend + frontend and recite to verify real-time word appearance

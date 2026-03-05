@@ -14,9 +14,11 @@ export interface WordResult {
     expected?: string;
     char_score?: number;
     diacritic_score?: number;
+    text_score?: number;
     total_score?: number;
     acoustic_score?: number;
     status: "correct" | "incorrect" | "skipped";
+    is_interim?: boolean;
 }
 
 export interface Chapter {

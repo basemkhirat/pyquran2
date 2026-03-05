@@ -71,6 +71,23 @@ body {
   animation: pulse-border 1.5s ease-in-out infinite;
 }
 
+/* Pulsing border for interim (unconfirmed) word */
+@keyframes pulse-interim {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45);
+  }
+}
+
+.word-interim {
+  animation: pulse-interim 1.2s ease-in-out infinite;
+}
+
 /* Mic pulse animation */
 @keyframes mic-pulse {
   0% {
@@ -230,6 +247,7 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }

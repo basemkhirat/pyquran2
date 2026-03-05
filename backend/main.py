@@ -92,6 +92,9 @@ async def connect(sid, environ, auth):
         "timeout_task": None,
         "transcribing": False,
         "allow_mistakes": False,
+        # Streaming mode state
+        "streaming_task": None,
+        "last_interim_index": None,  # word index of the last interim result
     }
 
 
@@ -99,8 +102,11 @@ async def connect(sid, environ, auth):
 async def disconnect(sid):
     logger.info(f"Client disconnected: {sid}")
     session = sessions.pop(sid, None)
-    if session and session.get("timeout_task"):
-        session["timeout_task"].cancel()
+    if session:
+        if session.get("timeout_task"):
+            session["timeout_task"].cancel()
+        if session.get("streaming_task"):
+            session["streaming_task"].cancel()
 
 
 @sio.event
@@ -123,16 +129,21 @@ async def start_session(sid, data):
     session["current_index"] = 0
     session["vad"].reset()
     session["allow_mistakes"] = data.get("allow_mistakes", False)
+    session["last_interim_index"] = None
 
-    # Cancel any existing timeout task
+    # Cancel any existing tasks
     if session.get("timeout_task"):
         session["timeout_task"].cancel()
+    if session.get("streaming_task"):
+        session["streaming_task"].cancel()
+        session["streaming_task"] = None
 
     logger.info(f"Session started for {sid}: Surah {surah}, Ayah {start_ayah}-{end_ayah}, {len(words)} words")
     await sio.emit("session_started", {}, room=sid)
 
-    # Start silence timeout watcher
-    session["timeout_task"] = asyncio.create_task(_silence_watcher(sid))
+    if not config.streaming_enabled:
+        # Legacy mode: start silence timeout watcher
+        session["timeout_task"] = asyncio.create_task(_silence_watcher(sid))
 
 
 @sio.event
@@ -148,10 +159,21 @@ async def audio_chunk(sid, data):
         return
 
     vad = session["vad"]
-    speech_segment = vad.process_chunk(data)
 
-    if speech_segment is not None:
-        await _process_speech(sid, speech_segment)
+    if config.streaming_enabled:
+        # Streaming mode: accumulate audio, start periodic transcription on first speech
+        vad.accumulate_chunk(data)
+
+        if vad.speech_started and session.get("streaming_task") is None:
+            logger.info(f"Streaming: starting periodic transcription for [{sid}]")
+            session["streaming_task"] = asyncio.create_task(
+                _streaming_transcription_loop(sid)
+            )
+    else:
+        # Legacy mode: wait for silence-detected segment
+        speech_segment = vad.process_chunk(data)
+        if speech_segment is not None:
+            await _process_speech(sid, speech_segment)
 
 
 @sio.event
@@ -183,6 +205,7 @@ async def skip_word(sid, _data=None):
 
     session["current_index"] += 1
     session["vad"].reset()
+    session["last_interim_index"] = None
 
     if session["current_index"] >= len(session["words"]):
         await sio.emit("session_stopped", {}, room=sid)
@@ -195,15 +218,91 @@ async def stop_session(sid, _data=None):
     if not session:
         return
 
-    segment = session["vad"].flush()
-    if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
-        await _process_speech(sid, segment)
+    # Cancel streaming task if running
+    if session.get("streaming_task"):
+        session["streaming_task"].cancel()
+        session["streaming_task"] = None
+
+    if config.streaming_enabled:
+        # Final transcription on accumulated audio
+        segment = session["vad"].streaming_flush()
+        if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
+            await _process_speech(sid, segment, is_final=True)
+    else:
+        segment = session["vad"].flush()
+        if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
+            await _process_speech(sid, segment)
+
     await sio.emit("session_stopped", {}, room=sid)
+
+
+# ===================== Streaming Transcription Loop =====================
+
+async def _streaming_transcription_loop(sid: str):
+    """Periodically transcribe accumulated audio during speech.
+
+    Runs every streaming_interval_ms. Emits interim word_result events.
+    The last word in each cycle is marked is_interim=True (may self-correct).
+    When speech ends (VAD detects silence), runs one final pass and stops.
+    """
+    interval = config.streaming_interval_ms / 1000.0
+
+    try:
+        while True:
+            await asyncio.sleep(interval)
+
+            session = sessions.get(sid)
+            if not session or session["current_index"] >= len(session["words"]):
+                return
+
+            vad = session["vad"]
+            speech_ended = vad.detect_speech_end()
+
+            # Get accumulated audio
+            if speech_ended:
+                audio = vad.streaming_flush()
+            else:
+                audio = vad.get_accumulated_audio()
+
+            if audio is None:
+                if speech_ended:
+                    return
+                continue
+
+            duration = len(audio) / config.audio_sample_rate
+            if duration < config.streaming_min_audio_sec:
+                if speech_ended:
+                    return
+                continue
+
+            # Skip if already transcribing
+            if session.get("transcribing"):
+                if speech_ended:
+                    # Wait a bit and retry
+                    await asyncio.sleep(0.2)
+                    if session.get("transcribing"):
+                        return
+                else:
+                    continue
+
+            await _process_speech(sid, audio, is_final=speech_ended)
+
+            if speech_ended:
+                # Reset VAD for next utterance and restart loop
+                session["vad"].reset()
+                session["last_interim_index"] = None
+                session["streaming_task"] = None
+                return
+
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        logger.exception(f"Streaming transcription error for [{sid}]")
 
 
 # ===================== Internal Helpers =====================
 
-async def _process_speech(sid: str, audio: np.ndarray):
+async def _process_speech(sid: str, audio: np.ndarray, is_final: bool = False):
     """Transcribe speech segment and score against expected word(s)."""
     session = sessions.get(sid)
     if not session:
@@ -216,12 +315,12 @@ async def _process_speech(sid: str, audio: np.ndarray):
     session["transcribing"] = True
 
     try:
-        await _do_process_speech(sid, session, audio)
+        await _do_process_speech(sid, session, audio, is_final)
     finally:
         session["transcribing"] = False
 
 
-async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
+async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_final: bool = False):
     """Inner transcription logic (called under the transcribing guard)."""
     idx = session["current_index"]
     words = session["words"]
@@ -235,14 +334,16 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         logger.info(f"Audio too short ({audio_duration:.2f}s), skipping transcription")
         return
 
-    # Reset VAD immediately so new audio starts fresh
-    session["vad"].reset()
+    # In legacy mode, reset VAD immediately so new audio starts fresh
+    if not config.streaming_enabled:
+        session["vad"].reset()
 
     if config.save_audio_chunks:
         chunks_dir = os.path.join(os.path.dirname(__file__), "chunks")
         os.makedirs(chunks_dir, exist_ok=True)
         ts = time.strftime("%Y%m%d_%H%M%S")
-        wav_path = os.path.join(chunks_dir, f"{ts}_{sid[:8]}_w{idx}.wav")
+        label = "final" if is_final else "interim"
+        wav_path = os.path.join(chunks_dir, f"{ts}_{sid[:8]}_w{idx}_{label}.wav")
         pcm16 = (audio * 32768).astype(np.int16)
         with wave.open(wav_path, "wb") as wf:
             wf.setnchannels(1)
@@ -262,7 +363,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
     )
 
     # Run transcription based on enabled scoring methods
-    logger.info(f"Processing {audio_duration:.2f}s of audio for [{sid}]...")
+    logger.info(f"Processing {audio_duration:.2f}s of audio for [{sid}] ({'final' if is_final else 'interim'})...")
     logger.info(f"  Expected word #{idx}: '%s'", display_arabic(current_word["emlaey_text"]))
     t0 = time.time()
     
@@ -334,8 +435,13 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         n_words_chunk = min(len(transcribed_words), len(words) - idx)
         acoustic_scores = acoustic_scores_full[:n_words_chunk]
 
-    # Score each transcribed word against expected sequence; collect corrected text for subtitle
+    # Determine which words are interim vs confirmed in streaming mode
+    streaming = config.streaming_enabled and not is_final
+    n_transcribed = len(transcribed_words)
+
+    # Score each transcribed word against expected sequence
     corrected_parts: list[str] = []
+    words_processed = 0
     for i, t_word in enumerate(transcribed_words):
         if idx >= len(words):
             break
@@ -369,6 +475,9 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         else:
             status = "correct" if scores["total_score"] >= config.score_threshold else "incorrect"
 
+        # In streaming mode, mark the last word as interim (it may self-correct)
+        word_is_interim = streaming and (i == n_transcribed - 1)
+
         corrected_parts.append(t_corrected)
         payload: Dict[str, Any] = {
             "chapter_number": word["surah"],
@@ -376,26 +485,41 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
             "word_number": word["word_index"],
             "status": status,
         }
+        if streaming:
+            payload["is_interim"] = word_is_interim
         if config.send_word_result_details:
             payload["transcribed"] = t_corrected
             payload["expected"] = word["emlaey_text"]
             payload.update(scores)
-        await sio.emit("word_result", payload, room=sid)
 
-        # Advance to next word if correct, or if allow_mistakes is enabled
-        if status == "correct" or session.get("allow_mistakes", False):
-            idx += 1
+        # Emit result
+        if word_is_interim:
+            # Interim: emit but don't advance index yet
+            # If we had a previous interim at a different word, the previous one
+            # was already confirmed (it's no longer the last word)
+            session["last_interim_index"] = idx
+            await sio.emit("word_result", payload, room=sid)
         else:
-            break
+            # Confirmed word: advance index
+            await sio.emit("word_result", payload, room=sid)
+            if status == "correct" or session.get("allow_mistakes", False):
+                idx += 1
+                words_processed += 1
+            else:
+                break
 
     session["current_index"] = idx
 
     if idx >= len(words):
+        # Cancel streaming task if running
+        if session.get("streaming_task"):
+            session["streaming_task"].cancel()
+            session["streaming_task"] = None
         await sio.emit("session_stopped", {}, room=sid)
 
 
 async def _silence_watcher(sid: str):
-    """Background task to detect prolonged silence and emit timeout."""
+    """Background task to detect prolonged silence and emit timeout (legacy mode)."""
     try:
         while True:
             await asyncio.sleep(1.0)

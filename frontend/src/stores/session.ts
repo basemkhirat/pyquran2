@@ -36,13 +36,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     setWords: (words) => set({ words, currentWordIndex: 0, wordResults: {} }),
     setCurrentWordIndex: (index) => set({ currentWordIndex: index }),
     addWordResult: (index, result) =>
-        set((state) => ({
-            wordResults: { ...state.wordResults, [index]: result },
-            currentWordIndex:
-                result.status === "correct" || result.status === "skipped" || state.allowMistakes
+        set((state) => {
+            // Interim words: store the result but don't advance the index
+            const shouldAdvance =
+                !result.is_interim &&
+                (result.status === "correct" || result.status === "skipped" || state.allowMistakes);
+            return {
+                wordResults: { ...state.wordResults, [index]: result },
+                currentWordIndex: shouldAdvance
                     ? Math.max(state.currentWordIndex, index + 1)
                     : state.currentWordIndex,
-        })),
+            };
+        }),
     setSessionStatus: (status) => set({ sessionStatus: status }),
     setAllowMistakes: (allow) => set({ allowMistakes: allow }),
     advanceWord: () => set((state) => ({ currentWordIndex: state.currentWordIndex + 1 })),
