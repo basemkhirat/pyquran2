@@ -21,6 +21,8 @@ class Config:
     hafs_json_path: str = os.getenv("HAFS_JSON_PATH", "./assets/narrations/hafs.json")
     weight_char: float = float(os.getenv("WEIGHT_CHAR", "0.6"))
     weight_diacritic: float = float(os.getenv("WEIGHT_DIACRITIC", "0.4"))
+    enable_text_score: bool = os.getenv("ENABLE_TEXT_SCORE", "true").lower() in ("1", "true", "yes")
+    weight_text: float = float(os.getenv("WEIGHT_TEXT", "0.7"))
     enable_acoustic_score: bool = os.getenv("ENABLE_ACOUSTIC_SCORE", "false").lower() in ("1", "true", "yes")
     weight_acoustic: float = float(os.getenv("WEIGHT_ACOUSTIC", "0.3"))
     wav2vec2_quran_asr_model: str = os.getenv(

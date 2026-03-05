@@ -12,9 +12,11 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import config
-from backend import quran_data, transcriber, scorer
+from backend import quran_data, scorer
 from backend.terminal_arabic import display_arabic
 from backend.vad import VADProcessor
+if config.enable_text_score:
+    from backend import transcriber
 if config.enable_acoustic_score:
     from backend import acoustic_scorer
 
@@ -41,9 +43,10 @@ sessions: Dict[str, Dict[str, Any]] = {}
 
 @app.on_event("startup")
 async def startup():
-    logger.info("Preloading Whisper/transcription model...")
-    await asyncio.to_thread(transcriber.load_model)
-    logger.info("Whisper model ready.")
+    if config.enable_text_score:
+        logger.info("Preloading Whisper/transcription model...")
+        await asyncio.to_thread(transcriber.load_model)
+        logger.info("Whisper model ready.")
     if config.enable_acoustic_score:
         logger.info("Preloading wav2vec2 model...")
         await asyncio.to_thread(acoustic_scorer.load_model)
@@ -172,6 +175,7 @@ async def skip_word(sid, _data=None):
         payload["expected"] = word["emlaey_text"]
         payload["char_score"] = 0.0
         payload["diacritic_score"] = 0.0
+        payload["text_score"] = 0.0
         payload["total_score"] = 0.0
     await sio.emit("word_result", payload, room=sid)
 
@@ -255,11 +259,15 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         else []
     )
 
-    # Transcribe (and run wav2vec in parallel when acoustic scoring enabled)
-    logger.info(f"Transcribing {audio_duration:.2f}s of audio for [{sid}]...")
+    # Run transcription based on enabled scoring methods
+    logger.info(f"Processing {audio_duration:.2f}s of audio for [{sid}]...")
     logger.info(f"  Expected word #{idx}: '%s'", display_arabic(current_word["emlaey_text"]))
     t0 = time.time()
-    if config.enable_acoustic_score and expected_chunk_max:
+    
+    text = ""
+    acoustic_scores_full: list[float] = []
+    
+    if config.enable_text_score and config.enable_acoustic_score and expected_chunk_max:
         whisper_task = asyncio.to_thread(transcriber.transcribe, audio)
         wav2vec_task = asyncio.to_thread(
             acoustic_scorer.get_acoustic_scores, audio, expected_chunk_max
@@ -268,20 +276,27 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         text = text.strip()
         logger.info("  Whisper transcription: '%s'", display_arabic(text))
         logger.info("  Whisper + wav2vec (parallel) took %.2fs", time.time() - t0)
-    else:
+    elif config.enable_text_score:
         text = await asyncio.to_thread(transcriber.transcribe, audio)
         text = text.strip()
-        acoustic_scores_full = []
         logger.info("  Whisper transcription: '%s'", display_arabic(text))
         logger.info("  Transcription took %.2fs", time.time() - t0)
+    elif config.enable_acoustic_score and expected_chunk_max:
+        acoustic_scores_full = await asyncio.to_thread(
+            acoustic_scorer.get_acoustic_scores, audio, expected_chunk_max
+        )
+        logger.info("  Wav2vec (acoustic only) took %.2fs", time.time() - t0)
 
-    if not text:
+    # When text scoring is disabled, use expected words as transcribed words for acoustic scoring
+    if not config.enable_text_score and config.enable_acoustic_score:
+        transcribed_words = [words[idx + i]["emlaey_text"] for i in range(min(remaining, len(acoustic_scores_full)))]
+    elif not text:
         return
+    else:
+        transcribed_words = text.split()
 
-    transcribed_words = text.split()
-
-    # --- Backtrack detection: skip repeated already-correct words ---
-    lookback = min(idx, len(transcribed_words))  # how far back we can check
+    # --- Backtrack detection: skip repeated already-correct words (only when text scoring enabled) ---
+    lookback = min(idx, len(transcribed_words)) if config.enable_text_score else 0
     skip_count = 0
 
     if lookback > 0:
@@ -330,6 +345,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         # base letters match, which would otherwise give 100% diacritics for wrong tashkeel.
         ds = scorer.compute_diacritic_score(word["emlaey_text"], t_word)
         scores["diacritic_score"] = round(ds, 3)
+        
+        # Compute text_score from char_score and diacritic_score
+        ts = scorer.compute_text_score(scores["char_score"], ds)
+        scores["text_score"] = round(ts, 3)
+        
         ac = (acoustic_scores[i] if i < len(acoustic_scores) else None) if config.enable_acoustic_score else None
         if ac is not None:
             scores["acoustic_score"] = round(ac, 3)
