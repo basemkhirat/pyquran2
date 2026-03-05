@@ -4,19 +4,24 @@ Optimizations over baseline:
 - Audio normalization to [-1, 1] before inference
 - Beam search decoding via pyctcdecode (with optional KenLM language model)
 - Best-match word alignment instead of positional alignment
+- Diacritics-aware comparison (the Quran wav2vec2 model outputs tashkeel)
 """
 import logging
 import os
+import re
 from typing import List
 
 import numpy as np
 from jiwer import cer
 
 from backend.config import config
-from backend.scorer import strip_diacritics
 from backend.terminal_arabic import display_arabic
 
 logger = logging.getLogger(__name__)
+
+# Characters that appear in emlaey_text but are NOT in the wav2vec2 model vocabulary.
+# Must match the same regex used in scripts/generate_lm.py.
+_CHARS_NOT_IN_VOCAB = re.compile("[\u0657\u06E1]")
 
 _model = None
 _processor = None
@@ -131,10 +136,19 @@ def _decode_audio(audio: np.ndarray) -> str:
     return text
 
 
+def _normalize_text(text: str) -> str:
+    """Normalize text for comparison: strip out-of-vocab chars only.
+
+    Keeps diacritics because the Quran wav2vec2 model outputs tashkeel.
+    Only removes the few characters that aren't in the model vocabulary.
+    """
+    return _CHARS_NOT_IN_VOCAB.sub("", text).strip()
+
+
 def _acoustic_score_single(expected: str, decoded: str) -> float:
-    """Score in [0, 1] using 1 - CER on stripped diacritics."""
-    exp = strip_diacritics(expected).strip()
-    dec = strip_diacritics(decoded).strip()
+    """Score in [0, 1] using 1 - CER, comparing with diacritics."""
+    exp = _normalize_text(expected)
+    dec = _normalize_text(decoded)
     if not exp:
         return 1.0 if not dec else 0.0
     err = cer(exp, dec)
@@ -158,15 +172,15 @@ def get_acoustic_scores(audio: np.ndarray, expected_words: List[str]) -> List[fl
 
     scores: List[float] = []
     for expected in expected_words:
-        exp_stripped = strip_diacritics(expected).strip()
+        exp_normalized = _normalize_text(expected)
         best_score = 0.0
         best_word = ""
         for decoded_word in decoded_parts:
-            dec_stripped = strip_diacritics(decoded_word).strip()
-            if not exp_stripped:
-                s = 1.0 if not dec_stripped else 0.0
+            dec_normalized = _normalize_text(decoded_word)
+            if not exp_normalized:
+                s = 1.0 if not dec_normalized else 0.0
             else:
-                s = max(0.0, 1.0 - cer(exp_stripped, dec_stripped))
+                s = max(0.0, 1.0 - cer(exp_normalized, dec_normalized))
             if s > best_score:
                 best_score = s
                 best_word = decoded_word

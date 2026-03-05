@@ -73,6 +73,7 @@ export function SessionSetup() {
 
     const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words } = useSessionStore();
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
+    const isSessionActive = isRecording;
     const canSkip = isRecording && words.length > 0 && currentWordIndex < words.length;
     const isComplete = words.length > 0 && currentWordIndex >= words.length;
 
@@ -211,7 +212,7 @@ export function SessionSetup() {
                     <div className="flex items-center gap-2 flex-row-reverse">
                         <Label className="text-xs text-text-secondary whitespace-nowrap">السورة</Label>
                         <Select value={String(surah)} onValueChange={(v) => setSurah(Number(v))}>
-                            <SelectTrigger className={triggerClass} dir="rtl">
+                            <SelectTrigger className={triggerClass} dir="rtl" disabled={isSessionActive}>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent dir="rtl" className="font-[var(--font-arabic)] bg-surface-elevated border-border text-text-primary shadow-lg backdrop-blur-sm text-right">
@@ -233,6 +234,7 @@ export function SessionSetup() {
                             value={startAyah}
                             onChange={(e) => setStartAyah(Math.max(1, Math.min(verseCount, Number(e.target.value) || 1)))}
                             className={inputClass}
+                            disabled={isSessionActive}
                         />
                     </div>
 
@@ -245,6 +247,7 @@ export function SessionSetup() {
                             value={endAyah}
                             onChange={(e) => setEndAyah(Math.max(startAyah, Math.min(verseCount, Number(e.target.value) || endAyah)))}
                             className={inputClass}
+                            disabled={isSessionActive}
                         />
                     </div>
                 </div>

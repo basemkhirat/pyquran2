@@ -266,12 +266,14 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray):
         )
         text, acoustic_scores_full = await asyncio.gather(whisper_task, wav2vec_task)
         text = text.strip()
-        logger.info("  Whisper + wav2vec (parallel) took %.2fs: '%s'", time.time() - t0, display_arabic(text))
+        logger.info("  Whisper transcription: '%s'", display_arabic(text))
+        logger.info("  Whisper + wav2vec (parallel) took %.2fs", time.time() - t0)
     else:
         text = await asyncio.to_thread(transcriber.transcribe, audio)
         text = text.strip()
         acoustic_scores_full = []
-        logger.info("  Transcription took %.2fs: '%s'", time.time() - t0, display_arabic(text))
+        logger.info("  Whisper transcription: '%s'", display_arabic(text))
+        logger.info("  Transcription took %.2fs", time.time() - t0)
 
     if not text:
         return

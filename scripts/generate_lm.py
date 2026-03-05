@@ -2,8 +2,13 @@
 """Generate a KenLM n-gram language model from Quran text (hafs.json).
 
 Usage:
-    python scripts/generate_lm.py                  # uses default paths
+    python scripts/generate_lm.py                  # diacritized LM (default)
+    python scripts/generate_lm.py --strip-tashkeel  # strip diacritics (legacy)
     python scripts/generate_lm.py --hafs ./assets/narrations/hafs.json --output ./assets/quran_lm.arpa
+
+By default, diacritics are KEPT because the wav2vec2 Quran ASR model
+(rabah2026/wav2vec2-large-xlsr-53-arabic-quran-v_final) was trained on
+diacritized emlaey text and its vocabulary includes tashkeel characters.
 
 If the KenLM binaries (lmplz, build_binary) are on $PATH, the script
 generates a proper 5-gram binary LM.  Otherwise it creates a simple
@@ -22,11 +27,28 @@ import tempfile
 # Add project root to path so we can import backend modules if needed
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import re
+
 from pyarabic import araby
 
+# Characters that appear in emlaey_text but are NOT in the wav2vec2 model vocabulary.
+# These must be stripped so that LM words only contain characters the model can output.
+#   U+0657 (ٗ) - Inverted Damma
+#   U+06E1 (ۡ) - Small High Dotless Head of Khah
+_CHARS_NOT_IN_VOCAB = re.compile("[\u0657\u06E1]")
 
-def extract_quran_text(hafs_path: str, strip_tashkeel: bool = True) -> list[str]:
-    """Return list of verse texts from hafs.json (one line per verse)."""
+
+def normalize_for_model(text: str) -> str:
+    """Remove characters not in the wav2vec2 model vocabulary."""
+    return _CHARS_NOT_IN_VOCAB.sub("", text)
+
+
+def extract_quran_text(hafs_path: str, strip_tashkeel: bool = False) -> list[str]:
+    """Return list of verse texts from hafs.json (one line per verse).
+
+    By default keeps diacritics to match the wav2vec2 Quran model output.
+    Set strip_tashkeel=True only for legacy models that output plain text.
+    """
     with open(hafs_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -36,6 +58,8 @@ def extract_quran_text(hafs_path: str, strip_tashkeel: bool = True) -> list[str]
             text = verse.get("emlaey_text", "")
             if strip_tashkeel:
                 text = araby.strip_tashkeel(text)
+            # Strip characters not in the model vocabulary
+            text = normalize_for_model(text)
             text = text.strip()
             if text:
                 lines.append(text)
@@ -150,6 +174,12 @@ def main():
         help="Output ARPA file path",
     )
     parser.add_argument("--order", type=int, default=5, help="N-gram order (default 5)")
+    parser.add_argument(
+        "--strip-tashkeel",
+        action="store_true",
+        default=False,
+        help="Strip diacritics (default: keep diacritics for wav2vec2 Quran model)",
+    )
     args = parser.parse_args()
 
     hafs_path = os.path.abspath(args.hafs)
@@ -159,8 +189,9 @@ def main():
         print(f"Error: hafs.json not found at {hafs_path}")
         sys.exit(1)
 
-    lines = extract_quran_text(hafs_path, strip_tashkeel=True)
-    print(f"Extracted {len(lines)} verses from Quran (diacritics stripped)")
+    lines = extract_quran_text(hafs_path, strip_tashkeel=args.strip_tashkeel)
+    mode = "diacritics stripped" if args.strip_tashkeel else "WITH diacritics (matching wav2vec2 Quran model)"
+    print(f"Extracted {len(lines)} verses from Quran ({mode})")
 
     # Write corpus file for KenLM
     corpus_path = os.path.join(tempfile.gettempdir(), "quran_corpus.txt")
