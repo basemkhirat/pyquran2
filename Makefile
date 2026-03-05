@@ -1,4 +1,4 @@
-.PHONY: backend frontend
+.PHONY: backend frontend setup-backend modal-serve modal-deploy
 
 # Start the FastAPI + Socket.IO backend. Run 'make setup-backend' once if venv doesn't exist.
 backend:
@@ -12,3 +12,11 @@ setup-backend:
 # Start the Vite dev server (run from project root; install deps with: cd frontend && npm install)
 frontend:
 	cd frontend && npm run dev
+
+# Modal.com: dev server (ephemeral URL, live reload). Requires: pip install modal && modal token new
+modal-serve:
+	modal serve modal_app.py
+
+# Modal.com: deploy to production (persistent URL). Requires: pip install modal && modal token new
+modal-deploy:
+	modal deploy modal_app.py
