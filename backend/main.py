@@ -131,6 +131,7 @@ async def start_session(sid, data):
     session["words"] = words
     session["current_index"] = 0
     session["vad"].reset()
+    session["streaming_start_idx"] = 0
     session["allow_mistakes"] = data.get("allow_mistakes", False)
     session["last_interim_index"] = None
     session["start_chapter"] = start_chapter
@@ -222,6 +223,7 @@ async def skip_word(sid, _data=None):
 
     session["current_index"] += 1
     session["vad"].reset()
+    session["streaming_start_idx"] = session["current_index"]
     session["last_interim_index"] = None
 
     if session["current_index"] >= len(session["words"]):
@@ -323,6 +325,7 @@ async def _streaming_transcription_loop(sid: str):
                 session["vad"].reset()
                 session["last_interim_index"] = None
                 session["streaming_task"] = None
+                session["streaming_start_idx"] = session["current_index"]
                 return
 
     except asyncio.CancelledError:
@@ -357,6 +360,7 @@ async def _detect_verse(sid: str, audio: np.ndarray, is_final: bool = False):
         if result is not None:
             chapter, ayah, word_index, score = result
             session["current_index"] = word_index
+            session["streaming_start_idx"] = word_index
             session["phase"] = "reciting"
             logger.info(
                 f"Verse detected for [{sid}]: {chapter}:{ayah}, word_index {word_index}, score {score:.3f}"
@@ -428,6 +432,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         logger.info(f"Saved audio chunk: {wav_path} ({audio_duration:.2f}s)")
 
     current_word = words[idx]
+    start_idx = session.get("streaming_start_idx", idx)
+    if start_idx > idx:
+        start_idx = idx
+
+    previous_expected_chunk = [words[i]["emlaey_text"] for i in range(start_idx, idx)]
 
     # Build max expected chunk for parallel wav2vec when acoustic scoring is enabled
     remaining = len(words) - idx
@@ -448,7 +457,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     if config.enable_text_score and config.enable_acoustic_score and expected_chunk_max:
         whisper_task = asyncio.to_thread(transcriber.transcribe, audio)
         wav2vec_task = asyncio.to_thread(
-            acoustic_scorer.get_acoustic_scores, audio, expected_chunk_max
+            acoustic_scorer.get_acoustic_scores, audio, previous_expected_chunk, expected_chunk_max
         )
         text, acoustic_scores_full = await asyncio.gather(whisper_task, wav2vec_task)
         text = text.strip()
@@ -461,7 +470,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         logger.info("  Transcription took %.2fs", time.time() - t0)
     elif config.enable_acoustic_score and expected_chunk_max:
         acoustic_scores_full = await asyncio.to_thread(
-            acoustic_scorer.get_acoustic_scores, audio, expected_chunk_max
+            acoustic_scorer.get_acoustic_scores, audio, previous_expected_chunk, expected_chunk_max
         )
         logger.info("  Wav2vec (acoustic only) took %.2fs", time.time() - t0)
 
@@ -507,7 +516,9 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     # Slice parallel wav2vec scores to actual chunk size (after backtrack)
     acoustic_scores: list[float] = []
     if config.enable_acoustic_score and acoustic_scores_full:
-        n_words_chunk = min(len(transcribed_words), len(words) - idx)
+        # Acoustic scores align with EXPECTED chunk, not transcribed chunk.
+        # Length of expected_chunk_max was min(remaining, 20).
+        n_words_chunk = min(remaining, 20)
         acoustic_scores = acoustic_scores_full[:n_words_chunk]
 
     # Determine which words are interim vs confirmed in streaming mode
@@ -535,7 +546,10 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         ts = scorer.compute_text_score(scores["char_score"], ds)
         scores["text_score"] = round(ts, 3)
         
-        ac = (acoustic_scores[i] if i < len(acoustic_scores) else None) if config.enable_acoustic_score else None
+        # In expected_chunk_max, `word` is at index 0 initially.
+        # Since `idx` advances by 1 for each correct word, the offset into the original
+        # `acoustic_scores` array (from the start of the current chunk) is `words_processed`.
+        ac = (acoustic_scores[words_processed] if words_processed < len(acoustic_scores) else None) if config.enable_acoustic_score else None
         if ac is not None:
             scores["acoustic_score"] = round(ac, 3)
         scores["total_score"] = round(

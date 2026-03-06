@@ -132,7 +132,7 @@ def _decode_audio(audio: np.ndarray) -> str:
     logits_np = logits.cpu().numpy()[0]
     text = decoder.decode(logits_np, beam_width=config.wav2vec2_beam_width)
     text = text.strip()
-    logger.info("  wav2vec2 decoded: '%s'", display_arabic(text))
+    logger.info("  wav2vec2 decoded: '%s'", (text))
     return text
 
 
@@ -155,27 +155,38 @@ def _acoustic_score_single(expected: str, decoded: str) -> float:
     return max(0.0, 1.0 - err)
 
 
-def get_acoustic_scores(audio: np.ndarray, expected_words: List[str]) -> List[float]:
+def get_acoustic_scores(audio: np.ndarray, previous_words: List[str], expected_words: List[str]) -> List[float]:
     """Run wav2vec2 once on the chunk, decode, then best-match align to expected words.
 
     For each expected word, finds the decoded word with the best CER score
     (instead of simple positional alignment which breaks when words are
     inserted/dropped by the model). Falls back to 0.5 when no decoded words.
+
+    It also accepts `previous_words` (words already confirmed in the current audio buffer)
+    so that it can consume the matching audio decoded parts and prevent later expected words
+    from incorrectly matching earlier audio parts.
     """
     if not expected_words:
         return []
+        
     decoded_text = _decode_audio(audio)
     decoded_parts = decoded_text.split()
 
     if not decoded_parts:
         return [0.5] * len(expected_words)
 
+    all_expected = previous_words + expected_words
     scores: List[float] = []
-    for expected in expected_words:
+    # Enforce monotonic alignment so later expected words don't match earlier decoded words
+    last_match_idx = 0
+
+    for i, expected in enumerate(all_expected):
         exp_normalized = _normalize_text(expected)
         best_score = 0.0
         best_word = ""
-        for decoded_word in decoded_parts:
+        best_word_idx = -1 # Index in decoded_parts
+        for j in range(last_match_idx, len(decoded_parts)):
+            decoded_word = decoded_parts[j]
             dec_normalized = _normalize_text(decoded_word)
             if not exp_normalized:
                 s = 1.0 if not dec_normalized else 0.0
@@ -184,9 +195,15 @@ def get_acoustic_scores(audio: np.ndarray, expected_words: List[str]) -> List[fl
             if s > best_score:
                 best_score = s
                 best_word = decoded_word
+                best_word_idx = j
+                
         scores.append(best_score)
+        if best_word_idx != -1 and best_score >= 0.4:
+            last_match_idx = best_word_idx + 1
+            
         logger.debug(
             "  acoustic: expected='%s' best_match='%s' score=%.2f",
             display_arabic(expected), display_arabic(best_word), best_score,
         )
-    return scores
+        
+    return scores[len(previous_words):]

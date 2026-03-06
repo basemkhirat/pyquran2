@@ -52,7 +52,7 @@ class Config:
     # Minimum score (0-1) for verse detection to confirm start verse
     verse_detection_threshold: float = float(os.getenv("VERSE_DETECTION_THRESHOLD", "0.6"))
     # Number of words from verse start to use for matching
-    verse_detection_word_count: int = int(os.getenv("VERSE_DETECTION_WORD_COUNT", "2"))
+    verse_detection_word_count: int = int(os.getenv("VERSE_DETECTION_WORD_COUNT", "4"))
 
     def __post_init__(self) -> None:
         """Resolve relative paths so they work when cwd is not project root (e.g. Modal)."""
