@@ -57,7 +57,119 @@ socket.on('session_started', (_) {
 
 ---
 
-## 2. word_result
+## 2. verse_detected
+
+Sent when the server identifies which verse the user started reciting from (start verse detection). Use this to set the current position in your UI so highlighting matches where the user is.
+
+### When Received
+
+- When the server is in a detecting phase and the user's first utterance matches the beginning of a verse in the requested range.
+
+### Payload
+
+```typescript
+{
+  verse_number: number;   // Ayah number that was detected
+  word_index: number;     // Index into the session word list where that verse starts
+  score: number;          // Confidence score (0–1)
+}
+```
+
+### Example Handler
+
+::: code-group
+
+```javascript [JavaScript]
+socket.on("verse_detected", (data) => {
+  const { verse_number, word_index, score } = data;
+  setCurrentWordIndex(word_index);  // Sync UI to detected verse start
+});
+```
+
+```swift [Swift]
+socket.on("verse_detected") { data, ack in
+    guard let dict = data.first as? [String: Any],
+          let wordIndex = dict["word_index"] as? Int else { return }
+    setCurrentWordIndex(wordIndex)
+}
+```
+
+```kotlin [Kotlin]
+socket.on("verse_detected") { args ->
+    val data = args[0] as JSONObject
+    val wordIndex = data.getInt("word_index")
+    setCurrentWordIndex(wordIndex)
+}
+```
+
+```dart [Dart]
+socket.on('verse_detected', (data) {
+  final wordIndex = data['word_index'];
+  setCurrentWordIndex(wordIndex);
+});
+```
+
+:::
+
+### Notes
+
+- Only sent when the session uses start verse detection (e.g. when the server started with a detecting phase). After this event, the server sends `word_result` for subsequent words.
+- Use `word_index` to set the current word/verse position in your UI.
+
+---
+
+## 3. verse_detection_failed
+
+Sent when the server could not identify which verse the user started from.
+
+### When Received
+
+- When the server is in a detecting phase and the user's utterance did not match the start of any verse in the range (typically after the user stops speaking).
+
+### Payload
+
+```typescript
+{} // Empty object
+```
+
+### Example Handler
+
+::: code-group
+
+```javascript [JavaScript]
+socket.on("verse_detection_failed", () => {
+  showMessage("Verse not recognized, try again");
+});
+```
+
+```swift [Swift]
+socket.on("verse_detection_failed") { _, _ in
+    showMessage("Verse not recognized, try again")
+}
+```
+
+```kotlin [Kotlin]
+socket.on("verse_detection_failed") {
+    showMessage("Verse not recognized, try again")
+}
+```
+
+```dart [Dart]
+socket.on('verse_detection_failed', (_) {
+  showMessage('Verse not recognized, try again');
+});
+```
+
+:::
+
+### Notes
+
+- The server keeps listening; the user can try again by speaking the beginning of a verse in the range.
+- Optional: show a short message (e.g. "Verse not recognized, try again") without stopping the session.
+
+---
+
+## 4. word_result
 
 Contains the recognition result for a single word.
 
@@ -170,7 +282,7 @@ socket.on('word_result', (data) {
 
 ---
 
-## 3. session_stopped
+## 5. session_stopped
 
 Signals that the session has ended.
 
@@ -227,7 +339,7 @@ socket.on('session_stopped', (_) {
 
 ---
 
-## 4. session_error
+## 6. session_error
 
 Indicates an error occurred during the session.
 
@@ -316,6 +428,8 @@ socket.on('session_error', (data) {
 |-------|---------|----------------|
 | `session_started` | `{}` | Start audio recording |
 | `word_result` | Word details + status | Update UI, track progress |
+| `verse_detected` | verse_number, word_index, score | Set current position to word_index |
+| `verse_detection_failed` | `{}` | Optional: show "try again" message |
 | `session_stopped` | `{}` | Stop recording |
 | `session_error` | `{ reason }` | Stop recording, show error |
 
@@ -329,6 +443,14 @@ function setupSocketListeners(socket) {
 
   socket.on("word_result", (data) => {
     updateWordResult(data);
+  });
+
+  socket.on("verse_detected", (data) => {
+    setCurrentWordIndex(data.word_index);
+  });
+
+  socket.on("verse_detection_failed", () => {
+    showMessage("Verse not recognized, try again");
   });
 
   socket.on("session_stopped", () => {

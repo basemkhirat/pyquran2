@@ -22,6 +22,8 @@ Events your app receives from the server:
 | Event | Purpose | Payload |
 |-------|---------|---------|
 | [`session_started`](/events/server-events#session-started) | Session is ready | Empty object |
+| [`verse_detected`](/events/server-events#verse_detected) | Start verse identified | verse_number, word_index, score |
+| [`verse_detection_failed`](/events/server-events#verse_detection_failed) | Start verse not recognized | Empty object |
 | [`word_result`](/events/server-events#word-result) | Recognition result for a word | Word details and status |
 | [`session_stopped`](/events/server-events#session-stopped) | Session has ended | Empty object |
 | [`session_error`](/events/server-events#session-error) | An error occurred | Error reason |
