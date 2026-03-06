@@ -1,8 +1,10 @@
+import { useEffect, useRef } from "react";
 import { useSessionStore } from "../stores/session";
 import { cn } from "../lib/cn";
 
 export function VerseDisplay() {
     const { words, currentWordIndex, wordResults } = useSessionStore();
+    const activeVerseRef = useRef<HTMLDivElement>(null);
 
     // Group words by (surah, ayah) to support cross-chapter ranges
     const verseGroups: { surah: number; ayah: number; startIdx: number; endIdx: number }[] = [];
@@ -17,10 +19,20 @@ export function VerseDisplay() {
         }
     });
 
+    useEffect(() => {
+        activeVerseRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, [currentWordIndex]);
+
     return (
         <div className="w-full max-w-4xl mx-auto px-4">
-            {verseGroups.map((group, groupIdx) => (
-                <div key={`${group.surah}:${group.ayah}`} className="mb-6">
+            {verseGroups.map((group) => {
+                const isActiveVerse = currentWordIndex >= group.startIdx && currentWordIndex <= group.endIdx;
+                return (
+                <div
+                    key={`${group.surah}:${group.ayah}`}
+                    ref={isActiveVerse ? activeVerseRef : undefined}
+                    className="mb-6"
+                >
                     {/* Chapter:Verse badge */}
                     <div className="flex items-center gap-3 mb-3">
                         <span className="inline-flex items-center justify-center min-w-[3rem] px-2 h-8 rounded-full bg-gold/10 text-gold text-sm font-medium border border-gold/20">
@@ -78,7 +90,8 @@ export function VerseDisplay() {
                         })}
                     </div>
                 </div>
-            ))}
+                );
+            })}
         </div>
     );
 }
