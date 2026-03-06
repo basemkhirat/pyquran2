@@ -329,23 +329,24 @@ class RecitationSession(context: Context) {
         socketManager.disconnect()
     }
     
-    fun startSession(chapter: Int, startVerse: Int, endVerse: Int) {
+    fun startSession(startChapter: Int, startVerse: Int, endChapter: Int, endVerse: Int) {
         val socket = socketManager.socket
         
         if (!socket.connected()) {
             socket.once(Socket.EVENT_CONNECT) {
-                emitStartSession(chapter, startVerse, endVerse)
+                emitStartSession(startChapter, startVerse, endChapter, endVerse)
             }
             socket.connect()
         } else {
-            emitStartSession(chapter, startVerse, endVerse)
+            emitStartSession(startChapter, startVerse, endChapter, endVerse)
         }
     }
     
-    private fun emitStartSession(chapter: Int, startVerse: Int, endVerse: Int) {
+    private fun emitStartSession(startChapter: Int, startVerse: Int, endChapter: Int, endVerse: Int) {
         val payload = JSONObject().apply {
-            put("chapter_number", chapter)
+            put("start_chapter_number", startChapter)
             put("start_verse_number", startVerse)
+            put("end_chapter_number", endChapter)
             put("end_verse_number", endVerse)
         }
         socketManager.socket.emit("start_session", payload)
@@ -457,7 +458,7 @@ class RecitationActivity : AppCompatActivity(), RecitationSessionListener {
         resultsAdapter.notifyDataSetChanged()
         
         // Start session for Al-Fatiha (chapter 1, verses 1-7)
-        session.startSession(chapter = 1, startVerse = 1, endVerse = 7)
+        session.startSession(startChapter = 1, startVerse = 1, endChapter = 1, endVerse = 7)
     }
     
     private fun updateButtonStates(isRecording: Boolean) {
@@ -703,7 +704,7 @@ fun RecitationScreen() {
             Button(
                 onClick = {
                     wordResults.clear()
-                    session.startSession(1, 1, 7)
+                    session.startSession(1, 1, 1, 7)
                 },
                 enabled = !isRecording,
                 modifier = Modifier.padding(4.dp)

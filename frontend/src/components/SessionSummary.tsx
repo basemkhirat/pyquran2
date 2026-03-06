@@ -40,9 +40,10 @@ export function SessionSummary() {
         setSessionStatus("recording");
 
         const payload = {
-            chapter_number: selectedRange.surah,
-            start_verse_number: selectedRange.startAyah,
-            end_verse_number: selectedRange.endAyah,
+            start_chapter_number: selectedRange.startChapter,
+            start_verse_number: selectedRange.startVerse,
+            end_chapter_number: selectedRange.endChapter,
+            end_verse_number: selectedRange.endVerse,
         };
         if (socket.connected) {
             socket.emit("start_session", payload);

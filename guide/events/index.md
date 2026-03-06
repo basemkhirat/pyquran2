@@ -10,7 +10,7 @@ Events your app sends to the server:
 
 | Event | Purpose | Payload |
 |-------|---------|---------|
-| [`start_session`](/events/client-events#start-session) | Begin a new recognition session | Chapter and verse range |
+| [`start_session`](/events/client-events#start-session) | Begin a new recognition session | Start/end chapter and verse range |
 | [`audio_chunk`](/events/client-events#audio-chunk) | Stream audio data | Binary PCM data |
 | [`stop_session`](/events/client-events#stop-session) | End the current session | None |
 | [`skip_word`](/events/client-events#skip-word) | Skip the current word | None |
@@ -22,7 +22,7 @@ Events your app receives from the server:
 | Event | Purpose | Payload |
 |-------|---------|---------|
 | [`session_started`](/events/server-events#session-started) | Session is ready | Empty object |
-| [`verse_detected`](/events/server-events#verse_detected) | Start verse identified | verse_number, word_index, score |
+| [`verse_detected`](/events/server-events#verse_detected) | Start verse identified | chapter_number, verse_number, word_index, score |
 | [`verse_detection_failed`](/events/server-events#verse_detection_failed) | Start verse not recognized | Empty object |
 | [`word_result`](/events/server-events#word-result) | Recognition result for a word | Word details and status |
 | [`session_stopped`](/events/server-events#session-stopped) | Session has ended | Empty object |
@@ -62,7 +62,12 @@ socket.on("session_stopped", () => { /* cleanup */ });
 socket.on("session_error", (data) => { /* show error */ });
 
 // Emit events
-socket.emit("start_session", { chapter_number: 1, start_verse_number: 1, end_verse_number: 7 });
+socket.emit("start_session", {
+  start_chapter_number: 1,
+  start_verse_number: 1,
+  end_chapter_number: 1,
+  end_verse_number: 7
+});
 socket.emit("audio_chunk", audioBuffer);
 socket.emit("stop_session");
 socket.emit("skip_word");
@@ -76,7 +81,12 @@ socket.on("session_stopped") { data, ack in /* cleanup */ }
 socket.on("session_error") { data, ack in /* show error */ }
 
 // Emit events
-socket.emit("start_session", ["chapter_number": 1, "start_verse_number": 1, "end_verse_number": 7])
+socket.emit("start_session", [
+    "start_chapter_number": 1,
+    "start_verse_number": 1,
+    "end_chapter_number": 1,
+    "end_verse_number": 7
+])
 socket.emit("audio_chunk", audioData)
 socket.emit("stop_session")
 socket.emit("skip_word")
@@ -91,8 +101,9 @@ socket.on("session_error") { args -> /* show error */ }
 
 // Emit events
 socket.emit("start_session", JSONObject().apply {
-    put("chapter_number", 1)
+    put("start_chapter_number", 1)
     put("start_verse_number", 1)
+    put("end_chapter_number", 1)
     put("end_verse_number", 7)
 })
 socket.emit("audio_chunk", audioByteArray)
@@ -108,7 +119,12 @@ socket.on('session_stopped', (_) { /* cleanup */ });
 socket.on('session_error', (data) { /* show error */ });
 
 // Emit events
-socket.emit('start_session', {'chapter_number': 1, 'start_verse_number': 1, 'end_verse_number': 7});
+socket.emit('start_session', {
+  'start_chapter_number': 1,
+  'start_verse_number': 1,
+  'end_chapter_number': 1,
+  'end_verse_number': 7
+});
 socket.emit('audio_chunk', audioBytes);
 socket.emit('stop_session');
 socket.emit('skip_word');

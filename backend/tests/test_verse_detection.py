@@ -5,7 +5,7 @@ import pytest
 from backend.verse_detection import detect_start_verse, _build_verse_candidates
 
 
-# Sample word list mimicking quran_data.get_words() output for Al-Fatiha (7 verses)
+# Sample word list mimicking quran_data.get_words_range() output for Al-Fatiha (7 verses)
 SAMPLE_WORDS = [
     # Verse 1: بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
     {"surah": 1, "ayah": 1, "word_index": 1, "emlaey_text": "بسم", "uthmani_text": "بِسْمِ"},
@@ -26,45 +26,60 @@ SAMPLE_WORDS = [
     {"surah": 1, "ayah": 4, "word_index": 3, "emlaey_text": "الدين", "uthmani_text": "ٱلدِّينِ"},
 ]
 
+# Sample words spanning two chapters for cross-chapter testing
+CROSS_CHAPTER_WORDS = [
+    # End of chapter 1
+    {"surah": 1, "ayah": 6, "word_index": 1, "emlaey_text": "اهدنا", "uthmani_text": "ٱهْدِنَا"},
+    {"surah": 1, "ayah": 6, "word_index": 2, "emlaey_text": "الصراط", "uthmani_text": "ٱلصِّرَٰطَ"},
+    {"surah": 1, "ayah": 7, "word_index": 1, "emlaey_text": "صراط", "uthmani_text": "صِرَٰطَ"},
+    {"surah": 1, "ayah": 7, "word_index": 2, "emlaey_text": "الذين", "uthmani_text": "ٱلَّذِينَ"},
+    # Start of chapter 2
+    {"surah": 2, "ayah": 1, "word_index": 1, "emlaey_text": "الم", "uthmani_text": "الٓمٓ"},
+    {"surah": 2, "ayah": 2, "word_index": 1, "emlaey_text": "ذلك", "uthmani_text": "ذَٰلِكَ"},
+    {"surah": 2, "ayah": 2, "word_index": 2, "emlaey_text": "الكتاب", "uthmani_text": "ٱلْكِتَٰبُ"},
+]
+
 
 class TestBuildVerseCandidates:
     """Test the verse candidate builder."""
 
     def test_builds_correct_candidates(self):
-        candidates = _build_verse_candidates(SAMPLE_WORDS, 1, 4, n_words=2)
+        candidates = _build_verse_candidates(SAMPLE_WORDS, n_words=2)
         assert len(candidates) == 4
-        assert 1 in candidates
-        assert 2 in candidates
-        assert 3 in candidates
-        assert 4 in candidates
+        assert (1, 1) in candidates
+        assert (1, 2) in candidates
+        assert (1, 3) in candidates
+        assert (1, 4) in candidates
         # Check first 2 words of each verse
-        assert candidates[1][0] == "بسم الله"
-        assert candidates[2][0] == "الحمد لله"
-        assert candidates[3][0] == "الرحمن الرحيم"
-        assert candidates[4][0] == "مالك يوم"
+        assert candidates[(1, 1)][0] == "بسم الله"
+        assert candidates[(1, 2)][0] == "الحمد لله"
+        assert candidates[(1, 3)][0] == "الرحمن الرحيم"
+        assert candidates[(1, 4)][0] == "مالك يوم"
 
     def test_word_indices(self):
-        candidates = _build_verse_candidates(SAMPLE_WORDS, 1, 4, n_words=2)
-        assert candidates[1][1] == 0   # verse 1 starts at index 0
-        assert candidates[2][1] == 4   # verse 2 starts at index 4
-        assert candidates[3][1] == 8   # verse 3 starts at index 8
-        assert candidates[4][1] == 10  # verse 4 starts at index 10
+        candidates = _build_verse_candidates(SAMPLE_WORDS, n_words=2)
+        assert candidates[(1, 1)][1] == 0   # verse 1 starts at index 0
+        assert candidates[(1, 2)][1] == 4   # verse 2 starts at index 4
+        assert candidates[(1, 3)][1] == 8   # verse 3 starts at index 8
+        assert candidates[(1, 4)][1] == 10  # verse 4 starts at index 10
 
     def test_partial_range(self):
-        candidates = _build_verse_candidates(SAMPLE_WORDS, 2, 3, n_words=2)
+        # Filter words to only include verses 2 and 3 (simulating what quran_data would return)
+        partial_words = [w for w in SAMPLE_WORDS if 2 <= w["ayah"] <= 3]
+        candidates = _build_verse_candidates(partial_words, n_words=2)
         assert len(candidates) == 2
-        assert 1 not in candidates
-        assert 2 in candidates
-        assert 3 in candidates
+        assert (1, 1) not in candidates
+        assert (1, 2) in candidates
+        assert (1, 3) in candidates
 
     def test_single_word_verse(self):
         """Verse with fewer words than n_words should still produce a candidate."""
         words = [
             {"surah": 1, "ayah": 1, "word_index": 1, "emlaey_text": "قل", "uthmani_text": "قُلْ"},
         ]
-        candidates = _build_verse_candidates(words, 1, 1, n_words=2)
+        candidates = _build_verse_candidates(words, n_words=2)
         assert len(candidates) == 1
-        assert candidates[1][0] == "قل"
+        assert candidates[(1, 1)][0] == "قل"
 
 
 class TestDetectStartVerse:
@@ -76,9 +91,10 @@ class TestDetectStartVerse:
             lambda _: "بسم الله",
         )
         audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS, 1, 4)
+        result = detect_start_verse(audio, SAMPLE_WORDS)
         assert result is not None
-        ayah, word_index, score = result
+        chapter, ayah, word_index, score = result
+        assert chapter == 1
         assert ayah == 1
         assert word_index == 0
         assert score >= 0.6
@@ -89,9 +105,10 @@ class TestDetectStartVerse:
             lambda _: "مالك يوم",
         )
         audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS, 1, 4)
+        result = detect_start_verse(audio, SAMPLE_WORDS)
         assert result is not None
-        ayah, word_index, score = result
+        chapter, ayah, word_index, score = result
+        assert chapter == 1
         assert ayah == 4
         assert word_index == 10
 
@@ -102,9 +119,10 @@ class TestDetectStartVerse:
             lambda _: "الحمد لله",  # exact match for verse 2
         )
         audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS, 1, 4)
+        result = detect_start_verse(audio, SAMPLE_WORDS)
         assert result is not None
-        assert result[0] == 2  # ayah 2
+        assert result[0] == 1  # chapter 1
+        assert result[1] == 2  # ayah 2
 
     def test_below_threshold(self, monkeypatch):
         """Completely unrelated speech should fail detection."""
@@ -113,7 +131,7 @@ class TestDetectStartVerse:
             lambda _: "كلام عشوائي تماما",  # random unrelated text
         )
         audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS, 1, 4)
+        result = detect_start_verse(audio, SAMPLE_WORDS)
         assert result is None
 
     def test_empty_decoded_text(self, monkeypatch):
@@ -122,7 +140,7 @@ class TestDetectStartVerse:
             lambda _: "",
         )
         audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS, 1, 4)
+        result = detect_start_verse(audio, SAMPLE_WORDS)
         assert result is None
 
     def test_single_verse_range(self, monkeypatch):
@@ -131,18 +149,49 @@ class TestDetectStartVerse:
             lambda _: "مالك يوم",
         )
         audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS, 4, 4)
+        # Filter words to only include verse 4
+        verse4_words = [w for w in SAMPLE_WORDS if w["ayah"] == 4]
+        result = detect_start_verse(audio, verse4_words)
         assert result is not None
-        assert result[0] == 4
+        assert result[0] == 1  # chapter
+        assert result[1] == 4  # ayah
 
     def test_verse_outside_range_not_matched(self, monkeypatch):
-        """Speech matching verse 1 should not match when range is 3-4."""
+        """Speech matching verse 1 should not match when word list only has verses 3-4."""
         monkeypatch.setattr(
             "backend.verse_detection._decode_audio",
             lambda _: "بسم الله",
         )
         audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS, 3, 4)
+        # Filter words to only include verses 3 and 4
+        partial_words = [w for w in SAMPLE_WORDS if 3 <= w["ayah"] <= 4]
+        result = detect_start_verse(audio, partial_words)
         # Should either be None or match a different verse, not verse 1
         if result is not None:
-            assert result[0] != 1
+            assert result[1] != 1  # ayah should not be 1
+
+    def test_cross_chapter_detection(self, monkeypatch):
+        """Test detection across chapter boundaries."""
+        monkeypatch.setattr(
+            "backend.verse_detection._decode_audio",
+            lambda _: "ذلك الكتاب",  # Start of Al-Baqarah verse 2
+        )
+        audio = np.zeros(16000, dtype=np.float32)
+        result = detect_start_verse(audio, CROSS_CHAPTER_WORDS)
+        assert result is not None
+        chapter, ayah, word_index, score = result
+        assert chapter == 2  # Should detect in chapter 2
+        assert ayah == 2     # verse 2 of Al-Baqarah
+
+    def test_cross_chapter_first_chapter_still_works(self, monkeypatch):
+        """Ensure verses from the first chapter in a cross-chapter range still work."""
+        monkeypatch.setattr(
+            "backend.verse_detection._decode_audio",
+            lambda _: "اهدنا الصراط",  # Al-Fatiha verse 6
+        )
+        audio = np.zeros(16000, dtype=np.float32)
+        result = detect_start_verse(audio, CROSS_CHAPTER_WORDS)
+        assert result is not None
+        chapter, ayah, word_index, score = result
+        assert chapter == 1  # Should detect in chapter 1
+        assert ayah == 6     # verse 6

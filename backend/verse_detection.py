@@ -19,48 +19,46 @@ logger = logging.getLogger(__name__)
 
 def _build_verse_candidates(
     words: List[Dict[str, Any]],
-    start_ayah: int,
-    end_ayah: int,
     n_words: int,
-) -> Dict[int, Tuple[str, int]]:
-    """Build a mapping of ayah_number → (first N words joined, word_list_index).
+) -> Dict[Tuple[int, int], Tuple[str, int]]:
+    """Build a mapping of (surah, ayah) → (first N words joined, word_list_index).
 
     Parameters
     ----------
     words : list
-        The flat word list for the session (from quran_data.get_words).
-    start_ayah, end_ayah : int
-        Inclusive verse range.
+        The flat word list for the session (from quran_data.get_words_range).
     n_words : int
         How many words from the start of each verse to use for matching.
 
     Returns
     -------
     dict
-        {ayah_number: (candidate_text, first_word_index_in_words_list)}
+        {(surah, ayah): (candidate_text, first_word_index_in_words_list)}
     """
-    candidates: Dict[int, Tuple[str, int]] = {}
+    candidates: Dict[Tuple[int, int], Tuple[str, int]] = {}
     i = 0
     while i < len(words):
         w = words[i]
-        ayah = w["ayah"]
-        if ayah < start_ayah or ayah > end_ayah:
-            i += 1
-            continue
-        if ayah in candidates:
+        key = (w["surah"], w["ayah"])
+        if key in candidates:
             i += 1
             continue
 
-        # Collect first n_words of this ayah
+        # Collect first n_words of this verse
         verse_words = []
         first_index = i
         j = i
-        while j < len(words) and words[j]["ayah"] == ayah and len(verse_words) < n_words:
+        while (
+            j < len(words)
+            and words[j]["surah"] == w["surah"]
+            and words[j]["ayah"] == w["ayah"]
+            and len(verse_words) < n_words
+        ):
             verse_words.append(words[j]["emlaey_text"])
             j += 1
 
         candidate_text = " ".join(verse_words)
-        candidates[ayah] = (candidate_text, first_index)
+        candidates[key] = (candidate_text, first_index)
         i = j if j > i else i + 1
 
     return candidates
@@ -69,9 +67,7 @@ def _build_verse_candidates(
 def detect_start_verse(
     audio: np.ndarray,
     words: List[Dict[str, Any]],
-    start_ayah: int,
-    end_ayah: int,
-) -> Optional[Tuple[int, int, float]]:
+) -> Optional[Tuple[int, int, int, float]]:
     """Detect which verse the user is reciting from their speech.
 
     Parameters
@@ -79,14 +75,12 @@ def detect_start_verse(
     audio : np.ndarray
         16 kHz float32 mono audio of the user's first utterance.
     words : list
-        The flat word list for the session.
-    start_ayah, end_ayah : int
-        Inclusive verse range to search within.
+        The flat word list for the session (may span multiple chapters).
 
     Returns
     -------
     tuple or None
-        ``(ayah_number, word_index, score)`` if a match is found above
+        ``(chapter, ayah, word_index, score)`` if a match is found above
         the configured threshold, otherwise ``None``.
         ``word_index`` is the index into the session ``words`` list where
         the matched verse begins.
@@ -94,9 +88,9 @@ def detect_start_verse(
     n_words = config.verse_detection_word_count
     threshold = config.verse_detection_threshold
 
-    candidates = _build_verse_candidates(words, start_ayah, end_ayah, n_words)
+    candidates = _build_verse_candidates(words, n_words)
     if not candidates:
-        logger.warning("No verse candidates found for ayah %d–%d", start_ayah, end_ayah)
+        logger.warning("No verse candidates found in word list")
         return None
 
     # Decode audio once
@@ -115,11 +109,11 @@ def detect_start_verse(
         len(candidates),
     )
 
-    best_ayah: Optional[int] = None
+    best_key: Optional[Tuple[int, int]] = None
     best_score: float = 0.0
     best_index: int = 0
 
-    for ayah, (candidate_text, word_index) in candidates.items():
+    for (surah, ayah), (candidate_text, word_index) in candidates.items():
         candidate_norm = _normalize_text(candidate_text)
         if not candidate_norm:
             continue
@@ -138,7 +132,8 @@ def detect_start_verse(
         score = candidate_best
 
         logger.debug(
-            "  verse %d: candidate='%s' score=%.3f",
+            "  verse %d:%d: candidate='%s' score=%.3f",
+            surah,
             ayah,
             display_arabic(candidate_text),
             score,
@@ -146,21 +141,22 @@ def detect_start_verse(
 
         if score > best_score:
             best_score = score
-            best_ayah = ayah
+            best_key = (surah, ayah)
             best_index = word_index
 
-    if best_ayah is not None and best_score >= threshold:
+    if best_key is not None and best_score >= threshold:
         logger.info(
-            "Verse detection: matched ayah %d (score=%.3f, threshold=%.2f)",
-            best_ayah,
+            "Verse detection: matched %d:%d (score=%.3f, threshold=%.2f)",
+            best_key[0],
+            best_key[1],
             best_score,
             threshold,
         )
-        return (best_ayah, best_index, best_score)
+        return (best_key[0], best_key[1], best_index, best_score)
 
     logger.info(
-        "Verse detection: no match above threshold (best=ayah %s score=%.3f, threshold=%.2f)",
-        best_ayah,
+        "Verse detection: no match above threshold (best=%s score=%.3f, threshold=%.2f)",
+        best_key,
         best_score,
         threshold,
     )

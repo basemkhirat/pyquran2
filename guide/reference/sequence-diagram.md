@@ -14,7 +14,7 @@ sequenceDiagram
     App->>Server: connect()
     Server-->>App: connected
 
-    App->>Server: start_session({chapter_number, start_verse_number, end_verse_number})
+    App->>Server: start_session({start_chapter_number, start_verse_number, end_chapter_number, end_verse_number})
     Server-->>App: session_started
 
     Note over App: Start audio capture
@@ -68,7 +68,7 @@ sequenceDiagram
     App->>Server: connect()
     Server-->>App: connected
 
-    App->>Server: start_session({invalid or empty range})
+    App->>Server: start_session({invalid range, e.g. start > end})
     Server-->>App: session_error({reason: "invalid_range"})
 
     Note over App: Show error, allow retry
@@ -110,7 +110,7 @@ sequenceDiagram
 
     Note over App: User taps Start
 
-    App->>Server: start_session({chapter_number: 1, start_verse_number: 1, end_verse_number: 7})
+    App->>Server: start_session({start_chapter_number: 1, start_verse_number: 1, end_chapter_number: 1, end_verse_number: 7})
     Server-->>App: session_started
 
     Note over App: Start microphone capture

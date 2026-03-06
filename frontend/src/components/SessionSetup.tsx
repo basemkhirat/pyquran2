@@ -17,7 +17,6 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 
-// Arabic names for surahs
 const SURAH_NAMES: Record<number, string> = {
     1: "الفاتحة", 2: "البقرة", 3: "آل عمران", 4: "النساء", 5: "المائدة",
     6: "الأنعام", 7: "الأعراف", 8: "الأنفال", 9: "التوبة", 10: "يونس",
@@ -44,32 +43,34 @@ const SURAH_NAMES: Record<number, string> = {
     111: "المسد", 112: "الإخلاص", 113: "الفلق", 114: "الناس",
 };
 
-/** Read initial values from URL search params */
 function getUrlParams() {
     const params = new URLSearchParams(window.location.search);
     return {
-        surah: params.has("surah") ? Number(params.get("surah")) : null,
-        start: params.has("start") ? Number(params.get("start")) : null,
-        end: params.has("end") ? Number(params.get("end")) : null,
+        startChapter: params.has("startChapter") ? Number(params.get("startChapter")) : null,
+        startVerse: params.has("startVerse") ? Number(params.get("startVerse")) : null,
+        endChapter: params.has("endChapter") ? Number(params.get("endChapter")) : null,
+        endVerse: params.has("endVerse") ? Number(params.get("endVerse")) : null,
     };
 }
 
-/** Update URL without page reload */
-function setUrlParams(surah: number, start: number, end: number) {
+function setUrlParams(startChapter: number, startVerse: number, endChapter: number, endVerse: number) {
     const params = new URLSearchParams();
-    params.set("surah", String(surah));
-    params.set("start", String(start));
-    params.set("end", String(end));
+    params.set("startChapter", String(startChapter));
+    params.set("startVerse", String(startVerse));
+    params.set("endChapter", String(endChapter));
+    params.set("endVerse", String(endVerse));
     window.history.replaceState(null, "", `?${params.toString()}`);
 }
 
 export function SessionSetup() {
     const urlParams = getUrlParams();
     const [chapters, setChapters] = useState<Chapter[]>([]);
-    const [surah, setSurah] = useState(urlParams.surah ?? 1);
-    const [startAyah, setStartAyah] = useState(urlParams.start ?? 1);
-    const [endAyah, setEndAyah] = useState(urlParams.end ?? 7);
-    const [verseCount, setVerseCount] = useState(7);
+    const [startChapter, setStartChapter] = useState(urlParams.startChapter ?? 1);
+    const [startVerse, setStartVerse] = useState(urlParams.startVerse ?? 1);
+    const [endChapter, setEndChapter] = useState(urlParams.endChapter ?? 1);
+    const [endVerse, setEndVerse] = useState(urlParams.endVerse ?? 7);
+    const [startVerseCount, setStartVerseCount] = useState(7);
+    const [endVerseCount, setEndVerseCount] = useState(7);
     const initialLoadDone = useRef(false);
 
     const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, allowMistakes, setAllowMistakes } = useSessionStore();
@@ -78,13 +79,25 @@ export function SessionSetup() {
     const canSkip = isRecording && words.length > 0 && currentWordIndex < words.length;
     const isComplete = words.length > 0 && currentWordIndex >= words.length;
 
+    const isValidRange = () => {
+        if (startChapter < endChapter) return true;
+        if (startChapter === endChapter && startVerse <= endVerse) return true;
+        return false;
+    };
+
     const toggleRecording = () => {
         if (isRecording) {
             stopRecording();
             return;
         }
-        if (words.length === 0) return;
-        const payload = { chapter_number: surah, start_verse_number: startAyah, end_verse_number: endAyah, allow_mistakes: allowMistakes };
+        if (words.length === 0 || !isValidRange()) return;
+        const payload = {
+            start_chapter_number: startChapter,
+            start_verse_number: startVerse,
+            end_chapter_number: endChapter,
+            end_verse_number: endVerse,
+            allow_mistakes: allowMistakes,
+        };
         if (socket.connected) {
             socket.emit("start_session", payload);
             startRecording();
@@ -106,42 +119,53 @@ export function SessionSetup() {
 
     useEffect(() => {
         let cancelled = false;
-        fetch(`/api/verse-count?surah=${surah}`)
+        fetch(`/api/verse-count?surah=${startChapter}`)
             .then((r) => r.json())
             .then((d) => {
                 if (cancelled) return;
-                setVerseCount(d.count);
-                // On first load, keep URL-provided values; otherwise reset
+                setStartVerseCount(d.count);
                 if (!initialLoadDone.current) {
-                    initialLoadDone.current = true;
                     const p = getUrlParams();
-                    setStartAyah(p.start != null ? Math.min(p.start, d.count) : 1);
-                    setEndAyah(p.end != null ? Math.min(p.end, d.count) : d.count);
+                    setStartVerse(p.startVerse != null ? Math.min(p.startVerse, d.count) : 1);
                 } else {
-                    setStartAyah(1);
-                    setEndAyah(d.count);
+                    setStartVerse(1);
                 }
             })
             .catch(console.error);
-        return () => {
-            cancelled = true;
-            initialLoadDone.current = false; // Reset so remount (e.g. Strict Mode) respects URL again
-        };
-    }, [surah]);
-
-    // Sync state to URL
-    useEffect(() => {
-        setUrlParams(surah, startAyah, endAyah);
-    }, [surah, startAyah, endAyah]);
+        return () => { cancelled = true; };
+    }, [startChapter]);
 
     useEffect(() => {
-        if (verseCount === 0 || startAyah > endAyah) return;
         let cancelled = false;
-        fetch(`/api/words?surah=${surah}&start_ayah=${startAyah}&end_ayah=${endAyah}`)
+        fetch(`/api/verse-count?surah=${endChapter}`)
+            .then((r) => r.json())
+            .then((d) => {
+                if (cancelled) return;
+                setEndVerseCount(d.count);
+                if (!initialLoadDone.current) {
+                    initialLoadDone.current = true;
+                    const p = getUrlParams();
+                    setEndVerse(p.endVerse != null ? Math.min(p.endVerse, d.count) : d.count);
+                } else {
+                    setEndVerse(d.count);
+                }
+            })
+            .catch(console.error);
+        return () => { cancelled = true; };
+    }, [endChapter]);
+
+    useEffect(() => {
+        setUrlParams(startChapter, startVerse, endChapter, endVerse);
+    }, [startChapter, startVerse, endChapter, endVerse]);
+
+    useEffect(() => {
+        if (!isValidRange()) return;
+        let cancelled = false;
+        fetch(`/api/words?start_chapter=${startChapter}&start_verse=${startVerse}&end_chapter=${endChapter}&end_verse=${endVerse}`)
             .then((r) => r.json())
             .then((words) => {
                 if (cancelled) return;
-                setSelectedRange({ surah, startAyah, endAyah });
+                setSelectedRange({ startChapter, startVerse, endChapter, endVerse });
                 setWords(words);
                 setSessionStatus("recording");
             })
@@ -149,17 +173,48 @@ export function SessionSetup() {
                 if (!cancelled) console.error("Failed to load verses:", err);
             });
         return () => { cancelled = true; };
-    }, [surah, startAyah, endAyah, verseCount, setSelectedRange, setWords, setSessionStatus]);
+    }, [startChapter, startVerse, endChapter, endVerse, setSelectedRange, setWords, setSessionStatus]);
+
+    const handleStartChapterChange = (value: string) => {
+        const newChapter = Number(value);
+        setStartChapter(newChapter);
+        if (newChapter > endChapter) {
+            setEndChapter(newChapter);
+        }
+    };
+
+    const handleEndChapterChange = (value: string) => {
+        const newChapter = Number(value);
+        setEndChapter(newChapter);
+        if (newChapter < startChapter) {
+            setStartChapter(newChapter);
+        }
+    };
+
+    const handleStartVerseChange = (value: number) => {
+        const clamped = Math.max(1, Math.min(startVerseCount, value || 1));
+        setStartVerse(clamped);
+        if (startChapter === endChapter && clamped > endVerse) {
+            setEndVerse(clamped);
+        }
+    };
+
+    const handleEndVerseChange = (value: number) => {
+        const clamped = Math.max(1, Math.min(endVerseCount, value || 1));
+        setEndVerse(clamped);
+        if (startChapter === endChapter && clamped < startVerse) {
+            setStartVerse(clamped);
+        }
+    };
 
     const triggerClass =
-        "min-w-[140px] font-[var(--font-arabic)] bg-surface/80 border-border focus-visible:ring-gold/50 focus-visible:border-gold h-9";
+        "min-w-[120px] font-[var(--font-arabic)] bg-surface/80 border-border focus-visible:ring-gold/50 focus-visible:border-gold h-9 text-sm";
     const inputClass =
-        "w-20 text-center font-[var(--font-arabic)] bg-surface/80 border-border focus-visible:ring-gold/50 focus-visible:border-gold h-9 spinner-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+        "w-16 text-center font-[var(--font-arabic)] bg-surface/80 border-border focus-visible:ring-gold/50 focus-visible:border-gold h-9 spinner-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
     return (
         <div className="sticky top-0 z-20 bg-surface/90 backdrop-blur-xl border-b border-border/50 px-4 py-3" dir="ltr">
-            <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-nowrap">
-                {/* Left: mic, skip (when session started), divider */}
+            <div className="max-w-5xl mx-auto flex items-center justify-between gap-4 flex-nowrap">
                 <div className="flex items-center gap-3 shrink-0">
                     <button
                         onClick={toggleRecording}
@@ -223,15 +278,14 @@ export function SessionSetup() {
                     </Tooltip>
                 </div>
 
-                {/* Right: chapter, start verse, end verse (order: chapter first, then من, then إلى) */}
-                <div className="flex items-center gap-4 flex-row-reverse">
+                <div className="flex items-center gap-3 flex-row-reverse">
                     <div className="flex items-center gap-2 flex-row-reverse">
-                        <Label className="text-xs text-text-secondary whitespace-nowrap">السورة</Label>
-                        <Select value={String(surah)} onValueChange={(v) => setSurah(Number(v))}>
+                        <Label className="text-xs text-text-secondary whitespace-nowrap">من</Label>
+                        <Select value={String(startChapter)} onValueChange={handleStartChapterChange}>
                             <SelectTrigger className={triggerClass} dir="rtl" disabled={isSessionActive}>
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent dir="rtl" className="font-[var(--font-arabic)] bg-surface-elevated border-border text-text-primary shadow-lg backdrop-blur-sm text-right">
+                            <SelectContent dir="rtl" className="font-[var(--font-arabic)] bg-surface-elevated border-border text-text-primary shadow-lg backdrop-blur-sm text-right max-h-[300px]">
                                 {chapters.map((ch) => (
                                     <SelectItem key={ch.number} value={String(ch.number)} className="font-[var(--font-arabic)]">
                                         {ch.number}. {SURAH_NAMES[ch.number] || ch.name}
@@ -239,29 +293,39 @@ export function SessionSetup() {
                                 ))}
                             </SelectContent>
                         </Select>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-row-reverse">
-                        <Label className="text-xs text-text-secondary whitespace-nowrap">من</Label>
                         <Input
                             type="number"
                             min={1}
-                            max={verseCount}
-                            value={startAyah}
-                            onChange={(e) => setStartAyah(Math.max(1, Math.min(verseCount, Number(e.target.value) || 1)))}
+                            max={startVerseCount}
+                            value={startVerse}
+                            onChange={(e) => handleStartVerseChange(Number(e.target.value))}
                             className={inputClass}
                             disabled={isSessionActive}
                         />
                     </div>
 
+                    <span className="text-text-muted text-sm">—</span>
+
                     <div className="flex items-center gap-2 flex-row-reverse">
                         <Label className="text-xs text-text-secondary whitespace-nowrap">إلى</Label>
+                        <Select value={String(endChapter)} onValueChange={handleEndChapterChange}>
+                            <SelectTrigger className={triggerClass} dir="rtl" disabled={isSessionActive}>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent dir="rtl" className="font-[var(--font-arabic)] bg-surface-elevated border-border text-text-primary shadow-lg backdrop-blur-sm text-right max-h-[300px]">
+                                {chapters.map((ch) => (
+                                    <SelectItem key={ch.number} value={String(ch.number)} className="font-[var(--font-arabic)]">
+                                        {ch.number}. {SURAH_NAMES[ch.number] || ch.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <Input
                             type="number"
-                            min={startAyah}
-                            max={verseCount}
-                            value={endAyah}
-                            onChange={(e) => setEndAyah(Math.max(startAyah, Math.min(verseCount, Number(e.target.value) || endAyah)))}
+                            min={startChapter === endChapter ? startVerse : 1}
+                            max={endVerseCount}
+                            value={endVerse}
+                            onChange={(e) => handleEndVerseChange(Number(e.target.value))}
                             className={inputClass}
                             disabled={isSessionActive}
                         />

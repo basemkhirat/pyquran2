@@ -69,6 +69,7 @@ Sent when the server identifies which verse the user started reciting from (star
 
 ```typescript
 {
+  chapter_number: number; // Surah number where the verse was detected
   verse_number: number;   // Ayah number that was detected
   word_index: number;     // Index into the session word list where that verse starts
   score: number;          // Confidence score (0–1)
@@ -81,7 +82,8 @@ Sent when the server identifies which verse the user started reciting from (star
 
 ```javascript [JavaScript]
 socket.on("verse_detected", (data) => {
-  const { verse_number, word_index, score } = data;
+  const { chapter_number, verse_number, word_index, score } = data;
+  console.log(`Detected ${chapter_number}:${verse_number} with score ${score}`);
   setCurrentWordIndex(word_index);  // Sync UI to detected verse start
 });
 ```
@@ -89,7 +91,10 @@ socket.on("verse_detected", (data) => {
 ```swift [Swift]
 socket.on("verse_detected") { data, ack in
     guard let dict = data.first as? [String: Any],
+          let chapterNumber = dict["chapter_number"] as? Int,
+          let verseNumber = dict["verse_number"] as? Int,
           let wordIndex = dict["word_index"] as? Int else { return }
+    print("Detected \(chapterNumber):\(verseNumber)")
     setCurrentWordIndex(wordIndex)
 }
 ```
@@ -97,14 +102,20 @@ socket.on("verse_detected") { data, ack in
 ```kotlin [Kotlin]
 socket.on("verse_detected") { args ->
     val data = args[0] as JSONObject
+    val chapterNumber = data.getInt("chapter_number")
+    val verseNumber = data.getInt("verse_number")
     val wordIndex = data.getInt("word_index")
+    println("Detected $chapterNumber:$verseNumber")
     setCurrentWordIndex(wordIndex)
 }
 ```
 
 ```dart [Dart]
 socket.on('verse_detected', (data) {
+  final chapterNumber = data['chapter_number'];
+  final verseNumber = data['verse_number'];
   final wordIndex = data['word_index'];
+  print('Detected $chapterNumber:$verseNumber');
   setCurrentWordIndex(wordIndex);
 });
 ```
@@ -428,7 +439,7 @@ socket.on('session_error', (data) {
 |-------|---------|----------------|
 | `session_started` | `{}` | Start audio recording |
 | `word_result` | Word details + status | Update UI, track progress |
-| `verse_detected` | verse_number, word_index, score | Set current position to word_index |
+| `verse_detected` | chapter_number, verse_number, word_index, score | Set current position to word_index |
 | `verse_detection_failed` | `{}` | Optional: show "try again" message |
 | `session_stopped` | `{}` | Stop recording |
 | `session_error` | `{ reason }` | Stop recording, show error |
@@ -446,6 +457,7 @@ function setupSocketListeners(socket) {
   });
 
   socket.on("verse_detected", (data) => {
+    console.log(`Detected ${data.chapter_number}:${data.verse_number}`);
     setCurrentWordIndex(data.word_index);
   });
 

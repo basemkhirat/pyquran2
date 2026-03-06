@@ -3,15 +3,22 @@ import type { Word, WordResult } from "../types";
 
 export type SessionStatus = "idle" | "recording" | "processing" | "complete";
 
+interface SelectedRange {
+    startChapter: number;
+    startVerse: number;
+    endChapter: number;
+    endVerse: number;
+}
+
 interface SessionState {
-    selectedRange: { surah: number; startAyah: number; endAyah: number } | null;
+    selectedRange: SelectedRange | null;
     words: Word[];
     currentWordIndex: number;
     wordResults: Record<number, WordResult>;
     sessionStatus: SessionStatus;
     allowMistakes: boolean;
 
-    setSelectedRange: (range: { surah: number; startAyah: number; endAyah: number }) => void;
+    setSelectedRange: (range: SelectedRange) => void;
     setWords: (words: Word[]) => void;
     setCurrentWordIndex: (index: number) => void;
     addWordResult: (index: number, result: WordResult) => void;

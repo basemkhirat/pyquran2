@@ -4,7 +4,7 @@ These are events your app emits (sends) to the server.
 
 ## 1. start_session
 
-Starts a new recognition session for a specific chapter and verse range.
+Starts a new recognition session for a specific verse range (can span multiple chapters).
 
 ### When to Emit
 
@@ -14,10 +14,11 @@ After connecting to the socket, when the user is ready to begin reciting.
 
 ```typescript
 {
-  chapter_number: number;      // Surah number (1-114)
-  start_verse_number: number;  // Starting ayah number
-  end_verse_number: number;    // Ending ayah number
-  allow_mistakes?: boolean;    // Optional: continue to next words even when incorrect (default: false)
+  start_chapter_number: number;  // Starting surah number (1-114)
+  start_verse_number: number;    // Starting ayah number in start chapter
+  end_chapter_number: number;    // Ending surah number (1-114)
+  end_verse_number: number;      // Ending ayah number in end chapter
+  allow_mistakes?: boolean;      // Optional: continue to next words even when incorrect (default: false)
 }
 ```
 
@@ -27,17 +28,19 @@ After connecting to the socket, when the user is ready to begin reciting.
 
 ```javascript [JavaScript]
 socket.emit("start_session", {
-  chapter_number: 1,        // Al-Fatiha
-  start_verse_number: 1,    // First verse
-  end_verse_number: 7,      // Last verse
-  allow_mistakes: false     // Optional: continue despite incorrect words
+  start_chapter_number: 1,    // Al-Fatiha
+  start_verse_number: 1,      // First verse
+  end_chapter_number: 1,      // Same chapter (or different for cross-chapter)
+  end_verse_number: 7,        // Last verse
+  allow_mistakes: false       // Optional: continue despite incorrect words
 });
 ```
 
 ```swift [Swift]
 socket.emit("start_session", [
-    "chapter_number": 1,
+    "start_chapter_number": 1,
     "start_verse_number": 1,
+    "end_chapter_number": 1,
     "end_verse_number": 7,
     "allow_mistakes": false  // Optional
 ])
@@ -45,8 +48,9 @@ socket.emit("start_session", [
 
 ```kotlin [Kotlin]
 val payload = JSONObject().apply {
-    put("chapter_number", 1)
+    put("start_chapter_number", 1)
     put("start_verse_number", 1)
+    put("end_chapter_number", 1)
     put("end_verse_number", 7)
     put("allow_mistakes", false)  // Optional
 }
@@ -55,8 +59,9 @@ socket.emit("start_session", payload)
 
 ```dart [Dart]
 socket.emit('start_session', {
-  'chapter_number': 1,
+  'start_chapter_number': 1,
   'start_verse_number': 1,
+  'end_chapter_number': 1,
   'end_verse_number': 7,
   'allow_mistakes': false,  // Optional
 });
@@ -73,6 +78,7 @@ The server responds with [`session_started`](/events/server-events#session-start
 - Wait for `session_started` before streaming audio
 - Only one session can be active per connection at a time
 - The server loads the words for the specified range and prepares the recognition pipeline
+- Ranges can span multiple chapters (e.g., from Al-Fatiha verse 1 to Al-Baqarah verse 5)
 - When `allow_mistakes` is `true`, the session advances to the next word even when a word is marked incorrect (default behavior requires correct pronunciation before advancing)
 
 

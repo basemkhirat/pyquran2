@@ -321,23 +321,24 @@ class RecitationSession {
         socketManager.disconnect()
     }
     
-    func startSession(chapter: Int, startVerse: Int, endVerse: Int) {
+    func startSession(startChapter: Int, startVerse: Int, endChapter: Int, endVerse: Int) {
         let socket = socketManager.socket
         
         if !socket.status.active {
             socket.once(clientEvent: .connect) { [weak self] _, _ in
-                self?.emitStartSession(chapter: chapter, startVerse: startVerse, endVerse: endVerse)
+                self?.emitStartSession(startChapter: startChapter, startVerse: startVerse, endChapter: endChapter, endVerse: endVerse)
             }
             socket.connect()
         } else {
-            emitStartSession(chapter: chapter, startVerse: startVerse, endVerse: endVerse)
+            emitStartSession(startChapter: startChapter, startVerse: startVerse, endChapter: endChapter, endVerse: endVerse)
         }
     }
     
-    private func emitStartSession(chapter: Int, startVerse: Int, endVerse: Int) {
+    private func emitStartSession(startChapter: Int, startVerse: Int, endChapter: Int, endVerse: Int) {
         socketManager.socket.emit("start_session", [
-            "chapter_number": chapter,
+            "start_chapter_number": startChapter,
             "start_verse_number": startVerse,
+            "end_chapter_number": endChapter,
             "end_verse_number": endVerse
         ])
     }
@@ -382,7 +383,7 @@ class RecitationViewController: UIViewController {
     
     @IBAction func recordButtonTapped(_ sender: UIButton) {
         // Start session for Al-Fatiha (chapter 1, verses 1-7)
-        session.startSession(chapter: 1, startVerse: 1, endVerse: 7)
+        session.startSession(startChapter: 1, startVerse: 1, endChapter: 1, endVerse: 7)
         recordButton.isEnabled = false
     }
     
@@ -451,7 +452,7 @@ struct RecitationView: View {
             
             HStack(spacing: 40) {
                 Button("Start") {
-                    viewModel.startSession(chapter: 1, startVerse: 1, endVerse: 7)
+                    viewModel.startSession(startChapter: 1, startVerse: 1, endChapter: 1, endVerse: 7)
                 }
                 .disabled(viewModel.isRecording)
                 
@@ -512,9 +513,9 @@ class RecitationViewModel: ObservableObject {
         session.disconnect()
     }
     
-    func startSession(chapter: Int, startVerse: Int, endVerse: Int) {
+    func startSession(startChapter: Int, startVerse: Int, endChapter: Int, endVerse: Int) {
         wordResults = []
-        session.startSession(chapter: chapter, startVerse: startVerse, endVerse: endVerse)
+        session.startSession(startChapter: startChapter, startVerse: startVerse, endChapter: endChapter, endVerse: endVerse)
     }
     
     func stopSession() {

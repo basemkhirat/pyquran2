@@ -63,11 +63,12 @@ def api_chapters():
 
 @app.get("/api/words")
 def api_words(
-    surah: int = Query(...),
-    start_ayah: int = Query(...),
-    end_ayah: int = Query(...),
+    start_chapter: int = Query(...),
+    start_verse: int = Query(...),
+    end_chapter: int = Query(...),
+    end_verse: int = Query(...),
 ):
-    return quran_data.get_words(surah, start_ayah, end_ayah)
+    return quran_data.get_words_range(start_chapter, start_verse, end_chapter, end_verse)
 
 
 @app.get("/api/verse-count")
@@ -112,12 +113,13 @@ async def disconnect(sid):
 
 @sio.event
 async def start_session(sid, data):
-    """Initialize a recitation session with selected verse range."""
-    surah = data["chapter_number"]
-    start_ayah = data["start_verse_number"]
-    end_ayah = data["end_verse_number"]
+    """Initialize a recitation session with selected verse range (may span chapters)."""
+    start_chapter = data["start_chapter_number"]
+    start_verse = data["start_verse_number"]
+    end_chapter = data["end_chapter_number"]
+    end_verse = data["end_verse_number"]
 
-    words = quran_data.get_words(surah, start_ayah, end_ayah)
+    words = quran_data.get_words_range(start_chapter, start_verse, end_chapter, end_verse)
     session = sessions.get(sid)
     if not session:
         await sio.emit("session_error", {"reason": "not_connected"}, room=sid)
@@ -131,8 +133,10 @@ async def start_session(sid, data):
     session["vad"].reset()
     session["allow_mistakes"] = data.get("allow_mistakes", False)
     session["last_interim_index"] = None
-    session["start_ayah"] = start_ayah
-    session["end_ayah"] = end_ayah
+    session["start_chapter"] = start_chapter
+    session["start_verse"] = start_verse
+    session["end_chapter"] = end_chapter
+    session["end_verse"] = end_verse
 
     # When acoustic scoring is enabled, start in detection phase so the user
     # can begin reciting from any verse in the range.
@@ -148,7 +152,10 @@ async def start_session(sid, data):
         session["streaming_task"].cancel()
         session["streaming_task"] = None
 
-    logger.info(f"Session started for {sid}: Surah {surah}, Ayah {start_ayah}-{end_ayah}, {len(words)} words (phase={session['phase']})")
+    logger.info(
+        f"Session started for {sid}: {start_chapter}:{start_verse} - {end_chapter}:{end_verse}, "
+        f"{len(words)} words (phase={session['phase']})"
+    )
     await sio.emit("session_started", {"phase": session["phase"]}, room=sid)
 
     if not config.streaming_enabled:
@@ -345,18 +352,17 @@ async def _detect_verse(sid: str, audio: np.ndarray, is_final: bool = False):
             verse_detection.detect_start_verse,
             audio,
             session["words"],
-            session["start_ayah"],
-            session["end_ayah"],
         )
 
         if result is not None:
-            ayah, word_index, score = result
+            chapter, ayah, word_index, score = result
             session["current_index"] = word_index
             session["phase"] = "reciting"
             logger.info(
-                f"Verse detected for [{sid}]: ayah {ayah}, word_index {word_index}, score {score:.3f}"
+                f"Verse detected for [{sid}]: {chapter}:{ayah}, word_index {word_index}, score {score:.3f}"
             )
             await sio.emit("verse_detected", {
+                "chapter_number": chapter,
                 "verse_number": ayah,
                 "word_index": word_index,
                 "score": round(score, 3),
