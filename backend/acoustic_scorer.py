@@ -9,7 +9,7 @@ Optimizations over baseline:
 import logging
 import os
 import re
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from jiwer import cer
@@ -155,7 +155,7 @@ def _acoustic_score_single(expected: str, decoded: str) -> float:
     return max(0.0, 1.0 - err)
 
 
-def get_acoustic_scores(audio: np.ndarray, previous_words: List[str], expected_words: List[str]) -> List[float]:
+def get_acoustic_scores(audio: np.ndarray, previous_words: List[str], expected_words: List[str]) -> Tuple[List[float], int]:
     """Run wav2vec2 once on the chunk, decode, then best-match align to expected words.
 
     For each expected word, finds the decoded word with the best CER score
@@ -165,15 +165,21 @@ def get_acoustic_scores(audio: np.ndarray, previous_words: List[str], expected_w
     It also accepts `previous_words` (words already confirmed in the current audio buffer)
     so that it can consume the matching audio decoded parts and prevent later expected words
     from incorrectly matching earlier audio parts.
+
+    Returns:
+        (scores, n_decoded) where scores is a list of floats for each expected word
+        and n_decoded is the number of words the model actually decoded from the audio
+        (before filtering by previous_words).
     """
     if not expected_words:
-        return []
+        return [], 0
         
     decoded_text = _decode_audio(audio)
     decoded_parts = decoded_text.split()
+    n_decoded = len(decoded_parts)
 
     if not decoded_parts:
-        return [0.5] * len(expected_words)
+        return [0.5] * len(expected_words), 0
 
     all_expected = previous_words + expected_words
     scores: List[float] = []
@@ -206,4 +212,4 @@ def get_acoustic_scores(audio: np.ndarray, previous_words: List[str], expected_w
             display_arabic(expected), display_arabic(best_word), best_score,
         )
         
-    return scores[len(previous_words):]
+    return scores[len(previous_words):], n_decoded

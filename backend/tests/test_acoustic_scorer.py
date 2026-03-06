@@ -32,8 +32,9 @@ class TestGetAcousticScores:
             lambda _: "بسم الله",
         )
         audio = np.zeros(1600, dtype=np.float32)  # 0.1s at 16kHz
-        scores = get_acoustic_scores(audio, ["بِسْمِ", "اللَّهِ"])
+        scores, n_decoded = get_acoustic_scores(audio, [], ["بِسْمِ", "اللَّهِ"])
         assert len(scores) == 2
+        assert n_decoded == 2
         for s in scores:
             assert isinstance(s, float)
             assert 0.0 <= s <= 1.0
@@ -45,8 +46,9 @@ class TestGetAcousticScores:
             lambda _: "الله بسم",  # reversed order
         )
         audio = np.zeros(1600, dtype=np.float32)
-        scores = get_acoustic_scores(audio, ["بِسْمِ", "اللَّهِ"])
+        scores, n_decoded = get_acoustic_scores(audio, [], ["بِسْمِ", "اللَّهِ"])
         assert len(scores) == 2
+        assert n_decoded == 2
         # Both should score well despite reversed order
         assert scores[0] > 0.7  # بسم matches بِسْمِ
         assert scores[1] > 0.7  # الله matches اللَّهِ
@@ -57,8 +59,9 @@ class TestGetAcousticScores:
             lambda _: "",
         )
         audio = np.zeros(1600, dtype=np.float32)
-        scores = get_acoustic_scores(audio, ["واحد", "اثنان"])
+        scores, n_decoded = get_acoustic_scores(audio, [], ["واحد", "اثنان"])
         assert len(scores) == 2
+        assert n_decoded == 0
         assert scores[0] == 0.5
         assert scores[1] == 0.5
 
@@ -69,8 +72,9 @@ class TestGetAcousticScores:
             lambda _: "بسم الله الرحمن الرحيم",
         )
         audio = np.zeros(1600, dtype=np.float32)
-        scores = get_acoustic_scores(audio, ["بِسْمِ"])
+        scores, n_decoded = get_acoustic_scores(audio, [], ["بِسْمِ"])
         assert len(scores) == 1
+        assert n_decoded == 4
         assert scores[0] > 0.7
 
     def test_empty_expected_returns_empty(self, monkeypatch):
@@ -79,4 +83,6 @@ class TestGetAcousticScores:
             lambda _: "بسم",
         )
         audio = np.zeros(1600, dtype=np.float32)
-        assert get_acoustic_scores(audio, []) == []
+        scores, n_decoded = get_acoustic_scores(audio, [], [])
+        assert scores == []
+        assert n_decoded == 0

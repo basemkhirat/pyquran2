@@ -453,13 +453,14 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     
     text = ""
     acoustic_scores_full: list[float] = []
+    n_decoded_words = 0
     
     if config.enable_text_score and config.enable_acoustic_score and expected_chunk_max:
         whisper_task = asyncio.to_thread(transcriber.transcribe, audio)
         wav2vec_task = asyncio.to_thread(
             acoustic_scorer.get_acoustic_scores, audio, previous_expected_chunk, expected_chunk_max
         )
-        text, acoustic_scores_full = await asyncio.gather(whisper_task, wav2vec_task)
+        text, (acoustic_scores_full, n_decoded_words) = await asyncio.gather(whisper_task, wav2vec_task)
         text = text.strip()
         logger.info("  Whisper transcription: '%s'", display_arabic(text))
         logger.info("  Whisper + wav2vec (parallel) took %.2fs", time.time() - t0)
@@ -469,14 +470,16 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         logger.info("  Whisper transcription: '%s'", display_arabic(text))
         logger.info("  Transcription took %.2fs", time.time() - t0)
     elif config.enable_acoustic_score and expected_chunk_max:
-        acoustic_scores_full = await asyncio.to_thread(
+        acoustic_scores_full, n_decoded_words = await asyncio.to_thread(
             acoustic_scorer.get_acoustic_scores, audio, previous_expected_chunk, expected_chunk_max
         )
-        logger.info("  Wav2vec (acoustic only) took %.2fs", time.time() - t0)
+        logger.info("  Wav2vec (acoustic only, %d decoded words) took %.2fs", n_decoded_words, time.time() - t0)
 
-    # When text scoring is disabled, use expected words as transcribed words for acoustic scoring
+    # When text scoring is disabled, use expected words as transcribed words for acoustic scoring.
+    # Limit to n_decoded_words (minus previous_words) so we only process words the user actually spoke.
     if not config.enable_text_score and config.enable_acoustic_score:
-        transcribed_words = [words[idx + i]["emlaey_text"] for i in range(min(remaining, len(acoustic_scores_full)))]
+        n_new_decoded = max(0, n_decoded_words - len(previous_expected_chunk))
+        transcribed_words = [words[idx + i]["emlaey_text"] for i in range(min(remaining, n_new_decoded))]
     elif not text:
         return
     else:
