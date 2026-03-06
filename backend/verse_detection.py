@@ -12,7 +12,13 @@ from jiwer import cer
 
 from backend.config import config
 from backend.acoustic_scorer import _decode_audio, _normalize_text
+from backend.scorer import strip_diacritics
 from backend.terminal_arabic import display_arabic
+
+
+def _normalize_for_verse_match(text: str) -> str:
+    """Normalize for start-verse comparison: strip tashkeel then out-of-vocab chars."""
+    return _normalize_text(strip_diacritics(text))
 
 logger = logging.getLogger(__name__)
 
@@ -114,17 +120,17 @@ def detect_start_verse(
     best_index: int = 0
 
     for (surah, ayah), (candidate_text, word_index) in candidates.items():
-        candidate_norm = _normalize_text(candidate_text)
+        candidate_norm = _normalize_for_verse_match(candidate_text)
         if not candidate_norm:
             continue
 
         # Use window size = candidate word count so 1-word verses (e.g. "الم") match
-        # when user says only that word; compare like-to-like.
+        # when user says only that word; compare like-to-like (base letters only, no tashkeel).
         candidate_len = len(candidate_text.split())
         candidate_best = 0.0
         for start in range(0, len(decoded_words) - candidate_len + 1):
             window = decoded_words[start : start + candidate_len]
-            decoded_slice_norm = _normalize_text(" ".join(window))
+            decoded_slice_norm = _normalize_for_verse_match(" ".join(window))
             if not decoded_slice_norm:
                 continue
             error_rate = cer(candidate_norm, decoded_slice_norm)
