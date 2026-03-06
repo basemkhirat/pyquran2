@@ -5,7 +5,7 @@ import { useSessionStore } from "./stores/session";
 import { socket } from "./lib/socket";
 
 export default function App() {
-  const { sessionStatus, addWordResult, words } = useSessionStore();
+  const { sessionStatus, addWordResult, words, setCurrentWordIndex } = useSessionStore();
 
   // Socket event listeners
   useEffect(() => {
@@ -33,16 +33,30 @@ export default function App() {
       console.error("Session error:", data?.reason);
     };
 
+    const onVerseDetected = (data: any) => {
+      if (typeof data.word_index === "number") {
+        setCurrentWordIndex(data.word_index);
+      }
+    };
+
+    const onVerseDetectionFailed = () => {
+      // Detection failed — system keeps listening for next utterance
+    };
+
     socket.on("word_result", onWordResult);
     socket.on("session_stopped", onSessionComplete);
     socket.on("timeout", onTimeout);
     socket.on("session_error", onSessionError);
+    socket.on("verse_detected", onVerseDetected);
+    socket.on("verse_detection_failed", onVerseDetectionFailed);
 
     return () => {
       socket.off("word_result", onWordResult);
       socket.off("session_stopped", onSessionComplete);
       socket.off("timeout", onTimeout);
       socket.off("session_error", onSessionError);
+      socket.off("verse_detected", onVerseDetected);
+      socket.off("verse_detection_failed", onVerseDetectionFailed);
     };
   }, [words, addWordResult]);
 

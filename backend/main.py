@@ -19,6 +19,7 @@ if config.enable_text_score:
     from backend import transcriber
 if config.enable_acoustic_score:
     from backend import acoustic_scorer
+    from backend import verse_detection
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -130,6 +131,15 @@ async def start_session(sid, data):
     session["vad"].reset()
     session["allow_mistakes"] = data.get("allow_mistakes", False)
     session["last_interim_index"] = None
+    session["start_ayah"] = start_ayah
+    session["end_ayah"] = end_ayah
+
+    # When acoustic scoring is enabled, start in detection phase so the user
+    # can begin reciting from any verse in the range.
+    if config.enable_acoustic_score:
+        session["phase"] = "detecting"
+    else:
+        session["phase"] = "reciting"
 
     # Cancel any existing tasks
     if session.get("timeout_task"):
@@ -138,8 +148,8 @@ async def start_session(sid, data):
         session["streaming_task"].cancel()
         session["streaming_task"] = None
 
-    logger.info(f"Session started for {sid}: Surah {surah}, Ayah {start_ayah}-{end_ayah}, {len(words)} words")
-    await sio.emit("session_started", {}, room=sid)
+    logger.info(f"Session started for {sid}: Surah {surah}, Ayah {start_ayah}-{end_ayah}, {len(words)} words (phase={session['phase']})")
+    await sio.emit("session_started", {"phase": session["phase"]}, room=sid)
 
     if not config.streaming_enabled:
         # Legacy mode: start silence timeout watcher
@@ -285,6 +295,20 @@ async def _streaming_transcription_loop(sid: str):
                 else:
                     continue
 
+            # --- Detection phase: match verse start instead of scoring words ---
+            if session.get("phase") == "detecting":
+                await _detect_verse(sid, audio, is_final=speech_ended)
+                if speech_ended:
+                    session["vad"].reset()
+                    session["streaming_task"] = None
+                    # If still detecting, restart the loop by returning
+                    # (the next audio_chunk will spawn a new streaming task)
+                    if session.get("phase") == "detecting":
+                        return
+                    # If detection succeeded, fall through to continue the loop
+                    # in reciting mode with fresh VAD state
+                continue
+
             await _process_speech(sid, audio, is_final=speech_ended)
 
             if speech_ended:
@@ -298,6 +322,51 @@ async def _streaming_transcription_loop(sid: str):
         pass
     except Exception:
         logger.exception(f"Streaming transcription error for [{sid}]")
+
+
+# ===================== Verse Detection =====================
+
+async def _detect_verse(sid: str, audio: np.ndarray, is_final: bool = False):
+    """Run verse detection on the audio and transition to reciting phase if matched.
+
+    In streaming mode, emit verse_detection_failed only when is_final (speech ended)
+    and no match was found, so the client is not spammed every interval.
+    """
+    session = sessions.get(sid)
+    if not session:
+        return
+
+    if session.get("transcribing"):
+        return
+    session["transcribing"] = True
+
+    try:
+        result = await asyncio.to_thread(
+            verse_detection.detect_start_verse,
+            audio,
+            session["words"],
+            session["start_ayah"],
+            session["end_ayah"],
+        )
+
+        if result is not None:
+            ayah, word_index, score = result
+            session["current_index"] = word_index
+            session["phase"] = "reciting"
+            logger.info(
+                f"Verse detected for [{sid}]: ayah {ayah}, word_index {word_index}, score {score:.3f}"
+            )
+            await sio.emit("verse_detected", {
+                "verse_number": ayah,
+                "word_index": word_index,
+                "score": round(score, 3),
+            }, room=sid)
+        else:
+            if is_final:
+                logger.info(f"Verse detection failed for [{sid}], waiting for next utterance")
+                await sio.emit("verse_detection_failed", {}, room=sid)
+    finally:
+        session["transcribing"] = False
 
 
 # ===================== Internal Helpers =====================

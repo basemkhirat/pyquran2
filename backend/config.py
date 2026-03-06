@@ -49,6 +49,10 @@ class Config:
     streaming_interval_ms: int = int(os.getenv("STREAMING_INTERVAL_MS", "1500"))
     # Minimum audio buffer (seconds) before first streaming transcription
     streaming_min_audio_sec: float = float(os.getenv("STREAMING_MIN_AUDIO_SEC", "0.8"))
+    # Minimum score (0-1) for verse detection to confirm start verse
+    verse_detection_threshold: float = float(os.getenv("VERSE_DETECTION_THRESHOLD", "0.6"))
+    # Number of words from verse start to use for matching
+    verse_detection_word_count: int = int(os.getenv("VERSE_DETECTION_WORD_COUNT", "2"))
 
     def __post_init__(self) -> None:
         """Resolve relative paths so they work when cwd is not project root (e.g. Modal)."""
