@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import config
 from backend import quran_data, scorer
+from backend.session_store import SessionStore
 from backend.terminal_arabic import display_arabic
 from backend.vad import VADProcessor
 if config.enable_text_score:
@@ -146,11 +147,18 @@ async def start_session(sid, data):
         session["streaming_task"].cancel()
         session["streaming_task"] = None
 
+    # Create a session store for persisting word results
+    store = SessionStore()
+    session["store"] = store
+
     logger.info(
         f"Session started for {sid}: {start_chapter}:{start_verse} - {end_chapter}:{end_verse}, "
-        f"{len(words)} words (phase={session['phase']})"
+        f"{len(words)} words (phase={session['phase']}, uuid={store.session_uuid})"
     )
-    await sio.emit("session_started", {"phase": session["phase"]}, room=sid)
+    await sio.emit("session_started", {
+        "phase": session["phase"],
+        "session_uuid": store.session_uuid,
+    }, room=sid)
 
 
 @sio.event
@@ -202,6 +210,18 @@ async def skip_word(sid, _data=None):
         payload["text_score"] = 0.0
         payload["total_score"] = 0.0
     await sio.emit("word_result", payload, room=sid)
+
+    # Persist skipped word
+    store = session.get("store")
+    if store:
+        store.add_word(
+            chapter_number=word["surah"],
+            verse_number=word["ayah"],
+            word_number=word["word_index"],
+            word_text=word["emlaey_text"],
+            score=0.0,
+            status="skipped",
+        )
 
     session["current_index"] += 1
     session["vad"].reset()
@@ -551,6 +571,19 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         else:
             # Confirmed word: advance index
             await sio.emit("word_result", payload, room=sid)
+
+            # Persist confirmed word to session store
+            store = session.get("store")
+            if store:
+                store.add_word(
+                    chapter_number=word["surah"],
+                    verse_number=word["ayah"],
+                    word_number=word["word_index"],
+                    word_text=word["emlaey_text"],
+                    score=scores["total_score"],
+                    status=status,
+                )
+
             if status == "correct" or session.get("allow_mistakes", False):
                 idx += 1
                 words_processed += 1
