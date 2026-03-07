@@ -117,12 +117,10 @@ class VADProcessor:
                 logger.debug("Streaming: speech started")
                 self._speech_started = True
                 self.is_speaking = True
-                # Promote pre-buffer
+                # Promote pre-buffer (already contains current chunk)
                 self.audio_buffer = list(self._pre_buffer)
                 self._pre_buffer.clear()
                 self._pre_buffer_samples = 0
-                # Re-append current chunk (was added to pre-buffer above)
-                self.audio_buffer.append(audio_float)
             self.is_speaking = True
 
     @property
