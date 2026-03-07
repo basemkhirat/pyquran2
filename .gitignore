@@ -4,6 +4,5 @@ venv/
 node_modules/
 dist/
 .DS_Store
-guff/
 models/
 data/sessions/

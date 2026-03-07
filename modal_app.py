@@ -37,6 +37,9 @@ IMAGE = (
             "dist",
             "*.pyc",
             ".cursor",
+            "data",
+            "models",
+            ".pytest_cache",
         ],
     )
 )

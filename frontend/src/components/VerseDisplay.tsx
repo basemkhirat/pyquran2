@@ -57,7 +57,7 @@ export function VerseDisplay() {
                                     key={`${group.surah}:${group.ayah}:${globalIdx}`}
                                     className={cn(
                                         "relative inline-flex flex-col items-center px-3 py-2 rounded-xl transition-all duration-300",
-                                        dimUnrecited && "opacity-10",
+                                        dimUnrecited && "opacity-0",
                                         !dimUnrecited && !isPast && !isActive && !isInterim && !result && "opacity-40",
                                         isActive && !result && !dimUnrecited && "word-active bg-gold/10 border border-gold/40 opacity-100",
                                         isInterim && "word-interim bg-white/5 border border-white/30 opacity-90",
