@@ -16,8 +16,10 @@ interface SessionState {
     currentWordIndex: number;
     wordResults: Record<number, WordResult>;
     sessionStatus: SessionStatus;
+    hideUnrecitedWords: boolean;
 
     setSelectedRange: (range: SelectedRange) => void;
+    setHideUnrecitedWords: (hide: boolean) => void;
     setWords: (words: Word[]) => void;
     setCurrentWordIndex: (index: number) => void;
     addWordResult: (index: number, result: WordResult) => void;
@@ -35,8 +37,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     currentWordIndex: 0,
     wordResults: {},
     sessionStatus: "idle",
+    hideUnrecitedWords: false,
 
     setSelectedRange: (range) => set({ selectedRange: range }),
+    setHideUnrecitedWords: (hide) => set({ hideUnrecitedWords: hide }),
     setWords: (words) => set({ words, currentWordIndex: 0, wordResults: {} }),
     setCurrentWordIndex: (index) => set({ currentWordIndex: index }),
     addWordResult: (index, result) =>

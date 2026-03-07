@@ -3,7 +3,7 @@ import { useSessionStore } from "../stores/session";
 import { cn } from "../lib/cn";
 
 export function VerseDisplay() {
-    const { words, currentWordIndex, wordResults } = useSessionStore();
+    const { words, currentWordIndex, wordResults, hideUnrecitedWords } = useSessionStore();
     const activeVerseRef = useRef<HTMLDivElement>(null);
 
     // Group words by (surah, ayah) to support cross-chapter ranges
@@ -49,14 +49,17 @@ export function VerseDisplay() {
                             const isActive = globalIdx === currentWordIndex;
                             const isPast = globalIdx < currentWordIndex;
                             const isInterim = result?.is_interim === true;
+                            const notRecitedYet = globalIdx >= currentWordIndex; // current + future
+                            const dimUnrecited = hideUnrecitedWords && notRecitedYet && !isInterim;
 
                             return (
                                 <div
                                     key={`${group.surah}:${group.ayah}:${globalIdx}`}
                                     className={cn(
                                         "relative inline-flex flex-col items-center px-3 py-2 rounded-xl transition-all duration-300",
-                                        !isPast && !isActive && !isInterim && !result && "opacity-40",
-                                        isActive && !result && "word-active bg-gold/10 border border-gold/40 opacity-100",
+                                        dimUnrecited && "opacity-10",
+                                        !dimUnrecited && !isPast && !isActive && !isInterim && !result && "opacity-40",
+                                        isActive && !result && !dimUnrecited && "word-active bg-gold/10 border border-gold/40 opacity-100",
                                         isInterim && "word-interim bg-white/5 border border-white/30 opacity-90",
                                         !isInterim && result?.status === "correct" && "bg-success/10 border border-success/30 opacity-100",
                                         !isInterim && result?.status === "incorrect" && "bg-error/10 border border-error/30 opacity-100",

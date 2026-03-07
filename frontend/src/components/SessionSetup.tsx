@@ -3,7 +3,7 @@ import type { Chapter } from "../types";
 import { useSessionStore } from "../stores/session";
 import { socket } from "../lib/socket";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
-import { Mic, MicOff, SkipForward } from "lucide-react";
+import { Mic, MicOff, SkipForward, Eye, EyeOff } from "lucide-react";
 import { cn } from "../lib/cn";
 import {
     Select,
@@ -72,7 +72,7 @@ export function SessionSetup() {
     const [endVerseCount, setEndVerseCount] = useState(7);
     const initialLoadDone = useRef(false);
 
-    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words } = useSessionStore();
+    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords } = useSessionStore();
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
     const isSessionActive = isRecording;
     const canSkip = isRecording && words.length > 0 && currentWordIndex < words.length;
@@ -255,6 +255,28 @@ export function SessionSetup() {
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="font-[var(--font-arabic)]" dir="rtl">
                                 تخطي الكلمة
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
+                    {words.length > 0 && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    aria-label="Dim unrecited words"
+                                    onClick={() => setHideUnrecitedWords(!hideUnrecitedWords)}
+                                    className={cn(
+                                        "relative w-11 h-11 rounded-full flex items-center justify-center transition-all border",
+                                        hideUnrecitedWords
+                                            ? "border-gold/40 bg-gold/10 text-gold"
+                                            : "border-border bg-surface/80 text-text-secondary hover:bg-surface-hover hover:text-gold hover:border-gold/40",
+                                    )}
+                                >
+                                    {hideUnrecitedWords ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="font-[var(--font-arabic)]" dir="rtl">
+                                تخفيف الكلمات غير المتلوة حتى تلاوتها
                             </TooltipContent>
                         </Tooltip>
                     )}
