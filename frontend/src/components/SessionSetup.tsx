@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Chapter } from "../types";
 import { useSessionStore } from "../stores/session";
-import { socket } from "../lib/socket";
+import { socket, apiUrl } from "../lib/socket";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
 import { Mic, MicOff, SkipForward, Eye, EyeOff } from "lucide-react";
 import { cn } from "../lib/cn";
@@ -109,7 +109,7 @@ export function SessionSetup() {
     };
 
     useEffect(() => {
-        fetch("/api/chapters")
+        fetch(apiUrl("/api/chapters"))
             .then((r) => r.json())
             .then(setChapters)
             .catch(console.error);
@@ -117,7 +117,7 @@ export function SessionSetup() {
 
     useEffect(() => {
         let cancelled = false;
-        fetch(`/api/verse-count?surah=${startChapter}`)
+        fetch(apiUrl(`/api/verse-count?surah=${startChapter}`))
             .then((r) => r.json())
             .then((d) => {
                 if (cancelled) return;
@@ -135,7 +135,7 @@ export function SessionSetup() {
 
     useEffect(() => {
         let cancelled = false;
-        fetch(`/api/verse-count?surah=${endChapter}`)
+        fetch(apiUrl(`/api/verse-count?surah=${endChapter}`))
             .then((r) => r.json())
             .then((d) => {
                 if (cancelled) return;
@@ -159,7 +159,7 @@ export function SessionSetup() {
     useEffect(() => {
         if (!isValidRange()) return;
         let cancelled = false;
-        fetch(`/api/words?start_chapter=${startChapter}&start_verse=${startVerse}&end_chapter=${endChapter}&end_verse=${endVerse}`)
+        fetch(apiUrl(`/api/words?start_chapter=${startChapter}&start_verse=${startVerse}&end_chapter=${endChapter}&end_verse=${endVerse}`))
             .then((r) => r.json())
             .then((words) => {
                 if (cancelled) return;

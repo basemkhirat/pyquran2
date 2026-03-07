@@ -37,7 +37,55 @@ app.add_middleware(
 
 # --- Socket.IO ---
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
-socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
+_inner_socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
+
+# ASGI CORS: reflect Origin when present (required when credentials are sent; * is invalid then).
+def _cors_headers_for_scope(scope):
+    origin = None
+    for k, v in scope.get("headers", []):
+        if k.lower() == b"origin":
+            origin = v.decode("latin-1").strip()
+            break
+    if origin:
+        return [
+            (b"access-control-allow-origin", origin.encode("latin-1")),
+            (b"access-control-allow-credentials", b"true"),
+            (b"access-control-allow-methods", b"GET, POST, PUT, PATCH, DELETE, OPTIONS"),
+            (b"access-control-allow-headers", b"*"),
+        ]
+    return [
+        (b"access-control-allow-origin", b"*"),
+        (b"access-control-allow-methods", b"GET, POST, PUT, PATCH, DELETE, OPTIONS"),
+        (b"access-control-allow-headers", b"*"),
+    ]
+
+
+async def _cors_middleware(scope, receive, send):
+    if scope["type"] != "http":
+        await _inner_socket_app(scope, receive, send)
+        return
+    cors_h = _cors_headers_for_scope(scope)
+    if scope["method"] == "OPTIONS":
+        await send({
+            "type": "http.response.start",
+            "status": 204,
+            "headers": cors_h + [(b"access-control-max-age", b"86400")],
+        })
+        await send({"type": "http.response.body", "body": b""})
+        return
+
+    async def send_with_cors(message):
+        if message["type"] == "http.response.start" and "headers" in message:
+            existing_keys = {h[0].lower() for h in message["headers"]}
+            extra = [h for h in cors_h if h[0].lower() not in existing_keys]
+            if extra:
+                message["headers"] = list(message["headers"]) + extra
+        await send(message)
+
+    await _inner_socket_app(scope, receive, send_with_cors)
+
+
+socket_app = _cors_middleware
 
 # Per-session state
 sessions: Dict[str, Dict[str, Any]] = {}
@@ -77,6 +125,12 @@ async def startup():
 
 
 # ===================== REST Endpoints =====================
+
+@app.get("/")
+def root():
+    """Health check; confirms app is up and CORS works (e.g. for Modal)."""
+    return {"status": "ok", "socket_io_path": "/socket.io"}
+
 
 @app.get("/api/chapters")
 def api_chapters():
