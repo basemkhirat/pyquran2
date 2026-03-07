@@ -1,7 +1,6 @@
 import asyncio
 import os
 import time
-import wave
 import logging
 from typing import Dict, Any
 
@@ -389,20 +388,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     if audio_duration < 0.5:
         logger.info(f"Audio too short ({audio_duration:.2f}s), skipping transcription")
         return
-
-    if config.save_audio_chunks:
-        chunks_dir = os.path.join(os.path.dirname(__file__), "chunks")
-        os.makedirs(chunks_dir, exist_ok=True)
-        ts = time.strftime("%Y%m%d_%H%M%S")
-        label = "final" if is_final else "interim"
-        wav_path = os.path.join(chunks_dir, f"{ts}_{sid[:8]}_w{idx}_{label}.wav")
-        pcm16 = (audio * 32768).astype(np.int16)
-        with wave.open(wav_path, "wb") as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(config.audio_sample_rate)
-            wf.writeframes(pcm16.tobytes())
-        logger.info(f"Saved audio chunk: {wav_path} ({audio_duration:.2f}s)")
 
     current_word = words[idx]
     start_idx = session.get("streaming_start_idx", idx)

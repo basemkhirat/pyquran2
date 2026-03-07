@@ -41,8 +41,6 @@ class Config:
     send_word_result_details: bool = os.getenv("SEND_WORD_RESULT_DETAILS", "false").lower() in ("1", "true", "yes")
     # When set, socket connections must send this value in handshake auth.api_key; when empty, auth is disabled.
     socket_auth_api_key: str = os.getenv("SOCKET_AUTH_API_KEY", "")
-    # When True, save each transcribed audio chunk to backend/chunks/ for testing/debugging.
-    save_audio_chunks: bool = os.getenv("SAVE_AUDIO_CHUNKS", "false").lower() in ("1", "true", "yes")
     # Interval in ms between streaming transcription runs
     streaming_interval_ms: int = int(os.getenv("STREAMING_INTERVAL_MS", "1500"))
     # Minimum audio buffer (seconds) before first streaming transcription
