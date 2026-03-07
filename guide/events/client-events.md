@@ -18,7 +18,6 @@ After connecting to the socket, when the user is ready to begin reciting.
   start_verse_number: number;    // Starting ayah number in start chapter
   end_chapter_number: number;    // Ending surah number (1-114)
   end_verse_number: number;      // Ending ayah number in end chapter
-  allow_mistakes?: boolean;      // Optional: continue to next words even when incorrect (default: false)
 }
 ```
 
@@ -32,7 +31,6 @@ socket.emit("start_session", {
   start_verse_number: 1,      // First verse
   end_chapter_number: 1,      // Same chapter (or different for cross-chapter)
   end_verse_number: 7,        // Last verse
-  allow_mistakes: false       // Optional: continue despite incorrect words
 });
 ```
 
@@ -42,7 +40,6 @@ socket.emit("start_session", [
     "start_verse_number": 1,
     "end_chapter_number": 1,
     "end_verse_number": 7,
-    "allow_mistakes": false  // Optional
 ])
 ```
 
@@ -52,7 +49,6 @@ val payload = JSONObject().apply {
     put("start_verse_number", 1)
     put("end_chapter_number", 1)
     put("end_verse_number", 7)
-    put("allow_mistakes", false)  // Optional
 }
 socket.emit("start_session", payload)
 ```
@@ -63,7 +59,6 @@ socket.emit('start_session', {
   'start_verse_number': 1,
   'end_chapter_number': 1,
   'end_verse_number': 7,
-  'allow_mistakes': false,  // Optional
 });
 ```
 
@@ -79,7 +74,7 @@ The server responds with [`session_started`](/events/server-events#session-start
 - Only one session can be active per connection at a time
 - The server loads the words for the specified range and prepares the recognition pipeline
 - Ranges can span multiple chapters (e.g., from Al-Fatiha verse 1 to Al-Baqarah verse 5)
-- When `allow_mistakes` is `true`, the session advances to the next word even when a word is marked incorrect (default behavior requires correct pronunciation before advancing)
+- Session data persistence (data.json / recording.wav under `data/sessions/{uuid}/`) is controlled by the server config `SAVE_SESSION_DATA`; when enabled, saving runs in a background task and does not block recognition.
 
 
 ## 2. audio_chunk

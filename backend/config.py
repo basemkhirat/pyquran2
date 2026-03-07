@@ -49,6 +49,8 @@ class Config:
     verse_detection_threshold: float = float(os.getenv("VERSE_DETECTION_THRESHOLD", "0.6"))
     # Number of words from verse start to use for matching
     verse_detection_word_count: int = int(os.getenv("VERSE_DETECTION_WORD_COUNT", "3"))
+    # When True, persist data.json and recording.wav to data/sessions/{uuid}/ in background (non-blocking)
+    save_session_data: bool = os.getenv("SAVE_SESSION_DATA", "true").lower() in ("1", "true", "yes")
 
     def __post_init__(self) -> None:
         """Resolve relative paths so they work when cwd is not project root (e.g. Modal)."""

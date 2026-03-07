@@ -1,7 +1,8 @@
 import asyncio
+import logging
 import os
 import time
-import logging
+import uuid
 from typing import Dict, Any
 
 import numpy as np
@@ -40,6 +41,27 @@ socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
 # Per-session state
 sessions: Dict[str, Dict[str, Any]] = {}
+
+# Queue item: ("audio", bytes) | ("word", kwargs) | ("close",)
+_store_done = object()
+
+
+async def _store_writer_loop(store: SessionStore, queue: asyncio.Queue):
+    """Run session store writes in a single background task so I/O never blocks the session."""
+    try:
+        while True:
+            item = await queue.get()
+            if item is _store_done or (isinstance(item, tuple) and item[0] == "close"):
+                store.close_audio()
+                return
+            if item[0] == "audio":
+                await asyncio.to_thread(store.append_audio, item[1])
+            elif item[0] == "word":
+                await asyncio.to_thread(store.add_word, **item[1])
+    except Exception:
+        logger.exception("Session store writer error")
+    finally:
+        store.close_audio()
 
 
 @app.on_event("startup")
@@ -92,7 +114,6 @@ async def connect(sid, environ, auth):
         "current_index": 0,
         "vad": VADProcessor(),
         "transcribing": False,
-        "allow_mistakes": False,
         "streaming_task": None,
         "last_interim_index": None,  # word index of the last interim result
     }
@@ -105,6 +126,11 @@ async def disconnect(sid):
     if session:
         if session.get("streaming_task"):
             session["streaming_task"].cancel()
+        queue = session.get("store_queue")
+        task = session.get("store_task")
+        if queue is not None and task is not None:
+            queue.put_nowait(("close",))
+            await task
 
 
 @sio.event
@@ -128,7 +154,6 @@ async def start_session(sid, data):
     session["current_index"] = 0
     session["vad"].reset()
     session["streaming_start_idx"] = 0
-    session["allow_mistakes"] = data.get("allow_mistakes", False)
     session["last_interim_index"] = None
     session["start_chapter"] = start_chapter
     session["start_verse"] = start_verse
@@ -146,18 +171,31 @@ async def start_session(sid, data):
     if session.get("streaming_task"):
         session["streaming_task"].cancel()
         session["streaming_task"] = None
+    if session.get("store_task"):
+        session.get("store_queue").put_nowait(_store_done)
+        await session["store_task"]
+        session["store_task"] = None
+        session["store_queue"] = None
+        session["store"] = None
 
-    # Create a session store for persisting word results
-    store = SessionStore()
-    session["store"] = store
+    # Session UUID is always generated; optional store persists data when config.save_session_data
+    session_uuid = str(uuid.uuid4())
+    session["store"] = None
+    session["store_queue"] = None
+    session["store_task"] = None
+    if config.save_session_data:
+        store = SessionStore(session_uuid=session_uuid)
+        session["store"] = store
+        queue: asyncio.Queue = asyncio.Queue()
+        session["store_queue"] = queue
+        session["store_task"] = asyncio.create_task(_store_writer_loop(store, queue))
 
     logger.info(
         f"Session started for {sid}: {start_chapter}:{start_verse} - {end_chapter}:{end_verse}, "
-        f"{len(words)} words (phase={session['phase']}, uuid={store.session_uuid})"
+        f"{len(words)} words (phase={session['phase']}, save_session_data={config.save_session_data}, uuid={session_uuid})"
     )
     await sio.emit("session_started", {
-        "phase": session["phase"],
-        "session_uuid": store.session_uuid,
+        "session_uuid": session_uuid,
     }, room=sid)
 
 
@@ -167,6 +205,11 @@ async def audio_chunk(sid, data):
     session = sessions.get(sid)
     if not session or not session["words"]:
         return
+
+    # Append to session recording in background (non-blocking)
+    queue = session.get("store_queue")
+    if queue is not None:
+        queue.put_nowait(("audio", data))
 
     idx = session["current_index"]
     if idx >= len(session["words"]):
@@ -211,17 +254,17 @@ async def skip_word(sid, _data=None):
         payload["total_score"] = 0.0
     await sio.emit("word_result", payload, room=sid)
 
-    # Persist skipped word
-    store = session.get("store")
-    if store:
-        store.add_word(
-            chapter_number=word["surah"],
-            verse_number=word["ayah"],
-            word_number=word["word_index"],
-            word_text=word["emlaey_text"],
-            score=0.0,
-            status="skipped",
-        )
+    # Persist skipped word in background (non-blocking)
+    queue = session.get("store_queue")
+    if queue is not None:
+        queue.put_nowait(("word", {
+            "chapter_number": word["surah"],
+            "verse_number": word["ayah"],
+            "word_number": word["word_index"],
+            "word_text": word["emlaey_text"],
+            "score": 0.0,
+            "status": "skipped",
+        }))
 
     session["current_index"] += 1
     session["vad"].reset()
@@ -247,6 +290,16 @@ async def stop_session(sid, _data=None):
     segment = session["vad"].streaming_flush()
     if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
         await _process_speech(sid, segment, is_final=True)
+
+    # Signal store writer to close and wait for it (so WAV is finalized)
+    queue = session.get("store_queue")
+    task = session.get("store_task")
+    if queue is not None and task is not None:
+        queue.put_nowait(("close",))
+        await task
+        session["store_task"] = None
+        session["store_queue"] = None
+        session["store"] = None
 
     await sio.emit("session_stopped", {}, room=sid)
 
@@ -572,19 +625,19 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             # Confirmed word: advance index
             await sio.emit("word_result", payload, room=sid)
 
-            # Persist confirmed word to session store
-            store = session.get("store")
-            if store:
-                store.add_word(
-                    chapter_number=word["surah"],
-                    verse_number=word["ayah"],
-                    word_number=word["word_index"],
-                    word_text=word["emlaey_text"],
-                    score=scores["total_score"],
-                    status=status,
-                )
+            # Persist confirmed word in background (non-blocking)
+            queue = session.get("store_queue")
+            if queue is not None:
+                queue.put_nowait(("word", {
+                    "chapter_number": word["surah"],
+                    "verse_number": word["ayah"],
+                    "word_number": word["word_index"],
+                    "word_text": word["emlaey_text"],
+                    "score": scores["total_score"],
+                    "status": status,
+                }))
 
-            if status == "correct" or session.get("allow_mistakes", False):
+            if status == "correct":
                 idx += 1
                 words_processed += 1
             else:

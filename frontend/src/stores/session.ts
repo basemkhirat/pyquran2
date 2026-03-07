@@ -16,14 +16,12 @@ interface SessionState {
     currentWordIndex: number;
     wordResults: Record<number, WordResult>;
     sessionStatus: SessionStatus;
-    allowMistakes: boolean;
 
     setSelectedRange: (range: SelectedRange) => void;
     setWords: (words: Word[]) => void;
     setCurrentWordIndex: (index: number) => void;
     addWordResult: (index: number, result: WordResult) => void;
     setSessionStatus: (status: SessionStatus) => void;
-    setAllowMistakes: (allow: boolean) => void;
     advanceWord: () => void;
     reset: () => void;
     getCorrectCount: () => number;
@@ -37,7 +35,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     currentWordIndex: 0,
     wordResults: {},
     sessionStatus: "idle",
-    allowMistakes: false,
 
     setSelectedRange: (range) => set({ selectedRange: range }),
     setWords: (words) => set({ words, currentWordIndex: 0, wordResults: {} }),
@@ -47,7 +44,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             // Interim words: store the result but don't advance the index
             const shouldAdvance =
                 !result.is_interim &&
-                (result.status === "correct" || result.status === "skipped" || state.allowMistakes);
+                (result.status === "correct" || result.status === "skipped");
             return {
                 wordResults: { ...state.wordResults, [index]: result },
                 currentWordIndex: shouldAdvance
@@ -56,7 +53,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             };
         }),
     setSessionStatus: (status) => set({ sessionStatus: status }),
-    setAllowMistakes: (allow) => set({ allowMistakes: allow }),
     advanceWord: () => set((state) => ({ currentWordIndex: state.currentWordIndex + 1 })),
     reset: () =>
         set({
@@ -65,7 +61,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             currentWordIndex: 0,
             wordResults: {},
             sessionStatus: "idle",
-            allowMistakes: false,
         }),
 
     getCorrectCount: () => {

@@ -13,7 +13,9 @@ After emitting `start_session`, when the server has loaded the words and prepare
 ### Payload
 
 ```typescript
-{} // Empty object
+{
+  session_uuid: string;  // Unique session id (folder name under data/sessions/ when saving is enabled)
+}
 ```
 
 ### Example Handler
