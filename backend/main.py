@@ -91,10 +91,8 @@ async def connect(sid, environ, auth):
         "words": [],
         "current_index": 0,
         "vad": VADProcessor(),
-        "timeout_task": None,
         "transcribing": False,
         "allow_mistakes": False,
-        # Streaming mode state
         "streaming_task": None,
         "last_interim_index": None,  # word index of the last interim result
     }
@@ -105,8 +103,6 @@ async def disconnect(sid):
     logger.info(f"Client disconnected: {sid}")
     session = sessions.pop(sid, None)
     if session:
-        if session.get("timeout_task"):
-            session["timeout_task"].cancel()
         if session.get("streaming_task"):
             session["streaming_task"].cancel()
 
@@ -147,8 +143,6 @@ async def start_session(sid, data):
         session["phase"] = "reciting"
 
     # Cancel any existing tasks
-    if session.get("timeout_task"):
-        session["timeout_task"].cancel()
     if session.get("streaming_task"):
         session["streaming_task"].cancel()
         session["streaming_task"] = None
@@ -158,10 +152,6 @@ async def start_session(sid, data):
         f"{len(words)} words (phase={session['phase']})"
     )
     await sio.emit("session_started", {"phase": session["phase"]}, room=sid)
-
-    if not config.streaming_enabled:
-        # Legacy mode: start silence timeout watcher
-        session["timeout_task"] = asyncio.create_task(_silence_watcher(sid))
 
 
 @sio.event
@@ -178,20 +168,13 @@ async def audio_chunk(sid, data):
 
     vad = session["vad"]
 
-    if config.streaming_enabled:
-        # Streaming mode: accumulate audio, start periodic transcription on first speech
-        vad.accumulate_chunk(data)
+    vad.accumulate_chunk(data)
 
-        if vad.speech_started and session.get("streaming_task") is None:
-            logger.info(f"Streaming: starting periodic transcription for [{sid}]")
-            session["streaming_task"] = asyncio.create_task(
-                _streaming_transcription_loop(sid)
-            )
-    else:
-        # Legacy mode: wait for silence-detected segment
-        speech_segment = vad.process_chunk(data)
-        if speech_segment is not None:
-            await _process_speech(sid, speech_segment)
+    if vad.speech_started and session.get("streaming_task") is None:
+        logger.info(f"Streaming: starting periodic transcription for [{sid}]")
+        session["streaming_task"] = asyncio.create_task(
+            _streaming_transcription_loop(sid)
+        )
 
 
 @sio.event
@@ -242,15 +225,9 @@ async def stop_session(sid, _data=None):
         session["streaming_task"].cancel()
         session["streaming_task"] = None
 
-    if config.streaming_enabled:
-        # Final transcription on accumulated audio
-        segment = session["vad"].streaming_flush()
-        if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
-            await _process_speech(sid, segment, is_final=True)
-    else:
-        segment = session["vad"].flush()
-        if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
-            await _process_speech(sid, segment)
+    segment = session["vad"].streaming_flush()
+    if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
+        await _process_speech(sid, segment, is_final=True)
 
     await sio.emit("session_stopped", {}, room=sid)
 
@@ -413,10 +390,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         logger.info(f"Audio too short ({audio_duration:.2f}s), skipping transcription")
         return
 
-    # In legacy mode, reset VAD immediately so new audio starts fresh
-    if not config.streaming_enabled:
-        session["vad"].reset()
-
     if config.save_audio_chunks:
         chunks_dir = os.path.join(os.path.dirname(__file__), "chunks")
         os.makedirs(chunks_dir, exist_ok=True)
@@ -524,8 +497,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         n_words_chunk = min(remaining, 20)
         acoustic_scores = acoustic_scores_full[:n_words_chunk]
 
-    # Determine which words are interim vs confirmed in streaming mode
-    streaming = config.streaming_enabled and not is_final
+    streaming = not is_final
     n_transcribed = len(transcribed_words)
 
     # Score each transcribed word against expected sequence
@@ -608,28 +580,3 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             session["streaming_task"].cancel()
             session["streaming_task"] = None
         await sio.emit("session_stopped", {}, room=sid)
-
-
-async def _silence_watcher(sid: str):
-    """Background task to detect prolonged silence and emit timeout (legacy mode)."""
-    try:
-        while True:
-            await asyncio.sleep(1.0)
-            session = sessions.get(sid)
-            if not session or session["current_index"] >= len(session["words"]):
-                return
-
-            vad = session["vad"]
-            if vad.last_speech_time > 0 and not vad.is_speaking:
-                elapsed = time.time() - vad.last_speech_time
-                if elapsed > (config.silence_timeout_ms / 1000.0):
-                    # Flush any remaining audio
-                    segment = vad.flush()
-                    if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
-                        await _process_speech(sid, segment)
-                    else:
-                        await sio.emit("timeout", {
-                            "word_index": session["current_index"],
-                        }, room=sid)
-    except asyncio.CancelledError:
-        pass
