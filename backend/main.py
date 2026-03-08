@@ -126,10 +126,13 @@ async def startup():
 
 # ===================== REST Endpoints =====================
 
+PROJECT_NAME = "Quran Voice Recognition API"
+
+
 @app.get("/")
 def root():
     """Health check; confirms app is up and CORS works (e.g. for Modal)."""
-    return {"status": "ok", "socket_io_path": "/socket.io"}
+    return {"name": PROJECT_NAME, "status": "ok", "socket_io_path": "/socket.io"}
 
 
 @app.get("/api/chapters")
