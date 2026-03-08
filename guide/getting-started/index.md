@@ -16,7 +16,6 @@ Before integrating, ensure you have:
 |----------|---------|--------------|
 | iOS | socket.io-client-swift | `pod 'Socket.IO-Client-Swift'` |
 | Android | socket.io-client-java | `implementation 'io.socket:socket.io-client:2.1.0'` |
-| Flutter | socket_io_client | `flutter pub add socket_io_client` |
 
 ## Server Configuration
 
@@ -29,7 +28,7 @@ Before integrating, ensure you have:
 
 ## Connection Setup
 
-The server uses Socket.IO, which provides automatic reconnection, event-based communication, and binary support. Always use the `websocket` transport and include the API key (authentication is required).
+The server uses Socket.IO, event-based communication, and binary audio support. Always use the `websocket` transport and include the API key (authentication is required).
 
 ::: code-group
 
@@ -73,20 +72,6 @@ val options = IO.Options().apply {
 
 val socket: Socket = IO.socket("https://websocket.zekr.online", options)
 socket.connect()
-```
-
-```dart [Dart]
-import 'package:socket_io_client/socket_io_client.dart' as IO;
-
-IO.Socket socket = IO.io('https://websocket.zekr.online', 
-  IO.OptionBuilder()
-    .setTransports(['websocket'])
-    .setAuth({'api_key': 'mWrhEBxIUstdokyV5FynGaqN0zowUYaCFvW88RdzYeY'})
-    .disableAutoConnect()
-    .build()
-);
-
-socket.connect();
 ```
 
 :::
@@ -151,17 +136,6 @@ val options = IO.Options().apply {
 val socket = IO.socket("https://websocket.zekr.online", options)
 ```
 
-```dart [Dart]
-import 'package:socket_io_client/socket_io_client.dart' as IO;
-
-IO.Socket socket = IO.io('https://websocket.zekr.online',
-  IO.OptionBuilder()
-    .setTransports(['websocket'])
-    .setAuth({'api_key': 'mWrhEBxIUstdokyV5FynGaqN0zowUYaCFvW88RdzYeY'})
-    .build()
-);
-```
-
 :::
 
 ## Connection Lifecycle
@@ -222,24 +196,6 @@ socket.on(Socket.EVENT_CONNECT_ERROR) { args ->
         println("Connection failed: ${error?.message}")
     }
 }
-```
-
-```dart [Dart]
-socket.onConnect((_) {
-  print('Connected to server');
-});
-
-socket.onDisconnect((_) {
-  print('Disconnected');
-});
-
-socket.onConnectError((error) {
-  if (error.toString().contains('authentication_failed')) {
-    print('Invalid API key');
-  } else {
-    print('Connection failed: $error');
-  }
-});
 ```
 
 :::

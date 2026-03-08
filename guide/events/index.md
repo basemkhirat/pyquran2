@@ -1,10 +1,10 @@
-# Socket Events Overview
+# Socket Events Overview {#events-overview}
 
 The Quran API uses a simple event-based protocol. This section documents all events you need to implement for a complete integration.
 
-## Event Types
+## Event Types {#event-types}
 
-### Client to Server (Emit)
+### Client to Server (Emit) {#client-to-server-emit}
 
 Events your app sends to the server:
 
@@ -15,15 +15,15 @@ Events your app sends to the server:
 | [`stop_session`](/events/client-events#stop-session) | End the current session | None |
 | [`skip_word`](/events/client-events#skip-word) | Skip the current word | None |
 
-### Server to Client (Listen)
+### Server to Client (Listen) {#server-to-client-listen}
 
 Events your app receives from the server:
 
 | Event | Purpose | Payload |
 |-------|---------|---------|
 | [`session_started`](/events/server-events#session-started) | Session is ready | id |
-| [`verse_detected`](/events/server-events#verse_detected) | Start verse identified | chapter_number, verse_number, word_number |
-| [`verse_detection_failed`](/events/server-events#verse_detection_failed) | Start verse not recognized | Empty object |
+| [`verse_detected`](/events/server-events#verse-detected) | Start verse identified | chapter_number, verse_number, word_number |
+| [`verse_detection_failed`](/events/server-events#verse-detection-failed) | Start verse not recognized | Empty object |
 | [`word_result`](/events/server-events#word-result) | Recognition result for a word | Word details and status |
 | [`session_stopped`](/events/server-events#session-stopped) | Session has ended | Empty object |
 | [`session_error`](/events/server-events#session-error) | An error occurred | Error reason |
@@ -111,28 +111,9 @@ socket.emit("stop_session")
 socket.emit("skip_word")
 ```
 
-```dart [Dart]
-// Listen for events
-socket.on('session_started', (_) { /* start streaming */ });
-socket.on('word_result', (data) { /* update UI */ });
-socket.on('session_stopped', (_) { /* cleanup */ });
-socket.on('session_error', (data) { /* show error */ });
-
-// Emit events
-socket.emit('start_session', {
-  'start_chapter_number': 1,
-  'start_verse_number': 1,
-  'end_chapter_number': 1,
-  'end_verse_number': 7
-});
-socket.emit('audio_chunk', audioBytes);
-socket.emit('stop_session');
-socket.emit('skip_word');
-```
-
 :::
 
 ## Next Steps
 
-- [Client Events](/events/client-events) - Detailed documentation for events you send
-- [Server Events](/events/server-events) - Detailed documentation for events you receive
+- [Client Events](/events/client-events#client-events) - Detailed documentation for events you send
+- [Server Events](/events/server-events#server-events) - Detailed documentation for events you receive

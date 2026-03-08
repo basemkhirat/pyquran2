@@ -248,46 +248,6 @@ class AudioRecorder(private val socket: Socket) {
 }
 ```
 
-```dart [Dart]
-import 'dart:async';
-import 'dart:typed_data';
-import 'package:record/record.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
-
-class AudioStreamRecorder {
-  final IO.Socket socket;
-  final _recorder = AudioRecorder();
-  StreamSubscription<Uint8List>? _subscription;
-  
-  static const int sampleRate = 16000;
-  static const int chunkDurationMs = 150;
-  
-  AudioStreamRecorder(this.socket);
-  
-  Future<void> startRecording() async {
-    if (!await _recorder.hasPermission()) {
-      throw Exception('Microphone permission denied');
-    }
-    
-    final stream = await _recorder.startStream(RecordConfig(
-      encoder: AudioEncoder.pcm16bits,
-      sampleRate: sampleRate,
-      numChannels: 1,
-    ));
-    
-    _subscription = stream.listen((data) {
-      socket.emit('audio_chunk', data);
-    });
-  }
-  
-  Future<void> stopRecording() async {
-    await _subscription?.cancel();
-    _subscription = null;
-    await _recorder.stop();
-  }
-}
-```
-
 :::
 
 
@@ -324,14 +284,6 @@ val requestPermissionLauncher = registerForActivityResult(
 }
 
 requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-```
-
-```dart [Dart]
-// Using permission_handler package
-final status = await Permission.microphone.request();
-if (status.isGranted) {
-  startRecording();
-}
 ```
 
 :::

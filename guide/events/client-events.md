@@ -1,8 +1,8 @@
-# Client Events
+# Client Events {#client-events}
 
 These are events your app emits (sends) to the server.
 
-## 1. start_session
+## 1. start_session {#start-session}
 
 Starts a new recognition session for a specific verse range (can span multiple chapters).
 
@@ -53,15 +53,6 @@ val payload = JSONObject().apply {
 socket.emit("start_session", payload)
 ```
 
-```dart [Dart]
-socket.emit('start_session', {
-  'start_chapter_number': 1,
-  'start_verse_number': 1,
-  'end_chapter_number': 1,
-  'end_verse_number': 7,
-});
-```
-
 :::
 
 ### Server Response
@@ -71,13 +62,11 @@ The server responds with [`session_started`](/events/server-events#session-start
 ### Notes
 
 - Wait for `session_started` before streaming audio
-- Only one session can be active per connection at a time
 - The server loads the words for the specified range and prepares the recognition pipeline
 - Ranges can span multiple chapters (e.g., from Al-Fatiha verse 1 to Al-Baqarah verse 5)
-- Session data persistence (data.json / recording.wav under `data/sessions/{uuid}/`) is controlled by the server config `SAVE_SESSION_DATA`; when enabled, saving runs in a background task and does not block recognition.
 
 
-## 2. audio_chunk
+## 2. audio_chunk {#audio-chunk}
 
 Streams audio data to the server for recognition.
 
@@ -114,11 +103,6 @@ socket.emit("audio_chunk", audioData)
 ```kotlin [Kotlin]
 // audioBytes is ByteArray containing Int16 PCM samples
 socket.emit("audio_chunk", audioBytes)
-```
-
-```dart [Dart]
-// audioBytes is Uint8List containing Int16 PCM samples
-socket.emit('audio_chunk', audioBytes);
 ```
 
 :::
@@ -163,7 +147,7 @@ The server processes audio through VAD (Voice Activity Detection). When speech i
 
 ---
 
-## 3. stop_session
+## 3. stop_session {#stop-session}
 
 Signals the end of the current session.
 
@@ -191,10 +175,6 @@ socket.emit("stop_session")
 socket.emit("stop_session")
 ```
 
-```dart [Dart]
-socket.emit('stop_session');
-```
-
 :::
 
 ### Server Response
@@ -207,13 +187,11 @@ The server:
 
 ### Notes
 
-- Always emit this when stopping, even if recording was interrupted
 - Stop your audio capture after emitting this event
 - The session cannot be resumed; start a new session to continue
 
----
 
-## 4. skip_word
+## 4. skip_word {#skip-word}
 
 Skips the current word without recognition.
 
@@ -239,10 +217,6 @@ socket.emit("skip_word")
 
 ```kotlin [Kotlin]
 socket.emit("skip_word")
-```
-
-```dart [Dart]
-socket.emit('skip_word');
 ```
 
 :::

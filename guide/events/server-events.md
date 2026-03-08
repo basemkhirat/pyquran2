@@ -1,8 +1,8 @@
-# Server Events
+# Server Events {#server-events}
 
 These are events your app receives (listens for) from the server.
 
-## 1. session_started
+## 1. session_started {#session-started}
 
 Confirms that the session has been initialized and is ready for audio streaming.
 
@@ -43,13 +43,6 @@ socket.on("session_started") {
 }
 ```
 
-```dart [Dart]
-socket.on('session_started', (_) {
-  print('Session ready, starting audio capture');
-  startAudioRecording();
-});
-```
-
 :::
 
 ### Notes
@@ -59,7 +52,7 @@ socket.on('session_started', (_) {
 
 ---
 
-## 2. verse_detected
+## 2. verse_detected {#verse-detected}
 
 Sent when the server identifies which verse the user started reciting from (start verse detection). Use this to set the current position in your UI so highlighting matches where the user is.
 
@@ -115,27 +108,14 @@ socket.on("verse_detected") { args ->
 }
 ```
 
-```dart [Dart]
-socket.on('verse_detected', (data) {
-  final chapterNumber = data['chapter_number'];
-  final verseNumber = data['verse_number'];
-  final wordNumber = data['word_number'];
-  final idx = words.indexWhere((w) => w.surah == chapterNumber && w.ayah == verseNumber && w.wordIndex == wordNumber);
-  if (idx != -1) setCurrentWordIndex(idx);
-  print('Detected $chapterNumber:$verseNumber');
-});
-```
-
 :::
 
 ### Notes
 
-- Only sent when the session uses start verse detection (e.g. when the server started with a detecting phase). After this event, the server sends `word_result` for subsequent words.
-- Same addressing as `word_result`: use `chapter_number`, `verse_number`, and `word_number` to find the word in your session word list and set the current position.
-
+- This event is sent only one time to the client after session start after user recites at least first 3 words for start verse detection. After this event, the server sends `word_result` for subsequent words.
 ---
 
-## 3. verse_detection_failed
+## 3. verse_detection_failed {#verse-detection-failed}
 
 Sent when the server could not identify which verse the user started from.
 
@@ -171,12 +151,6 @@ socket.on("verse_detection_failed") {
 }
 ```
 
-```dart [Dart]
-socket.on('verse_detection_failed', (_) {
-  showMessage('Verse not recognized, try again');
-});
-```
-
 :::
 
 ### Notes
@@ -186,7 +160,7 @@ socket.on('verse_detection_failed', (_) {
 
 ---
 
-## 4. word_result
+## 4. word_result {#word-result}
 
 Contains the recognition result for a single word.
 
@@ -273,21 +247,6 @@ socket.on("word_result") { args ->
 }
 ```
 
-```dart [Dart]
-socket.on('word_result', (data) {
-  final chapterNumber = data['chapter_number'];
-  final verseNumber = data['verse_number'];
-  final wordNumber = data['word_number'];
-  final status = data['status'];
-  
-  print('Word $wordNumber in $chapterNumber:$verseNumber - $status');
-  
-  setState(() {
-    updateWordStatus(wordNumber, status);
-  });
-});
-```
-
 :::
 
 ### Notes
@@ -299,7 +258,7 @@ socket.on('word_result', (data) {
 
 ---
 
-## 5. session_stopped
+## 5. session_stopped {#session-stopped}
 
 Signals that the session has ended.
 
@@ -340,13 +299,6 @@ socket.on("session_stopped") {
 }
 ```
 
-```dart [Dart]
-socket.on('session_stopped', (_) {
-  print('Session complete');
-  stopAudioRecording();
-});
-```
-
 :::
 
 ### Notes
@@ -356,7 +308,7 @@ socket.on('session_stopped', (_) {
 
 ---
 
-## 6. session_error
+## 6. session_error {#session-error}
 
 Indicates an error occurred during the session.
 
@@ -417,16 +369,6 @@ socket.on("session_error") { args ->
         showErrorMessage(reason)
     }
 }
-```
-
-```dart [Dart]
-socket.on('session_error', (data) {
-  final reason = data?['reason'] ?? 'Unknown error';
-  print('Session error: $reason');
-  
-  stopAudioRecording();
-  showErrorMessage(reason);
-});
 ```
 
 :::

@@ -12,7 +12,7 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Getting Started', link: '/getting-started/' },
-      { text: 'Events', link: '/events/' },
+      { text: 'Events', link: '/events/#events-overview' },
       { text: 'Audio', link: '/audio/streaming' },
     ],
 
@@ -32,9 +32,9 @@ export default defineConfig({
       {
         text: 'Socket Events',
         items: [
-          { text: 'Overview', link: '/events/' },
-          { text: 'Client Events', link: '/events/client-events' },
-          { text: 'Server Events', link: '/events/server-events' },
+          { text: 'Overview', link: '/events/#events-overview' },
+          { text: 'Client Events', link: '/events/client-events#client-events' },
+          { text: 'Server Events', link: '/events/server-events#server-events' },
         ]
       },
       {

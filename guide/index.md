@@ -10,15 +10,15 @@ hero:
       link: /getting-started/
     - theme: alt
       text: View Events
-      link: /events/
+      link: /events/#events-overview
 ---
 
 ## Introduction
 
-It is a Quran voice recognition project that:
+This is a Quran voice recognition project that:
 
 - Accepts real-time audio streaming from mobile devices
-- Transcribes Arabic Quran recitation using Whisper and Wav2vec2.
+- Transcribes Arabic Quran recitation chunk by chunk.
 - Scores each word for correctness (correct, incorrect, or skipped)
 - Returns results word-by-word as the user recites
 
