@@ -14,7 +14,7 @@ After emitting `start_session`, when the server has loaded the words and prepare
 
 ```typescript
 {
-  session_uuid: string;  // Unique session id (folder name under data/sessions/ when saving is enabled)
+  id: string;  // Unique session id
 }
 ```
 
@@ -73,8 +73,7 @@ Sent when the server identifies which verse the user started reciting from (star
 {
   chapter_number: number; // Surah number where the verse was detected
   verse_number: number;   // Ayah number that was detected
-  word_index: number;     // Index into the session word list where that verse starts
-  score: number;          // Confidence score (0–1)
+  word_number: number;    // Position of the word within the verse (same as word_result)
 }
 ```
 
@@ -84,9 +83,11 @@ Sent when the server identifies which verse the user started reciting from (star
 
 ```javascript [JavaScript]
 socket.on("verse_detected", (data) => {
-  const { chapter_number, verse_number, word_index, score } = data;
-  console.log(`Detected ${chapter_number}:${verse_number} with score ${score}`);
-  setCurrentWordIndex(word_index);  // Sync UI to detected verse start
+  const { chapter_number, verse_number, word_number } = data;
+  const idx = words.findIndex(
+    (w) => w.surah === chapter_number && w.ayah === verse_number && w.word_index === word_number
+  );
+  if (idx !== -1) setCurrentWordIndex(idx);  // Sync UI to detected verse start
 });
 ```
 
@@ -95,9 +96,10 @@ socket.on("verse_detected") { data, ack in
     guard let dict = data.first as? [String: Any],
           let chapterNumber = dict["chapter_number"] as? Int,
           let verseNumber = dict["verse_number"] as? Int,
-          let wordIndex = dict["word_index"] as? Int else { return }
+          let wordNumber = dict["word_number"] as? Int,
+          let idx = words.firstIndex(where: { $0.surah == chapterNumber && $0.ayah == verseNumber && $0.word_index == wordNumber }) else { return }
     print("Detected \(chapterNumber):\(verseNumber)")
-    setCurrentWordIndex(wordIndex)
+    setCurrentWordIndex(idx)
 }
 ```
 
@@ -106,9 +108,10 @@ socket.on("verse_detected") { args ->
     val data = args[0] as JSONObject
     val chapterNumber = data.getInt("chapter_number")
     val verseNumber = data.getInt("verse_number")
-    val wordIndex = data.getInt("word_index")
+    val wordNumber = data.getInt("word_number")
+    val idx = words.indexOfFirst { it.surah == chapterNumber && it.ayah == verseNumber && it.wordIndex == wordNumber }
+    if (idx != -1) setCurrentWordIndex(idx)
     println("Detected $chapterNumber:$verseNumber")
-    setCurrentWordIndex(wordIndex)
 }
 ```
 
@@ -116,9 +119,10 @@ socket.on("verse_detected") { args ->
 socket.on('verse_detected', (data) {
   final chapterNumber = data['chapter_number'];
   final verseNumber = data['verse_number'];
-  final wordIndex = data['word_index'];
+  final wordNumber = data['word_number'];
+  final idx = words.indexWhere((w) => w.surah == chapterNumber && w.ayah == verseNumber && w.wordIndex == wordNumber);
+  if (idx != -1) setCurrentWordIndex(idx);
   print('Detected $chapterNumber:$verseNumber');
-  setCurrentWordIndex(wordIndex);
 });
 ```
 
@@ -127,7 +131,7 @@ socket.on('verse_detected', (data) {
 ### Notes
 
 - Only sent when the session uses start verse detection (e.g. when the server started with a detecting phase). After this event, the server sends `word_result` for subsequent words.
-- Use `word_index` to set the current word/verse position in your UI.
+- Same addressing as `word_result`: use `chapter_number`, `verse_number`, and `word_number` to find the word in your session word list and set the current position.
 
 ---
 
@@ -439,9 +443,9 @@ socket.on('session_error', (data) {
 
 | Event | Payload | Action to Take |
 |-------|---------|----------------|
-| `session_started` | `{}` | Start audio recording |
+| `session_started` | `{ id }` | Start audio recording |
 | `word_result` | Word details + status | Update UI, track progress |
-| `verse_detected` | chapter_number, verse_number, word_index, score | Set current position to word_index |
+| `verse_detected` | chapter_number, verse_number, word_number | Find word index, set current position |
 | `verse_detection_failed` | `{}` | Optional: show "try again" message |
 | `session_stopped` | `{}` | Stop recording |
 | `session_error` | `{ reason }` | Stop recording, show error |
@@ -459,8 +463,10 @@ function setupSocketListeners(socket) {
   });
 
   socket.on("verse_detected", (data) => {
-    console.log(`Detected ${data.chapter_number}:${data.verse_number}`);
-    setCurrentWordIndex(data.word_index);
+    const idx = words.findIndex(
+      (w) => w.surah === data.chapter_number && w.ayah === data.verse_number && w.word_index === data.word_number
+    );
+    if (idx !== -1) setCurrentWordIndex(idx);
   });
 
   socket.on("verse_detection_failed", () => {

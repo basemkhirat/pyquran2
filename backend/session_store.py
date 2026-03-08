@@ -20,9 +20,9 @@ BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "ses
 class SessionStore:
     """Manages a single session's word-result log and audio on disk."""
 
-    def __init__(self, session_uuid: str | None = None):
-        self.session_uuid = session_uuid or str(uuid.uuid4())
-        self.session_dir = os.path.join(BASE_DIR, self.session_uuid)
+    def __init__(self, session_id: str | None = None):
+        self.session_id = session_id or str(uuid.uuid4())
+        self.session_dir = os.path.join(BASE_DIR, self.session_id)
         self.data_file = os.path.join(self.session_dir, "data.json")
         self.recording_file = os.path.join(self.session_dir, "recording.wav")
         self._entries: list[dict] = []

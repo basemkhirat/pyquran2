@@ -9,16 +9,17 @@ export default function App() {
 
   // Socket event listeners
   useEffect(() => {
-    const onWordResult = (data: any) => {
-      const idx = words.findIndex(
+    const wordIndexFor = (data: { chapter_number: number; verse_number: number; word_number: number }) =>
+      words.findIndex(
         (w) =>
           w.surah === data.chapter_number &&
           w.ayah === data.verse_number &&
           w.word_index === data.word_number
       );
-      if (idx !== -1) {
-        addWordResult(idx, data);
-      }
+
+    const onWordResult = (data: any) => {
+      const idx = wordIndexFor(data);
+      if (idx !== -1) addWordResult(idx, data);
     };
 
     const onSessionComplete = () => {
@@ -34,9 +35,8 @@ export default function App() {
     };
 
     const onVerseDetected = (data: any) => {
-      if (typeof data.word_index === "number") {
-        setCurrentWordIndex(data.word_index);
-      }
+      const idx = wordIndexFor(data);
+      if (idx !== -1) setCurrentWordIndex(idx);
     };
 
     const onVerseDetectionFailed = () => {

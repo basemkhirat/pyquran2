@@ -232,13 +232,13 @@ async def start_session(sid, data):
         session["store_queue"] = None
         session["store"] = None
 
-    # Session UUID is always generated; optional store persists data when config.save_session_data
-    session_uuid = str(uuid.uuid4())
+    # Session id is always generated; optional store persists data when config.save_session_data
+    session_id = str(uuid.uuid4())
     session["store"] = None
     session["store_queue"] = None
     session["store_task"] = None
     if config.save_session_data:
-        store = SessionStore(session_uuid=session_uuid)
+        store = SessionStore(session_id=session_id)
         session["store"] = store
         queue: asyncio.Queue = asyncio.Queue()
         session["store_queue"] = queue
@@ -246,10 +246,10 @@ async def start_session(sid, data):
 
     logger.info(
         f"Session started for {sid}: {start_chapter}:{start_verse} - {end_chapter}:{end_verse}, "
-        f"{len(words)} words (phase={session['phase']}, save_session_data={config.save_session_data}, uuid={session_uuid})"
+        f"{len(words)} words (phase={session['phase']}, save_session_data={config.save_session_data}, id={session_id})"
     )
     await sio.emit("session_started", {
-        "session_uuid": session_uuid,
+        "id": session_id,
     }, room=sid)
 
 
@@ -465,14 +465,14 @@ async def _detect_verse(sid: str, audio: np.ndarray, is_final: bool = False):
             session["current_index"] = word_index
             session["streaming_start_idx"] = word_index
             session["phase"] = "reciting"
+            word_number = session["words"][word_index]["word_index"]
             logger.info(
-                f"Verse detected for [{sid}]: {chapter}:{ayah}, word_index {word_index}, score {score:.3f}"
+                f"Verse detected for [{sid}]: {chapter}:{ayah}, word_number {word_number}, score {score:.3f}"
             )
             await sio.emit("verse_detected", {
                 "chapter_number": chapter,
                 "verse_number": ayah,
-                "word_index": word_index,
-                "score": round(score, 3),
+                "word_number": word_number,
             }, room=sid)
         else:
             if is_final:
