@@ -44,7 +44,7 @@ IMAGE = (
     )
 )
 
-app = modal.App("pyquran2", image=IMAGE)
+app = modal.App("memorize-quran", image=IMAGE)
 
 
 @app.function(
