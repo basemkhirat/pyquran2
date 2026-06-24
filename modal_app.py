@@ -48,7 +48,7 @@ app = modal.App("memorize-quran", image=IMAGE)
 
 
 @app.function(
-    gpu="T4",
+    gpu="L4", # lowe: T4
     secrets=[modal.Secret.from_name("custom-secret")],
 )
 @modal.concurrent(max_inputs=100)
