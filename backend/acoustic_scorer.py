@@ -14,12 +14,12 @@ from typing import List, Tuple
 import numpy as np
 from jiwer import cer
 
-from backend.config import config
+from backend.config import config, NON_SCORED_DIACRITICS, normalize_sukoon
 from backend.terminal_arabic import display_arabic
 
 logger = logging.getLogger(__name__)
 
-# Characters that appear in emlaey_text but are NOT in the wav2vec2 model vocabulary.
+# Characters that appear in uthmani_text but are NOT in the wav2vec2 model vocabulary.
 # Must match the same regex used in scripts/generate_lm.py.
 _CHARS_NOT_IN_VOCAB = re.compile("[\u0657\u06E1]")
 
@@ -137,43 +137,57 @@ def _decode_audio(audio: np.ndarray) -> str:
 
 
 def _normalize_text(text: str) -> str:
-    """Normalize text for comparison: strip out-of-vocab chars only.
+    """Normalize text for comparison: normalize sukoon variant, strip out-of-vocab chars.
 
-    Keeps diacritics because the Quran wav2vec2 model outputs tashkeel.
-    Only removes the few characters that aren't in the model vocabulary.
+    Replaces U+06E1 (ۡ) with U+0652 (ْ) so both sukoon shapes compare equal.
+    Removes the few characters that aren't in the model vocabulary.
     """
-    return _CHARS_NOT_IN_VOCAB.sub("", text).strip()
+    return _CHARS_NOT_IN_VOCAB.sub("", normalize_sukoon(text)).strip()
+
+
+def _strip_non_scored_diacritics(text: str) -> str:
+    """Remove diacritics that are not scored (fatha, kasra, damma, sukoon, shadda)."""
+    return NON_SCORED_DIACRITICS.sub("", text).strip()
 
 
 def _acoustic_score_single(expected: str, decoded: str) -> float:
-    """Score in [0, 1] using 1 - CER, comparing with diacritics."""
-    exp = _normalize_text(expected)
-    dec = _normalize_text(decoded)
+    """Score in [0, 1] using 1 - CER, comparing only base letters and scored diacritics."""
+    exp = _strip_non_scored_diacritics(_normalize_text(expected))
+    dec = _strip_non_scored_diacritics(_normalize_text(decoded))
     if not exp:
         return 1.0 if not dec else 0.0
     err = cer(exp, dec)
     return max(0.0, 1.0 - err)
 
 
-def get_acoustic_scores(audio: np.ndarray, previous_words: List[str], expected_words: List[str]) -> Tuple[List[float], int]:
+def _acoustic_score_best(emlaey: str, uthmani: str, decoded: str) -> float:
+    """Best score from comparing decoded against both emlaey and uthmani."""
+    return max(
+        _acoustic_score_single(emlaey, decoded),
+        _acoustic_score_single(uthmani, decoded),
+    )
+
+
+def get_acoustic_scores(
+    audio: np.ndarray,
+    previous_words: List[Tuple[str, str]],
+    expected_words: List[Tuple[str, str]],
+) -> Tuple[List[float], int]:
     """Run wav2vec2 once on the chunk, decode, then best-match align to expected words.
 
-    For each expected word, finds the decoded word with the best CER score
-    (instead of simple positional alignment which breaks when words are
-    inserted/dropped by the model). Falls back to 0.5 when no decoded words.
+    For each expected word (emlaey, uthmani), finds the decoded word with the best CER score
+    against either variant. Falls back to 0.5 when no decoded words.
 
-    It also accepts `previous_words` (words already confirmed in the current audio buffer)
-    so that it can consume the matching audio decoded parts and prevent later expected words
-    from incorrectly matching earlier audio parts.
+    previous_words: list of (emlaey, uthmani) for already-confirmed words.
+    expected_words: list of (emlaey, uthmani) for the current chunk.
 
     Returns:
         (scores, n_decoded) where scores is a list of floats for each expected word
-        and n_decoded is the number of words the model actually decoded from the audio
-        (before filtering by previous_words).
+        and n_decoded is the number of words the model actually decoded from the audio.
     """
     if not expected_words:
         return [], 0
-        
+
     decoded_text = _decode_audio(audio)
     decoded_parts = decoded_text.split()
     n_decoded = len(decoded_parts)
@@ -183,33 +197,27 @@ def get_acoustic_scores(audio: np.ndarray, previous_words: List[str], expected_w
 
     all_expected = previous_words + expected_words
     scores: List[float] = []
-    # Enforce monotonic alignment so later expected words don't match earlier decoded words
     last_match_idx = 0
 
-    for i, expected in enumerate(all_expected):
-        exp_normalized = _normalize_text(expected)
+    for i, (emlaey, uthmani) in enumerate(all_expected):
         best_score = 0.0
         best_word = ""
-        best_word_idx = -1 # Index in decoded_parts
+        best_word_idx = -1
         for j in range(last_match_idx, len(decoded_parts)):
             decoded_word = decoded_parts[j]
-            dec_normalized = _normalize_text(decoded_word)
-            if not exp_normalized:
-                s = 1.0 if not dec_normalized else 0.0
-            else:
-                s = max(0.0, 1.0 - cer(exp_normalized, dec_normalized))
+            s = _acoustic_score_best(emlaey, uthmani, decoded_word)
             if s > best_score:
                 best_score = s
                 best_word = decoded_word
                 best_word_idx = j
-                
+
         scores.append(best_score)
         if best_word_idx != -1 and best_score >= 0.4:
             last_match_idx = best_word_idx + 1
-            
+
         logger.debug(
             "  acoustic: expected='%s' best_match='%s' score=%.2f",
-            display_arabic(expected), display_arabic(best_word), best_score,
+            display_arabic(uthmani), display_arabic(best_word), best_score,
         )
-        
-    return scores[len(previous_words):], n_decoded
+
+    return scores[len(previous_words) :], n_decoded

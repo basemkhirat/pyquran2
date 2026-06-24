@@ -1,4 +1,5 @@
 import os
+import re
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
@@ -6,6 +7,19 @@ load_dotenv()
 
 # Project root (parent of backend/) so relative paths work when cwd is not project root (e.g. Modal)
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Diacritics used for scoring: fatha, kasra, damma, sukoon, shadda (U+064E, U+0650, U+064F, U+0652, U+0651)
+SCORED_DIACRITICS = re.compile(r"[\u064E\u064F\u0650\u0651\u0652]")
+# All diacritics except the five above (used to strip non-scored diacritics)
+NON_SCORED_DIACRITICS = re.compile(r"[\u0617-\u061A\u064B-\u064D\u0670\u06D6-\u06ED]")
+# U+06E1 (ۡ) is alternate sukoon; normalize to U+0652 (ْ) for comparison
+SUKOON_VARIANT = "\u06E1"
+SUKOON_STANDARD = "\u0652"
+
+
+def normalize_sukoon(text: str) -> str:
+    """Replace alternate sukoon (ۡ U+06E1) with standard (ْ U+0652)."""
+    return text.replace(SUKOON_VARIANT, SUKOON_STANDARD)
 
 
 def _resolve_path(path: str) -> str:

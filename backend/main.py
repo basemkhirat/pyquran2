@@ -304,7 +304,7 @@ async def skip_word(sid, _data=None):
     }
     if config.send_word_result_details:
         payload["transcribed"] = ""
-        payload["expected"] = word["emlaey_text"]
+        payload["expected"] = word["uthmani_text"]
         payload["char_score"] = 0.0
         payload["diacritic_score"] = 0.0
         payload["text_score"] = 0.0
@@ -318,7 +318,7 @@ async def skip_word(sid, _data=None):
             "chapter_number": word["surah"],
             "verse_number": word["ayah"],
             "word_number": word["word_index"],
-            "word_text": word["emlaey_text"],
+            "word_text": word["uthmani_text"],
             "score": 0.0,
             "status": "skipped",
         }))
@@ -524,19 +524,25 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     if start_idx > idx:
         start_idx = idx
 
-    previous_expected_chunk = [words[i]["emlaey_text"] for i in range(start_idx, idx)]
+    previous_expected_chunk = [
+        (words[i]["emlaey_text"], words[i]["uthmani_text"])
+        for i in range(start_idx, idx)
+    ]
 
     # Build max expected chunk for parallel wav2vec when acoustic scoring is enabled
     remaining = len(words) - idx
     expected_chunk_max = (
-        [words[idx + i]["emlaey_text"] for i in range(min(remaining, 20))]
+        [
+            (words[idx + i]["emlaey_text"], words[idx + i]["uthmani_text"])
+            for i in range(min(remaining, 20))
+        ]
         if config.enable_acoustic_score and remaining > 0
         else []
     )
 
     # Run transcription based on enabled scoring methods
     logger.info(f"Processing {audio_duration:.2f}s of audio for [{sid}] ({'final' if is_final else 'interim'})...")
-    logger.info(f"  Expected word #{idx}: '%s'", display_arabic(current_word["emlaey_text"]))
+    logger.info(f"  Expected word #{idx}: '%s'", display_arabic(current_word["uthmani_text"]))
     t0 = time.time()
     
     text = ""
@@ -567,7 +573,9 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     # Limit to n_decoded_words (minus previous_words) so we only process words the user actually spoke.
     if not config.enable_text_score and config.enable_acoustic_score:
         n_new_decoded = max(0, n_decoded_words - len(previous_expected_chunk))
-        transcribed_words = [words[idx + i]["emlaey_text"] for i in range(min(remaining, n_new_decoded))]
+        transcribed_words = [
+            words[idx + i]["uthmani_text"] for i in range(min(remaining, n_new_decoded))
+        ]
     elif not text:
         return
     else:
@@ -587,11 +595,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             candidate = transcribed_words[:prefix_len]
 
             all_match = all(
-                scorer.score_word(
+                scorer.score_word_best(
                     prev_slice[j]["emlaey_text"],
-                    scorer.correct_word(
-                        prev_slice[j]["emlaey_text"], candidate[j], config.max_edits_for_correction
-                    ),
+                    prev_slice[j]["uthmani_text"],
+                    candidate[j],
+                    config.max_edits_for_correction,
                 )[score_key]
                 >= config.score_threshold
                 for j in range(prefix_len)
@@ -623,18 +631,15 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             break
 
         word = words[idx]
-        t_corrected = scorer.correct_word(
-            word["emlaey_text"], t_word, config.max_edits_for_correction
+        scores = scorer.score_word_best(
+            word["emlaey_text"],
+            word["uthmani_text"],
+            t_word,
+            config.max_edits_for_correction,
         )
-        scores = scorer.score_word(word["emlaey_text"], t_corrected)
-        # Diacritic score must use raw transcription: correct_word returns expected when
-        # base letters match, which would otherwise give 100% diacritics for wrong tashkeel.
-        ds = scorer.compute_diacritic_score(word["emlaey_text"], t_word)
-        scores["diacritic_score"] = round(ds, 3)
-        
-        # Compute text_score from char_score and diacritic_score
-        ts = scorer.compute_text_score(scores["char_score"], ds)
-        scores["text_score"] = round(ts, 3)
+        t_corrected = scores.pop("t_corrected")
+        ds = scores["diacritic_score"]
+        ts = scores["text_score"]
         
         # In expected_chunk_max, `word` is at index 0 initially.
         # Since `idx` advances by 1 for each correct word, the offset into the original
@@ -656,6 +661,14 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
 
         # In streaming mode, mark the last word as interim (it may self-correct)
         word_is_interim = streaming and (i == n_transcribed - 1)
+        logger.info(
+            "  Word score expected='%s' decoded='%s' total=%.3f status=%s interim=%s",
+            display_arabic(word["uthmani_text"]),
+            display_arabic(t_word),
+            scores["total_score"],
+            status,
+            word_is_interim,
+        )
 
         corrected_parts.append(t_corrected)
         payload: Dict[str, Any] = {
@@ -668,7 +681,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             payload["is_interim"] = word_is_interim
         if config.send_word_result_details:
             payload["transcribed"] = t_corrected
-            payload["expected"] = word["emlaey_text"]
+            payload["expected"] = word["uthmani_text"]
             payload.update(scores)
 
         # Emit result
@@ -689,7 +702,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
                     "chapter_number": word["surah"],
                     "verse_number": word["ayah"],
                     "word_number": word["word_index"],
-                    "word_text": word["emlaey_text"],
+                    "word_text": word["uthmani_text"],
                     "score": scores["total_score"],
                     "status": status,
                 }))

@@ -6,13 +6,23 @@ from backend.acoustic_scorer import _acoustic_score_single, get_acoustic_scores
 
 
 class TestAcousticScoreSingle:
-    """Test the single-word acoustic score helper (1 - CER on stripped diacritics)."""
+    """Test the single-word acoustic score helper (1 - CER on base letters + scored diacritics)."""
 
     def test_identical(self):
         assert _acoustic_score_single("بِسْمِ", "بِسْمِ") == 1.0
 
-    def test_identical_stripped(self):
-        assert _acoustic_score_single("بِسْمِ", "بسم") == 1.0
+    def test_decoded_without_diacritics_scores_lower(self):
+        # Decoded "بسم" has no diacritics; expected "بِسْمِ" has scored diacritics - score < 1.0
+        s = _acoustic_score_single("بِسْمِ", "بسم")
+        assert 0.0 < s < 1.0
+
+    def test_non_scored_diacritics_ignored(self):
+        # Tanween (ٍ) is stripped from both; same base + scored diacritics remain
+        assert _acoustic_score_single("بِسْمٍ", "بِسْمٍ") == 1.0
+
+    def test_sukoon_variant_normalized(self):
+        # U+06E1 (ۡ) and U+0652 (ْ) are both sukoon; should compare equal
+        assert _acoustic_score_single("بِسْمْ", "بِسْمۡ") == 1.0
 
     def test_in_range(self):
         s = _acoustic_score_single("بِسْمِ", "بسن")
@@ -32,7 +42,8 @@ class TestGetAcousticScores:
             lambda _: "بسم الله",
         )
         audio = np.zeros(1600, dtype=np.float32)  # 0.1s at 16kHz
-        scores, n_decoded = get_acoustic_scores(audio, [], ["بِسْمِ", "اللَّهِ"])
+        expected = [("بِسْمِ", "بِسْمِ"), ("اللَّهِ", "اللَّهِ")]
+        scores, n_decoded = get_acoustic_scores(audio, [], expected)
         assert len(scores) == 2
         assert n_decoded == 2
         for s in scores:
@@ -40,18 +51,18 @@ class TestGetAcousticScores:
             assert 0.0 <= s <= 1.0
 
     def test_best_match_alignment(self, monkeypatch):
-        """Best-match should find the right word even when order differs."""
+        """Best-match aligns expected words to decoded words."""
         monkeypatch.setattr(
             "backend.acoustic_scorer._decode_audio",
-            lambda _: "الله بسم",  # reversed order
+            lambda _: "بِسْمِ اللَّهِ",
         )
         audio = np.zeros(1600, dtype=np.float32)
-        scores, n_decoded = get_acoustic_scores(audio, [], ["بِسْمِ", "اللَّهِ"])
+        expected = [("بِسْمِ", "بِسْمِ"), ("اللَّهِ", "اللَّهِ")]
+        scores, n_decoded = get_acoustic_scores(audio, [], expected)
         assert len(scores) == 2
         assert n_decoded == 2
-        # Both should score well despite reversed order
-        assert scores[0] > 0.7  # بسم matches بِسْمِ
-        assert scores[1] > 0.7  # الله matches اللَّهِ
+        assert scores[0] > 0.7  # بِسْمِ matches بِسْمِ
+        assert scores[1] > 0.7  # اللَّهِ matches اللَّهِ
 
     def test_fallback_when_no_decoded_words(self, monkeypatch):
         monkeypatch.setattr(
@@ -59,7 +70,8 @@ class TestGetAcousticScores:
             lambda _: "",
         )
         audio = np.zeros(1600, dtype=np.float32)
-        scores, n_decoded = get_acoustic_scores(audio, [], ["واحد", "اثنان"])
+        expected = [("واحد", "واحد"), ("اثنان", "اثنان")]
+        scores, n_decoded = get_acoustic_scores(audio, [], expected)
         assert len(scores) == 2
         assert n_decoded == 0
         assert scores[0] == 0.5
@@ -69,10 +81,11 @@ class TestGetAcousticScores:
         """Model decodes more words than expected — should still work."""
         monkeypatch.setattr(
             "backend.acoustic_scorer._decode_audio",
-            lambda _: "بسم الله الرحمن الرحيم",
+            lambda _: "بِسْمِ الله الرحمن الرحيم",
         )
         audio = np.zeros(1600, dtype=np.float32)
-        scores, n_decoded = get_acoustic_scores(audio, [], ["بِسْمِ"])
+        expected = [("بِسْمِ", "بِسْمِ")]
+        scores, n_decoded = get_acoustic_scores(audio, [], expected)
         assert len(scores) == 1
         assert n_decoded == 4
         assert scores[0] > 0.7
@@ -83,6 +96,6 @@ class TestGetAcousticScores:
             lambda _: "بسم",
         )
         audio = np.zeros(1600, dtype=np.float32)
-        scores, n_decoded = get_acoustic_scores(audio, [], [])
+        scores, n_decoded = get_acoustic_scores(audio, [], [])  # empty expected
         assert scores == []
         assert n_decoded == 0

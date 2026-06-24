@@ -8,7 +8,7 @@ Usage:
 
 By default, diacritics are KEPT because the wav2vec2 Quran ASR model
 (rabah2026/wav2vec2-large-xlsr-53-arabic-quran-v_final) was trained on
-diacritized emlaey text and its vocabulary includes tashkeel characters.
+diacritized uthmani text and its vocabulary includes tashkeel characters.
 
 If the KenLM binaries (lmplz, build_binary) are on $PATH, the script
 generates a proper 5-gram binary LM.  Otherwise it creates a simple
@@ -31,7 +31,7 @@ import re
 
 from pyarabic import araby
 
-# Characters that appear in emlaey_text but are NOT in the wav2vec2 model vocabulary.
+# Characters that appear in uthmani_text but are NOT in the wav2vec2 model vocabulary.
 # These must be stripped so that LM words only contain characters the model can output.
 #   U+0657 (ٗ) - Inverted Damma
 #   U+06E1 (ۡ) - Small High Dotless Head of Khah
@@ -55,7 +55,7 @@ def extract_quran_text(hafs_path: str, strip_tashkeel: bool = False) -> list[str
     lines = []
     for chapter in data["chapters"]:
         for verse in chapter["verses"]:
-            text = verse.get("emlaey_text", "")
+            text = verse.get("uthmani_text", "")
             if strip_tashkeel:
                 text = araby.strip_tashkeel(text)
             # Strip characters not in the model vocabulary

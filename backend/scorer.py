@@ -2,9 +2,9 @@ import re
 from typing import List, Dict, Any
 from jiwer import cer, process_characters
 from pyarabic import araby
-from backend.config import config
+from backend.config import config, SCORED_DIACRITICS, normalize_sukoon
 
-# Arabic diacritics (tashkeel) unicode range
+# Arabic diacritics (tashkeel) unicode range - used by extract_diacritics for tests
 _DIACRITICS = re.compile(r"[\u0617-\u061A\u064B-\u0652\u0670\u06D6-\u06ED]")
 
 
@@ -14,6 +14,11 @@ def strip_diacritics(text: str) -> str:
 
 def extract_diacritics(text: str) -> str:
     return "".join(_DIACRITICS.findall(text))
+
+
+def extract_scored_diacritics(text: str) -> str:
+    """Extract only scored diacritics: fatha, kasra, damma, sukoon, shadda."""
+    return "".join(SCORED_DIACRITICS.findall(normalize_sukoon(text)))
 
 
 def compute_char_score(expected: str, transcribed: str) -> float:
@@ -27,9 +32,9 @@ def compute_char_score(expected: str, transcribed: str) -> float:
 
 
 def compute_diacritic_score(expected: str, transcribed: str) -> float:
-    """Diacritic (tashkeel) accuracy using CER on extracted diacritics."""
-    exp_d = extract_diacritics(expected)
-    trans_d = extract_diacritics(transcribed)
+    """Diacritic (tashkeel) accuracy using CER on extracted scored diacritics only."""
+    exp_d = extract_scored_diacritics(expected)
+    trans_d = extract_scored_diacritics(transcribed)
     if not exp_d:
         return 1.0 if not trans_d else 0.0
     error_rate = cer(exp_d, trans_d)
@@ -90,6 +95,34 @@ def score_word(expected: str, transcribed: str) -> Dict[str, float]:
         "diacritic_score": round(ds, 3),
         "text_score": round(text_s, 3),
         "total_score": round(total_s, 3),
+    }
+
+
+def score_word_best(
+    emlaey: str, uthmani: str, transcribed: str, max_edits: int
+) -> Dict[str, Any]:
+    """Score transcribed against both emlaey and uthmani, return best of each component.
+
+    Uses correct_word per variant for char_score; raw transcribed for diacritic_score.
+    Returns scores dict plus "t_corrected" (from the variant that gave better char_score).
+    """
+    t_corr_e = correct_word(emlaey, transcribed, max_edits)
+    t_corr_u = correct_word(uthmani, transcribed, max_edits)
+    cs_e = compute_char_score(emlaey, t_corr_e)
+    cs_u = compute_char_score(uthmani, t_corr_u)
+    ds_e = compute_diacritic_score(emlaey, transcribed)
+    ds_u = compute_diacritic_score(uthmani, transcribed)
+    cs = max(cs_e, cs_u)
+    ds = max(ds_e, ds_u)
+    text_s = compute_text_score(cs, ds)
+    total_s = compute_total_score(cs, ds)
+    t_corrected = t_corr_e if cs_e >= cs_u else t_corr_u
+    return {
+        "char_score": round(cs, 3),
+        "diacritic_score": round(ds, 3),
+        "text_score": round(text_s, 3),
+        "total_score": round(total_s, 3),
+        "t_corrected": t_corrected,
     }
 
 

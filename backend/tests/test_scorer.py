@@ -4,11 +4,13 @@ from backend.config import config
 from backend.scorer import (
     strip_diacritics,
     extract_diacritics,
+    extract_scored_diacritics,
     compute_char_score,
     compute_diacritic_score,
     compute_total_score,
     correct_word,
     score_word,
+    score_word_best,
     align_multi_word,
 )
 
@@ -31,6 +33,20 @@ class TestExtractDiacritics:
 
     def test_no_diacritics(self):
         assert extract_diacritics("بسم") == ""
+
+
+class TestExtractScoredDiacritics:
+    def test_extracts_scored_only(self):
+        result = extract_scored_diacritics("بِسْمِ")
+        assert len(result) == 3  # kasra, sukun, kasra
+
+    def test_ignores_tanween(self):
+        # بسمٍ has kasratan (ً) at end - non-scored, should be ignored
+        result = extract_scored_diacritics("بِسْمٍ")
+        assert result == "ِْ"  # kasra, sukun only (no kasratan)
+
+    def test_no_diacritics(self):
+        assert extract_scored_diacritics("بسم") == ""
 
 
 class TestCharScore:
@@ -64,9 +80,19 @@ class TestDiacriticScore:
     def test_no_diacritics_expected(self):
         assert compute_diacritic_score("بسم", "بسم") == 1.0
 
+    def test_non_scored_diacritics_ignored(self):
+        # Tanween (ً ٌ ٍ) is non-scored; both have same scored diacritics (kasra, sukun)
+        assert compute_diacritic_score("بِسْمٍ", "بِسْمٍ") == 1.0
+
+    def test_sukoon_variant_normalized(self):
+        # U+06E1 (ۡ) and U+0652 (ْ) are both sukoon; should compare equal
+        assert compute_diacritic_score("بِسْمْ", "بِسْمۡ") == 1.0
+
 
 class TestTotalScore:
-    def test_weighted(self):
+    def test_weighted(self, monkeypatch):
+        monkeypatch.setattr(config, "weight_char", 0.6)
+        monkeypatch.setattr(config, "weight_diacritic", 0.4)
         score = compute_total_score(1.0, 0.5)
         assert score == pytest.approx(0.6 * 1.0 + 0.4 * 0.5)
 
@@ -82,14 +108,17 @@ class TestTotalScore:
         )
 
     def test_acoustic_included_when_enabled(self, monkeypatch):
+        monkeypatch.setattr(config, "enable_text_score", True)
         monkeypatch.setattr(config, "enable_acoustic_score", True)
+        monkeypatch.setattr(config, "weight_text", 0.7)
         monkeypatch.setattr(config, "weight_char", 0.5)
         monkeypatch.setattr(config, "weight_diacritic", 0.2)
         monkeypatch.setattr(config, "weight_acoustic", 0.3)
         score = compute_total_score(0.0, 0.0, 1.0)
         assert score == pytest.approx(0.3)
         score = compute_total_score(1.0, 1.0, 1.0)
-        assert score == pytest.approx(0.5 + 0.2 + 0.3)
+        # total = weight_text * text_score + weight_acoustic * acoustic_score
+        assert score == pytest.approx(0.7 * (0.5 + 0.2) + 0.3 * 1.0)
 
 
 class TestCorrectWord:
@@ -115,6 +144,22 @@ class TestScoreWord:
         assert "total_score" in result
         assert result["char_score"] == 1.0
         assert result["total_score"] == 1.0
+
+
+class TestScoreWordBest:
+    def test_returns_best_of_emlaey_uthmani(self):
+        # When emlaey and uthmani are same, same as score_word
+        result = score_word_best("بِسْمِ", "بِسْمِ", "بِسْمِ", 2)
+        assert result["char_score"] == 1.0
+        assert result["diacritic_score"] == 1.0
+        assert "t_corrected" in result
+
+    def test_takes_best_when_variants_differ(self):
+        # Best score is max of emlaey and uthmani; t_corrected from better variant
+        result = score_word_best("بِسْمِ", "بِسۡمِ", "بِسْمِ", 2)  # emlaey uses ْ, uthmani may use ۡ
+        assert result["char_score"] == 1.0
+        assert result["diacritic_score"] == 1.0
+        assert result["t_corrected"] in ("بِسْمِ", "بِسۡمِ")
 
 
 class TestAlignMultiWord:
