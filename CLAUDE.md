@@ -61,8 +61,8 @@ FastAPI + python-socketio ASGI app. The Socket.IO server wraps FastAPI and is ex
 2. `vad.py` (Silero VAD) accumulates audio and detects speech boundaries
 3. Optional verse detection (`verse_detection.py`) identifies which verse the user is reciting from the first utterance
 4. `transcriber.py` (Whisper `whisper-quran-v1`) transcribes accumulated speech → Arabic text
-5. `acoustic_scorer.py` (wav2vec2 + KenLM beam search) produces an acoustic score independently
-6. `scorer.py` computes character accuracy + diacritic accuracy, then blends with acoustic score
+5. `acoustic_scorer.py` (wav2vec2 + KenLM beam search) decodes the audio and scores the decoded text as `WEIGHT_CHAR` * char accuracy + `WEIGHT_DIACRITIC` * diacritic accuracy (reusing `scorer.py`)
+6. `scorer.py` computes character accuracy + diacritic accuracy for the Whisper text, then blends text and acoustic scores
 7. `word_result` event is emitted with pass/fail status and scores
 
 **Key modules**:
@@ -112,6 +112,7 @@ Copy `.env.example` to `.env` in the project root. Key vars:
 | `WAV2VEC2_QURAN_ASR_MODEL` | HuggingFace model ID for wav2vec2 |
 | `WAV2VEC2_LM_PATH` | Path to KenLM ARPA file |
 | `SCORE_THRESHOLD` | Pass/fail cutoff (default: `0.5`) |
+| `SCORE_FATHA` / `SCORE_DAMMA` / `SCORE_KASRA` / `SCORE_SHADDA` / `SCORE_SUKOON` | Per-diacritic scoring toggles (all default `true`); a disabled mark is ignored everywhere. Defined by `SCORABLE_DIACRITICS` in `config.py` |
 | `SOCKET_AUTH_API_KEY` | Optional socket auth key |
 | `SAVE_SESSION_DATA` | Persist session JSON/WAV to disk |
 
@@ -120,7 +121,7 @@ Frontend: `frontend/.env` with `VITE_BACKEND_URL` and `VITE_SOCKET_API_KEY`.
 ## Scoring Logic
 
 Total score = weighted blend of:
-- **Text score**: character accuracy (`WEIGHT_CHAR`) + diacritic accuracy (`WEIGHT_DIACRITIC`), computed after Arabic normalization
-- **Acoustic score**: wav2vec2 CTC beam search with KenLM, weighted by `WEIGHT_ACOUSTIC`
+- **Text score**: character accuracy (`WEIGHT_CHAR`) + diacritic accuracy (`WEIGHT_DIACRITIC`), computed after Arabic normalization on the Whisper transcription
+- **Acoustic score**: wav2vec2 CTC beam search with KenLM decodes the audio, then the decoded text is scored the same way — character accuracy (`WEIGHT_CHAR`) + diacritic accuracy (`WEIGHT_DIACRITIC`) — reusing the text scorer. The blended result is weighted by `WEIGHT_ACOUSTIC`. `WEIGHT_CHAR` + `WEIGHT_DIACRITIC` should sum to 1.0 to keep each sub-score in [0, 1].
 
 Blend ratio controlled by `WEIGHT_TEXT` vs `WEIGHT_ACOUSTIC`. Either scorer can be disabled independently.

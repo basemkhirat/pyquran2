@@ -18,6 +18,16 @@ export default function App() {
       );
 
     const onWordResult = (data: any) => {
+      console.log(
+        "word_result — expected:", data.expected,
+        "| decoded:", data.transcribed,
+        "| wav2vec2:", data.acoustic_decoded,
+        "| score:", data.total_score,
+        "| acoustic:", data.acoustic_score,
+        "| acoustic_char:", data.acoustic_char,
+        "| acoustic_diacritic:", data.acoustic_diacritic,
+        "| status:", data.status
+      );
       const idx = wordIndexFor(data);
       if (idx !== -1) addWordResult(idx, data);
     };

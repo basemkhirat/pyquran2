@@ -4,17 +4,20 @@ Optimizations over baseline:
 - Audio normalization to [-1, 1] before inference
 - Beam search decoding via pyctcdecode (with optional KenLM language model)
 - Best-match word alignment instead of positional alignment
-- Diacritics-aware comparison (the Quran wav2vec2 model outputs tashkeel)
+- Diacritics-aware comparison (the Quran wav2vec2 model outputs tashkeel): the decoded
+  text is scored as a weighted blend of base-letter accuracy (WEIGHT_CHAR) and scored-
+  diacritic accuracy (WEIGHT_DIACRITIC), mirroring the Whisper text scorer.
 """
 import logging
 import os
 import re
+from dataclasses import dataclass
 from typing import List, Tuple
 
 import numpy as np
-from jiwer import cer
 
-from backend.config import config, NON_SCORED_DIACRITICS, normalize_sukoon
+from backend.config import config, normalize_sukoon
+from backend.scorer import compute_char_score, compute_diacritic_score, compute_text_score
 from backend.terminal_arabic import display_arabic
 
 logger = logging.getLogger(__name__)
@@ -132,7 +135,7 @@ def _decode_audio(audio: np.ndarray) -> str:
     logits_np = logits.cpu().numpy()[0]
     text = decoder.decode(logits_np, beam_width=config.wav2vec2_beam_width)
     text = text.strip()
-    logger.info("  wav2vec2 decoded: '%s'", (text))
+    logger.info("  wav2vec2 decoded: '%s'", display_arabic(text))
     return text
 
 
@@ -145,79 +148,110 @@ def _normalize_text(text: str) -> str:
     return _CHARS_NOT_IN_VOCAB.sub("", normalize_sukoon(text)).strip()
 
 
-def _strip_non_scored_diacritics(text: str) -> str:
-    """Remove diacritics that are not scored (fatha, kasra, damma, sukoon, shadda)."""
-    return NON_SCORED_DIACRITICS.sub("", text).strip()
+def _acoustic_components(expected: str, decoded: str) -> Tuple[float, float]:
+    """Return (char_score, diacritic_score) in [0, 1] for decoded text vs expected.
+
+    Applies the acoustic-specific normalization (sukoon variant + out-of-vocab chars),
+    then reuses the text scorer's char/diacritic accuracy so both scoring paths agree.
+    """
+    exp = _normalize_text(expected)
+    dec = _normalize_text(decoded)
+    return compute_char_score(exp, dec), compute_diacritic_score(exp, dec)
 
 
 def _acoustic_score_single(expected: str, decoded: str) -> float:
-    """Score in [0, 1] using 1 - CER, comparing only base letters and scored diacritics."""
-    exp = _strip_non_scored_diacritics(_normalize_text(expected))
-    dec = _strip_non_scored_diacritics(_normalize_text(decoded))
-    if not exp:
-        return 1.0 if not dec else 0.0
-    err = cer(exp, dec)
-    return max(0.0, 1.0 - err)
+    """Blended acoustic score in [0, 1]: WEIGHT_CHAR * char + WEIGHT_DIACRITIC * diacritic."""
+    char_score, diacritic_score = _acoustic_components(expected, decoded)
+    return compute_text_score(char_score, diacritic_score)
 
 
-def _acoustic_score_best(emlaey: str, uthmani: str, decoded: str) -> float:
-    """Best score from comparing decoded against both emlaey and uthmani."""
-    return max(
-        _acoustic_score_single(emlaey, decoded),
-        _acoustic_score_single(uthmani, decoded),
-    )
+def _acoustic_score_best(
+    emlaey: str, uthmani: str, decoded: str
+) -> Tuple[float, float, float]:
+    """Best (blended, char, diacritic) from comparing decoded against emlaey and uthmani.
+
+    Picks the variant with the higher blended score so the returned sub-scores match it.
+    """
+    cs_e, ds_e = _acoustic_components(emlaey, decoded)
+    cs_u, ds_u = _acoustic_components(uthmani, decoded)
+    blend_e = compute_text_score(cs_e, ds_e)
+    blend_u = compute_text_score(cs_u, ds_u)
+    if blend_e >= blend_u:
+        return blend_e, cs_e, ds_e
+    return blend_u, cs_u, ds_u
+
+
+@dataclass
+class AcousticResult:
+    """Per-word acoustic scores for a decoded chunk (all lists parallel to expected words)."""
+    scores: List[float]        # blended: WEIGHT_CHAR * char + WEIGHT_DIACRITIC * diacritic
+    char_scores: List[float]   # base-letter accuracy of the winning match
+    diac_scores: List[float]   # scored-diacritic accuracy of the winning match
+    best_words: List[str]      # raw decoded word that best-matched each expected word ("" if none)
+    n_decoded: int             # number of words the model decoded from the audio
 
 
 def get_acoustic_scores(
     audio: np.ndarray,
     previous_words: List[Tuple[str, str]],
     expected_words: List[Tuple[str, str]],
-) -> Tuple[List[float], int]:
+) -> AcousticResult:
     """Run wav2vec2 once on the chunk, decode, then best-match align to expected words.
 
-    For each expected word (emlaey, uthmani), finds the decoded word with the best CER score
-    against either variant. Falls back to 0.5 when no decoded words.
+    For each expected word (emlaey, uthmani), finds the decoded word with the best blended
+    score against either variant. The blended score is WEIGHT_CHAR * char_accuracy +
+    WEIGHT_DIACRITIC * diacritic_accuracy; char_scores/diac_scores hold the components of
+    the winning match. Falls back to 0.5 (char=diac=0.5) when no decoded words.
 
     previous_words: list of (emlaey, uthmani) for already-confirmed words.
     expected_words: list of (emlaey, uthmani) for the current chunk.
 
-    Returns:
-        (scores, n_decoded) where scores is a list of floats for each expected word
-        and n_decoded is the number of words the model actually decoded from the audio.
+    Returns an AcousticResult whose lists are sliced to the current chunk (previous_words
+    dropped), parallel to expected_words.
     """
     if not expected_words:
-        return [], 0
+        return AcousticResult([], [], [], [], 0)
 
     decoded_text = _decode_audio(audio)
     decoded_parts = decoded_text.split()
     n_decoded = len(decoded_parts)
 
     if not decoded_parts:
-        return [0.5] * len(expected_words), 0
+        n = len(expected_words)
+        return AcousticResult([0.5] * n, [0.5] * n, [0.5] * n, [""] * n, 0)
 
     all_expected = previous_words + expected_words
     scores: List[float] = []
+    char_scores: List[float] = []
+    diac_scores: List[float] = []
+    best_words: List[str] = []
     last_match_idx = 0
 
-    for i, (emlaey, uthmani) in enumerate(all_expected):
-        best_score = 0.0
+    for emlaey, uthmani in all_expected:
+        best_score, best_cs, best_ds = 0.0, 0.0, 0.0
         best_word = ""
         best_word_idx = -1
         for j in range(last_match_idx, len(decoded_parts)):
             decoded_word = decoded_parts[j]
-            s = _acoustic_score_best(emlaey, uthmani, decoded_word)
-            if s > best_score:
-                best_score = s
+            blend, cs, ds = _acoustic_score_best(emlaey, uthmani, decoded_word)
+            if blend > best_score:
+                best_score, best_cs, best_ds = blend, cs, ds
                 best_word = decoded_word
                 best_word_idx = j
 
         scores.append(best_score)
+        char_scores.append(best_cs)
+        diac_scores.append(best_ds)
+        best_words.append(best_word)
         if best_word_idx != -1 and best_score >= 0.4:
             last_match_idx = best_word_idx + 1
 
         logger.debug(
-            "  acoustic: expected='%s' best_match='%s' score=%.2f",
-            display_arabic(uthmani), display_arabic(best_word), best_score,
+            "  acoustic: expected='%s' best_match='%s' score=%.2f (char=%.2f diac=%.2f)",
+            display_arabic(uthmani), display_arabic(best_word), best_score, best_cs, best_ds,
         )
 
-    return scores[len(previous_words) :], n_decoded
+    k = len(previous_words)
+    return AcousticResult(
+        scores[k:], char_scores[k:], diac_scores[k:], best_words[k:], n_decoded
+    )

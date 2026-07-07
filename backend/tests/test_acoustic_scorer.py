@@ -2,11 +2,16 @@
 import numpy as np
 import pytest
 
-from backend.acoustic_scorer import _acoustic_score_single, get_acoustic_scores
+from backend.config import config
+from backend.acoustic_scorer import (
+    _acoustic_components,
+    _acoustic_score_single,
+    get_acoustic_scores,
+)
 
 
 class TestAcousticScoreSingle:
-    """Test the single-word acoustic score helper (1 - CER on base letters + scored diacritics)."""
+    """Test the single-word acoustic score: WEIGHT_CHAR * char + WEIGHT_DIACRITIC * diacritic."""
 
     def test_identical(self):
         assert _acoustic_score_single("بِسْمِ", "بِسْمِ") == 1.0
@@ -30,7 +35,19 @@ class TestAcousticScoreSingle:
 
     def test_empty_expected(self):
         assert _acoustic_score_single("", "") == 1.0
-        assert _acoustic_score_single("", "بسم") == 0.0
+        # char component 0.0 (letters present but nothing expected); diacritic component 1.0
+        # (decoded has no diacritics) -> blend collapses to WEIGHT_DIACRITIC.
+        assert _acoustic_score_single("", "بسم") == pytest.approx(config.weight_diacritic)
+
+    def test_weighted_blend_of_char_and_diacritic(self):
+        # Correct letters but all diacritics dropped: char ~1.0, diacritic ~0.0
+        cs, ds = _acoustic_components("بِسْمِ", "بسم")
+        assert cs == 1.0
+        assert ds == 0.0
+        blended = _acoustic_score_single("بِسْمِ", "بسم")
+        assert blended == pytest.approx(config.weight_char * cs + config.weight_diacritic * ds)
+        # With default weights (0.75/0.25) the score is dominated by WEIGHT_CHAR
+        assert blended == pytest.approx(config.weight_char)
 
 
 class TestGetAcousticScores:
@@ -43,12 +60,18 @@ class TestGetAcousticScores:
         )
         audio = np.zeros(1600, dtype=np.float32)  # 0.1s at 16kHz
         expected = [("بِسْمِ", "بِسْمِ"), ("اللَّهِ", "اللَّهِ")]
-        scores, n_decoded = get_acoustic_scores(audio, [], expected)
-        assert len(scores) == 2
-        assert n_decoded == 2
-        for s in scores:
+        res = get_acoustic_scores(audio, [], expected)
+        assert len(res.scores) == 2
+        assert res.n_decoded == 2
+        for s in res.scores:
             assert isinstance(s, float)
             assert 0.0 <= s <= 1.0
+        # char/diacritic sub-scores are populated in parallel and in range
+        assert len(res.char_scores) == 2
+        assert len(res.diac_scores) == 2
+        for cs, ds in zip(res.char_scores, res.diac_scores):
+            assert 0.0 <= cs <= 1.0
+            assert 0.0 <= ds <= 1.0
 
     def test_best_match_alignment(self, monkeypatch):
         """Best-match aligns expected words to decoded words."""
@@ -58,11 +81,13 @@ class TestGetAcousticScores:
         )
         audio = np.zeros(1600, dtype=np.float32)
         expected = [("بِسْمِ", "بِسْمِ"), ("اللَّهِ", "اللَّهِ")]
-        scores, n_decoded = get_acoustic_scores(audio, [], expected)
-        assert len(scores) == 2
-        assert n_decoded == 2
-        assert scores[0] > 0.7  # بِسْمِ matches بِسْمِ
-        assert scores[1] > 0.7  # اللَّهِ matches اللَّهِ
+        res = get_acoustic_scores(audio, [], expected)
+        assert len(res.scores) == 2
+        assert res.n_decoded == 2
+        assert res.scores[0] > 0.7  # بِسْمِ matches بِسْمِ
+        assert res.scores[1] > 0.7  # اللَّهِ matches اللَّهِ
+        # best_words is the raw decoded word that matched each expected word
+        assert res.best_words == ["بِسْمِ", "اللَّهِ"]
 
     def test_fallback_when_no_decoded_words(self, monkeypatch):
         monkeypatch.setattr(
@@ -71,11 +96,12 @@ class TestGetAcousticScores:
         )
         audio = np.zeros(1600, dtype=np.float32)
         expected = [("واحد", "واحد"), ("اثنان", "اثنان")]
-        scores, n_decoded = get_acoustic_scores(audio, [], expected)
-        assert len(scores) == 2
-        assert n_decoded == 0
-        assert scores[0] == 0.5
-        assert scores[1] == 0.5
+        res = get_acoustic_scores(audio, [], expected)
+        assert len(res.scores) == 2
+        assert res.n_decoded == 0
+        assert res.scores == [0.5, 0.5]
+        assert res.char_scores == [0.5, 0.5]
+        assert res.diac_scores == [0.5, 0.5]
 
     def test_extra_decoded_words_dont_crash(self, monkeypatch):
         """Model decodes more words than expected — should still work."""
@@ -85,10 +111,10 @@ class TestGetAcousticScores:
         )
         audio = np.zeros(1600, dtype=np.float32)
         expected = [("بِسْمِ", "بِسْمِ")]
-        scores, n_decoded = get_acoustic_scores(audio, [], expected)
-        assert len(scores) == 1
-        assert n_decoded == 4
-        assert scores[0] > 0.7
+        res = get_acoustic_scores(audio, [], expected)
+        assert len(res.scores) == 1
+        assert res.n_decoded == 4
+        assert res.scores[0] > 0.7
 
     def test_empty_expected_returns_empty(self, monkeypatch):
         monkeypatch.setattr(
@@ -96,6 +122,9 @@ class TestGetAcousticScores:
             lambda _: "بسم",
         )
         audio = np.zeros(1600, dtype=np.float32)
-        scores, n_decoded = get_acoustic_scores(audio, [], [])  # empty expected
-        assert scores == []
-        assert n_decoded == 0
+        res = get_acoustic_scores(audio, [], [])  # empty expected
+        assert res.scores == []
+        assert res.char_scores == []
+        assert res.diac_scores == []
+        assert res.best_words == []
+        assert res.n_decoded == 0

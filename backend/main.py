@@ -547,14 +547,22 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     
     text = ""
     acoustic_scores_full: list[float] = []
+    acoustic_char_full: list[float] = []
+    acoustic_diac_full: list[float] = []
+    acoustic_decoded_full: list[str] = []
     n_decoded_words = 0
-    
+
     if config.enable_text_score and config.enable_acoustic_score and expected_chunk_max:
         whisper_task = asyncio.to_thread(transcriber.transcribe, audio)
         wav2vec_task = asyncio.to_thread(
             acoustic_scorer.get_acoustic_scores, audio, previous_expected_chunk, expected_chunk_max
         )
-        text, (acoustic_scores_full, n_decoded_words) = await asyncio.gather(whisper_task, wav2vec_task)
+        text, ac_res = await asyncio.gather(whisper_task, wav2vec_task)
+        acoustic_scores_full = ac_res.scores
+        acoustic_char_full = ac_res.char_scores
+        acoustic_diac_full = ac_res.diac_scores
+        acoustic_decoded_full = ac_res.best_words
+        n_decoded_words = ac_res.n_decoded
         text = text.strip()
         logger.info("  Whisper transcription: '%s'", display_arabic(text))
         logger.info("  Whisper + wav2vec (parallel) took %.2fs", time.time() - t0)
@@ -564,9 +572,14 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         logger.info("  Whisper transcription: '%s'", display_arabic(text))
         logger.info("  Transcription took %.2fs", time.time() - t0)
     elif config.enable_acoustic_score and expected_chunk_max:
-        acoustic_scores_full, n_decoded_words = await asyncio.to_thread(
+        ac_res = await asyncio.to_thread(
             acoustic_scorer.get_acoustic_scores, audio, previous_expected_chunk, expected_chunk_max
         )
+        acoustic_scores_full = ac_res.scores
+        acoustic_char_full = ac_res.char_scores
+        acoustic_diac_full = ac_res.diac_scores
+        acoustic_decoded_full = ac_res.best_words
+        n_decoded_words = ac_res.n_decoded
         logger.info("  Wav2vec (acoustic only, %d decoded words) took %.2fs", n_decoded_words, time.time() - t0)
 
     # When text scoring is disabled, use expected words as transcribed words for acoustic scoring.
@@ -614,11 +627,17 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
 
     # Slice parallel wav2vec scores to actual chunk size (after backtrack)
     acoustic_scores: list[float] = []
+    acoustic_char: list[float] = []
+    acoustic_diac: list[float] = []
+    acoustic_decoded: list[str] = []
     if config.enable_acoustic_score and acoustic_scores_full:
         # Acoustic scores align with EXPECTED chunk, not transcribed chunk.
         # Length of expected_chunk_max was min(remaining, 20).
         n_words_chunk = min(remaining, 20)
         acoustic_scores = acoustic_scores_full[:n_words_chunk]
+        acoustic_char = acoustic_char_full[:n_words_chunk]
+        acoustic_diac = acoustic_diac_full[:n_words_chunk]
+        acoustic_decoded = acoustic_decoded_full[:n_words_chunk]
 
     streaming = not is_final
     n_transcribed = len(transcribed_words)
@@ -645,6 +664,9 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         # Since `idx` advances by 1 for each correct word, the offset into the original
         # `acoustic_scores` array (from the start of the current chunk) is `words_processed`.
         ac = (acoustic_scores[words_processed] if words_processed < len(acoustic_scores) else None) if config.enable_acoustic_score else None
+        ac_char = (acoustic_char[words_processed] if words_processed < len(acoustic_char) else None) if config.enable_acoustic_score else None
+        ac_diac = (acoustic_diac[words_processed] if words_processed < len(acoustic_diac) else None) if config.enable_acoustic_score else None
+        ac_decoded = (acoustic_decoded[words_processed] if words_processed < len(acoustic_decoded) else None) if config.enable_acoustic_score else None
         if ac is not None:
             scores["acoustic_score"] = round(ac, 3)
         scores["total_score"] = round(
@@ -682,6 +704,12 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         if config.send_word_result_details:
             payload["transcribed"] = t_corrected
             payload["expected"] = word["uthmani_text"]
+            if ac_decoded is not None:
+                payload["acoustic_decoded"] = ac_decoded
+            if ac_char is not None:
+                payload["acoustic_char"] = round(ac_char, 3)
+            if ac_diac is not None:
+                payload["acoustic_diacritic"] = round(ac_diac, 3)
             payload.update(scores)
 
         # Emit result

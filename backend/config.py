@@ -8,10 +8,50 @@ load_dotenv()
 # Project root (parent of backend/) so relative paths work when cwd is not project root (e.g. Modal)
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Diacritics used for scoring: fatha, kasra, damma, sukoon, shadda (U+064E, U+0650, U+064F, U+0652, U+0651)
-SCORED_DIACRITICS = re.compile(r"[\u064E\u064F\u0650\u0651\u0652]")
-# All diacritics except the five above (used to strip non-scored diacritics)
-NON_SCORED_DIACRITICS = re.compile(r"[\u0617-\u061A\u064B-\u064D\u0670\u06D6-\u06ED]")
+def _env_bool(name: str, default: bool) -> bool:
+    """Read a boolean env var. Accepts 1/true/yes/on (case-insensitive); unset -> default."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+# --- Diacritics (tashkeel) ---------------------------------------------------------------
+# Diacritics split into "scored" and "non-scored":
+#   scored     -> counted in the diacritic-accuracy score and kept during acoustic scoring
+#   non-scored -> ignored everywhere (stripped before comparison)
+#
+# Toggle any scored mark on/off with its env var (e.g. SCORE_SUKOON=false). A disabled mark
+# automatically moves to the non-scored set, so it stops affecting any score. To score a mark
+# that isn't listed yet, add a row below -- no other code changes are needed.
+#
+# name -> (unicode char, enabled?). Edit a default or flip a toggle here to change scoring.
+SCORABLE_DIACRITICS = {
+    "fatha":  ("\u064E", _env_bool("SCORE_FATHA",  True)),
+    "damma":  ("\u064F", _env_bool("SCORE_DAMMA",  True)),
+    "kasra":  ("\u0650", _env_bool("SCORE_KASRA",  True)),
+    "shadda": ("\u0651", _env_bool("SCORE_SHADDA", True)),
+    "sukoon": ("\u0652", _env_bool("SCORE_SUKOON", True)),
+}
+
+# Full range of diacritics the scorer recognises: harakat, tanween, shadda, sukoon,
+# the U+0653-U+065E combining block (maddah, combining hamza, subscript alef, inverted
+# damma, Uthmani "fatha with two dots" tanween, etc.), superscript alef, and Quranic
+# annotation marks. Anything here that is not an enabled scored mark is treated as
+# non-scored (stripped before comparison).
+_ALL_DIACRITICS_RANGE = "\u0617-\u061A\u064B-\u065E\u0670\u06D6-\u06ED"
+
+# Characters of the currently-enabled scored marks.
+_SCORED_CHARS = "".join(char for char, enabled in SCORABLE_DIACRITICS.values() if enabled)
+
+# Matches only enabled scored marks (matches nothing when every mark is disabled).
+SCORED_DIACRITICS = re.compile(f"[{_SCORED_CHARS}]" if _SCORED_CHARS else r"(?!x)x")
+
+# Matches any recognised diacritic that is NOT an enabled scored mark (used to strip them).
+NON_SCORED_DIACRITICS = re.compile(
+    f"(?![{_SCORED_CHARS}])[{_ALL_DIACRITICS_RANGE}]" if _SCORED_CHARS
+    else f"[{_ALL_DIACRITICS_RANGE}]"
+)
 # U+06E1 (ۡ) is alternate sukoon; normalize to U+0652 (ْ) for comparison
 SUKOON_VARIANT = "\u06E1"
 SUKOON_STANDARD = "\u0652"

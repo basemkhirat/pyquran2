@@ -17,6 +17,8 @@ export interface WordResult {
     text_score?: number;
     total_score?: number;
     acoustic_score?: number;
+    acoustic_char?: number;
+    acoustic_diacritic?: number;
     status: "correct" | "incorrect" | "skipped";
     is_interim?: boolean;
 }
