@@ -667,6 +667,17 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         ac_char = (acoustic_char[words_processed] if words_processed < len(acoustic_char) else None) if config.enable_acoustic_score else None
         ac_diac = (acoustic_diac[words_processed] if words_processed < len(acoustic_diac) else None) if config.enable_acoustic_score else None
         ac_decoded = (acoustic_decoded[words_processed] if words_processed < len(acoustic_decoded) else None) if config.enable_acoustic_score else None
+
+        # Noise guard (acoustic-only mode): an empty best match means wav2vec2 found no word
+        # matching this expected word — likely silence/noise, not a real recitation attempt.
+        # Don't emit a misleading "incorrect" word_result; stay on this word for the retry.
+        if config.enable_acoustic_score and not config.enable_text_score and not ac_decoded:
+            logger.info(
+                "  No wav2vec2 match for '%s' (noise/silence) — skipping word_result",
+                display_arabic(word["uthmani_text"]),
+            )
+            break
+
         if ac is not None:
             scores["acoustic_score"] = round(ac, 3)
         scores["total_score"] = round(
