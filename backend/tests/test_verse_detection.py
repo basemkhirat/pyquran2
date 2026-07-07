@@ -2,7 +2,11 @@
 import numpy as np
 import pytest
 
-from backend.verse_detection import detect_start_verse, _build_verse_candidates
+from backend.verse_detection import (
+    detect_start_verse,
+    _build_verse_candidates,
+    _verse_start_offsets,
+)
 
 
 # Sample word list mimicking quran_data.get_words_range() output for Al-Fatiha (7 verses)
@@ -38,6 +42,35 @@ CROSS_CHAPTER_WORDS = [
     {"surah": 2, "ayah": 2, "word_index": 1, "emlaey_text": "ذلك", "uthmani_text": "ذَٰلِكَ"},
     {"surah": 2, "ayah": 2, "word_index": 2, "emlaey_text": "الكتاب", "uthmani_text": "ٱلْكِتَٰبُ"},
 ]
+
+
+def _mk(surah, ayah, tokens):
+    """Build a verse's word dicts (word_index restarts at 1, like real data)."""
+    return [
+        {"surah": surah, "ayah": ayah, "word_index": i, "emlaey_text": t, "uthmani_text": t}
+        for i, t in enumerate(tokens, start=1)
+    ]
+
+
+# Al-Rahman-like slice: the refrain فبأي آلاء ربكما تكذبان repeats at verses 16/18/21
+# (identical), interleaved with distinct verses. Mirrors the real ambiguity.
+REFRAIN = ["فبأي", "آلاء", "ربكما", "تكذبان"]
+RAHMAN_WORDS = (
+    _mk(55, 16, REFRAIN)                                    # idx 0-3
+    + _mk(55, 17, ["رب", "المشرقين", "ورب", "المغربين"])    # idx 4-7
+    + _mk(55, 18, REFRAIN)                                  # idx 8-11
+    + _mk(55, 19, ["مرج", "البحرين", "يلتقيان"])            # idx 12-14
+    + _mk(55, 20, ["بينهما", "برزخ", "لا", "يبغيان"])        # idx 15-18
+    + _mk(55, 21, REFRAIN)                                  # idx 19-22
+    + _mk(55, 22, ["يخرج", "منهما", "اللؤلؤ", "والمرجان"])  # idx 23-26
+)
+
+
+def _patch_decode(monkeypatch, text):
+    monkeypatch.setattr("backend.verse_detection._decode_audio", lambda _: text)
+
+
+AUDIO = np.zeros(16000, dtype=np.float32)
 
 
 class TestBuildVerseCandidates:
@@ -82,116 +115,150 @@ class TestBuildVerseCandidates:
         assert candidates[(1, 1)][0] == "قل"
 
 
+class TestVerseStartOffsets:
+    """Test the verse-start enumerator."""
+
+    def test_offsets_in_order(self):
+        offsets = _verse_start_offsets(SAMPLE_WORDS)
+        assert offsets == [(1, 1, 0), (1, 2, 4), (1, 3, 8), (1, 4, 10)]
+
+    def test_cross_chapter(self):
+        offsets = _verse_start_offsets(CROSS_CHAPTER_WORDS)
+        assert offsets == [(1, 6, 0), (1, 7, 2), (2, 1, 4), (2, 2, 5)]
+
+
 class TestDetectStartVerse:
     """Test detect_start_verse with mocked wav2vec2 decoding."""
 
     def test_exact_match_verse1(self, monkeypatch):
-        monkeypatch.setattr(
-            "backend.verse_detection._decode_audio",
-            lambda _: "بسم الله",
-        )
-        audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS)
-        assert result is not None
-        chapter, ayah, word_index, score = result
-        assert chapter == 1
-        assert ayah == 1
-        assert word_index == 0
-        assert score >= 0.6
+        _patch_decode(monkeypatch, "بسم الله")
+        result = detect_start_verse(AUDIO, SAMPLE_WORDS)
+        assert result.status == "commit"
+        assert result.chapter == 1
+        assert result.ayah == 1
+        assert result.word_index == 0
+        assert result.score >= 0.6
 
     def test_exact_match_verse4(self, monkeypatch):
-        monkeypatch.setattr(
-            "backend.verse_detection._decode_audio",
-            lambda _: "مالك يوم",
-        )
-        audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS)
-        assert result is not None
-        chapter, ayah, word_index, score = result
-        assert chapter == 1
-        assert ayah == 4
-        assert word_index == 10
+        _patch_decode(monkeypatch, "مالك يوم")
+        result = detect_start_verse(AUDIO, SAMPLE_WORDS)
+        assert result.status == "commit"
+        assert result.chapter == 1
+        assert result.ayah == 4
+        assert result.word_index == 10
 
     def test_best_match_among_candidates(self, monkeypatch):
         """Slightly imperfect match should still find the best candidate."""
-        monkeypatch.setattr(
-            "backend.verse_detection._decode_audio",
-            lambda _: "الحمد لله",  # exact match for verse 2
-        )
-        audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS)
-        assert result is not None
-        assert result[0] == 1  # chapter 1
-        assert result[1] == 2  # ayah 2
+        _patch_decode(monkeypatch, "الحمد لله")  # exact match for verse 2
+        result = detect_start_verse(AUDIO, SAMPLE_WORDS)
+        assert result.status == "commit"
+        assert result.chapter == 1
+        assert result.ayah == 2
 
     def test_below_threshold(self, monkeypatch):
         """Completely unrelated speech should fail detection."""
-        monkeypatch.setattr(
-            "backend.verse_detection._decode_audio",
-            lambda _: "كلام عشوائي تماما",  # random unrelated text
-        )
-        audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS)
-        assert result is None
+        _patch_decode(monkeypatch, "كلام عشوائي تماما")  # random unrelated text
+        result = detect_start_verse(AUDIO, SAMPLE_WORDS)
+        assert result.status == "none"
 
     def test_empty_decoded_text(self, monkeypatch):
-        monkeypatch.setattr(
-            "backend.verse_detection._decode_audio",
-            lambda _: "",
-        )
-        audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, SAMPLE_WORDS)
-        assert result is None
+        _patch_decode(monkeypatch, "")
+        result = detect_start_verse(AUDIO, SAMPLE_WORDS)
+        assert result.status == "none"
 
     def test_single_verse_range(self, monkeypatch):
-        monkeypatch.setattr(
-            "backend.verse_detection._decode_audio",
-            lambda _: "مالك يوم",
-        )
-        audio = np.zeros(16000, dtype=np.float32)
+        _patch_decode(monkeypatch, "مالك يوم")
         # Filter words to only include verse 4
         verse4_words = [w for w in SAMPLE_WORDS if w["ayah"] == 4]
-        result = detect_start_verse(audio, verse4_words)
-        assert result is not None
-        assert result[0] == 1  # chapter
-        assert result[1] == 4  # ayah
+        result = detect_start_verse(AUDIO, verse4_words)
+        assert result.status == "commit"
+        assert result.chapter == 1
+        assert result.ayah == 4
 
     def test_verse_outside_range_not_matched(self, monkeypatch):
         """Speech matching verse 1 should not match when word list only has verses 3-4."""
-        monkeypatch.setattr(
-            "backend.verse_detection._decode_audio",
-            lambda _: "بسم الله",
-        )
-        audio = np.zeros(16000, dtype=np.float32)
+        _patch_decode(monkeypatch, "بسم الله")
         # Filter words to only include verses 3 and 4
         partial_words = [w for w in SAMPLE_WORDS if 3 <= w["ayah"] <= 4]
-        result = detect_start_verse(audio, partial_words)
-        # Should either be None or match a different verse, not verse 1
-        if result is not None:
-            assert result[1] != 1  # ayah should not be 1
+        result = detect_start_verse(AUDIO, partial_words)
+        # Should not confidently commit to verse 1
+        assert result.status == "none" or result.ayah != 1
 
     def test_cross_chapter_detection(self, monkeypatch):
         """Test detection across chapter boundaries."""
-        monkeypatch.setattr(
-            "backend.verse_detection._decode_audio",
-            lambda _: "ذلك الكتاب",  # Start of Al-Baqarah verse 2
-        )
-        audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, CROSS_CHAPTER_WORDS)
-        assert result is not None
-        chapter, ayah, word_index, score = result
-        assert chapter == 2  # Should detect in chapter 2
-        assert ayah == 2     # verse 2 of Al-Baqarah
+        _patch_decode(monkeypatch, "ذلك الكتاب")  # Start of Al-Baqarah verse 2
+        result = detect_start_verse(AUDIO, CROSS_CHAPTER_WORDS)
+        assert result.status == "commit"
+        assert result.chapter == 2  # Should detect in chapter 2
+        assert result.ayah == 2     # verse 2 of Al-Baqarah
 
     def test_cross_chapter_first_chapter_still_works(self, monkeypatch):
         """Ensure verses from the first chapter in a cross-chapter range still work."""
-        monkeypatch.setattr(
-            "backend.verse_detection._decode_audio",
-            lambda _: "اهدنا الصراط",  # Al-Fatiha verse 6
+        _patch_decode(monkeypatch, "اهدنا الصراط")  # Al-Fatiha verse 6
+        result = detect_start_verse(AUDIO, CROSS_CHAPTER_WORDS)
+        assert result.status == "commit"
+        assert result.chapter == 1  # Should detect in chapter 1
+        assert result.ayah == 6     # verse 6
+
+
+class TestPrefixCollision:
+    """Verses that share a prefix but diverge later are resolved by a longer utterance."""
+
+    WORDS = _mk(112, 1, ["قل", "هو", "الله", "احد"]) + _mk(112, 100, ["قل", "هو", "الرحمن", "رحيم"])
+
+    def test_short_shared_prefix_is_ambiguous(self, monkeypatch):
+        _patch_decode(monkeypatch, "قل هو")  # matches both verses equally
+        result = detect_start_verse(AUDIO, self.WORDS)
+        assert result.status == "ambiguous"
+        assert len(result.candidates) == 2
+
+    def test_full_utterance_resolves_collision(self, monkeypatch):
+        _patch_decode(monkeypatch, "قل هو الله احد")  # only the first verse
+        result = detect_start_verse(AUDIO, self.WORDS)
+        assert result.status == "commit"
+        assert result.ayah == 1
+
+
+class TestRefrainDisambiguation:
+    """The Al-Rahman case: identical refrains must not be guessed prematurely."""
+
+    def test_lone_refrain_is_ambiguous(self, monkeypatch):
+        _patch_decode(monkeypatch, " ".join(REFRAIN))
+        result = detect_start_verse(AUDIO, RAHMAN_WORDS, is_final=False)
+        assert result.status == "ambiguous"
+        # verses 16, 18, 21 all match identically
+        assert {a for _, a, _ in result.candidates} == {16, 18, 21}
+
+    def test_refrain_plus_following_verse_resolves(self, monkeypatch):
+        # refrain followed by verse 19's text uniquely identifies the verse-18 occurrence
+        _patch_decode(monkeypatch, " ".join(REFRAIN + ["مرج", "البحرين", "يلتقيان"]))
+        result = detect_start_verse(AUDIO, RAHMAN_WORDS, is_final=False)
+        assert result.status == "commit"
+        assert result.ayah == 18
+
+    def test_refrain_plus_verse17_resolves_to_16(self, monkeypatch):
+        _patch_decode(monkeypatch, " ".join(REFRAIN + ["رب", "المشرقين"]))
+        result = detect_start_verse(AUDIO, RAHMAN_WORDS, is_final=False)
+        assert result.status == "commit"
+        assert result.ayah == 16
+
+    def test_final_fallback_biases_to_start_verse(self, monkeypatch):
+        _patch_decode(monkeypatch, " ".join(REFRAIN))
+        # On speech end with an unresolved tie, pick the earliest occurrence >= start.
+        r18 = detect_start_verse(
+            AUDIO, RAHMAN_WORDS, start_chapter=55, start_verse=18, is_final=True
         )
-        audio = np.zeros(16000, dtype=np.float32)
-        result = detect_start_verse(audio, CROSS_CHAPTER_WORDS)
-        assert result is not None
-        chapter, ayah, word_index, score = result
-        assert chapter == 1  # Should detect in chapter 1
-        assert ayah == 6     # verse 6
+        assert r18.status == "commit"
+        assert r18.ayah == 18
+
+        r16 = detect_start_verse(
+            AUDIO, RAHMAN_WORDS, start_chapter=55, start_verse=16, is_final=True
+        )
+        assert r16.status == "commit"
+        assert r16.ayah == 16
+
+        r21 = detect_start_verse(
+            AUDIO, RAHMAN_WORDS, start_chapter=55, start_verse=21, is_final=True
+        )
+        assert r21.status == "commit"
+        assert r21.ayah == 21

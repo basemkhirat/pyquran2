@@ -26,8 +26,12 @@ export default function App() {
         "| acoustic:", data.acoustic_score,
         "| acoustic_char:", data.acoustic_char,
         "| acoustic_diacritic:", data.acoustic_diacritic,
-        "| status:", data.status
+        "| status:", data.status,
+        "| interim:", data.is_interim === true
       );
+      if (data.is_interim === true) {
+        console.log("  ⏳ interim word (may self-correct):", data.expected ?? data.transcribed);
+      }
       const idx = wordIndexFor(data);
       if (idx !== -1) addWordResult(idx, data);
     };

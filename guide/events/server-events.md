@@ -58,7 +58,7 @@ Sent when the server identifies which verse the user started reciting from (star
 
 ### When Received
 
-- When the server is in a detecting phase and the user's first utterance matches the beginning of a verse in the requested range.
+- When the server is in the detecting phase and the user's opening recitation is confidently matched to a verse in the requested range.
 
 ### Payload
 
@@ -112,7 +112,9 @@ socket.on("verse_detected") { args ->
 
 ### Notes
 
-- This event is sent only one time to the client after session start after user recites at least first 3 words for start verse detection. After this event, the server sends `word_result` for subsequent words.
+- Sent **once** per session, when the server identifies the start verse from the user's opening recitation. The whole utterance is matched against the selected range, so the user may begin at any verse in the range — not only the first.
+- **Repeated / identical verses:** when the opening matches several verses that are textually identical (e.g. Al-Rahman's refrain `فبأي آلاء ربكما تكذبان`, which repeats many times), the server does **not** guess. It waits until the recitation continues into the next distinct verse (or the user pauses) before committing — so detection can take a moment longer for repeated verses.
+- After this event, the words the user already recited are scored right away (you receive `word_result` for them), and the session keeps emitting `word_result` for the following words.
 ---
 
 ## 3. verse_detection_failed {#verse-detection-failed}
@@ -178,6 +180,7 @@ Contains the recognition result for a single word.
   verse_number: number;     // Ayah number
   word_number: number;      // Word index within the verse (0-based)
   status: "correct" | "incorrect" | "skipped";
+  is_interim?: boolean;     // Present only during live streaming — see below
 }
 ```
 
@@ -188,6 +191,18 @@ Contains the recognition result for a single word.
 | `correct` | Word was pronounced correctly | Green highlight, advance to next |
 | `incorrect` | Word was not recognized correctly | Red highlight, may retry |
 | `skipped` | Word was skipped by user | Gray/neutral highlight, advance |
+
+### Interim vs. Confirmed Results {#interim-results}
+
+While the user is still speaking, the server streams **interim** (preliminary) results so the UI can react live. These carry an `is_interim` flag:
+
+| `is_interim` | Meaning | UI Suggestion |
+|--------------|---------|---------------|
+| `true` | Preliminary result for the word being spoken now — **may be revised** by a later `word_result`. | Render tentatively (e.g. a lighter highlight); don't lock it in. |
+| `false` | Confirmed — the server has advanced past this word. | Apply the final highlight. |
+| _absent_ | Confirmed (e.g. the final segment after `stop_session`). | Apply the final highlight. |
+
+Only the latest word in a streaming batch is marked `is_interim: true`; earlier words in the same batch are already confirmed. Wait for `is_interim` to be `false` (or absent) before treating a word as final.
 
 ### Example Handler
 
@@ -255,6 +270,8 @@ socket.on("word_result") { args ->
 - For `incorrect` status, the server does NOT automatically advance - the user may retry
 - For `correct` status, the server advances to the next word
 - Multiple `word_result` events may be emitted in succession if the user speaks multiple words
+- Handle `is_interim` (see above) so a preliminary result isn't shown as final — an interim word may be revised by a following `word_result`
+- When the server has `SEND_WORD_RESULT_DETAILS` enabled, each result also carries diagnostic fields (`expected`, `transcribed`, `char_score`, `diacritic_score`, `total_score`, and acoustic scores). They are safe to ignore in production.
 
 ---
 

@@ -101,8 +101,13 @@ class Config:
     streaming_min_audio_sec: float = float(os.getenv("STREAMING_MIN_AUDIO_SEC", "0.8"))
     # Minimum score (0-1) for verse detection to confirm start verse
     verse_detection_threshold: float = float(os.getenv("VERSE_DETECTION_THRESHOLD", "0.6"))
-    # Number of words from verse start to use for matching
+    # Upper cap on how many words from the utterance/verse start to compare when the
+    # decoded utterance is long (keeps alignment cheap; short utterances use their own length).
     verse_detection_word_count: int = int(os.getenv("VERSE_DETECTION_WORD_COUNT", "3"))
+    # Candidates whose alignment score is within this margin of the best are treated as a
+    # tie (identical/near-identical verses). A genuine tie is left "ambiguous" so detection
+    # waits for the next distinct verse instead of guessing the wrong occurrence.
+    verse_detection_tie_epsilon: float = float(os.getenv("VERSE_DETECTION_TIE_EPSILON", "0.05"))
     # When True, persist data.json and recording.wav to data/sessions/{uuid}/ in background (non-blocking)
     save_session_data: bool = os.getenv("SAVE_SESSION_DATA", "true").lower() in ("1", "true", "yes")
 

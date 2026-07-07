@@ -1,10 +1,13 @@
-"""Detect which verse the user is reciting from their first utterance.
+"""Detect which verse the user is reciting, and keep their position anchored.
 
-Uses wav2vec2 acoustic decoding to match the user's speech against the
-first N words of each candidate verse in the selected range.  Returns the
-best-matching verse if the score exceeds a configurable threshold.
+Initial anchoring (`detect_start_verse`) aligns the *whole* first utterance
+against the selected range's word sequence, so verses that only differ after a
+shared prefix are told apart, and genuinely identical verses (e.g. Al-Rahman's
+refrain, repeated 31x) are reported as *ambiguous* until the following distinct
+verse resolves them.
 """
 import logging
+from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
@@ -16,11 +19,70 @@ from backend.scorer import strip_diacritics
 from backend.terminal_arabic import display_arabic
 
 
+logger = logging.getLogger(__name__)
+
+
 def _normalize_for_verse_match(text: str) -> str:
-    """Normalize for start-verse comparison: strip tashkeel then out-of-vocab chars."""
+    """Normalize for verse comparison: strip tashkeel then out-of-vocab chars."""
     return _normalize_text(strip_diacritics(text))
 
-logger = logging.getLogger(__name__)
+
+@dataclass
+class DetectionResult:
+    """Outcome of an initial verse-detection attempt.
+
+    status
+        ``"commit"``    -- confident, unique match; anchor here.
+        ``"ambiguous"`` -- several identical candidates tie; wait for more context
+                           (``candidates`` lists the tied verses).
+        ``"none"``      -- nothing matched above threshold.
+    """
+    status: str
+    chapter: Optional[int] = None
+    ayah: Optional[int] = None
+    word_index: Optional[int] = None
+    score: float = 0.0
+    candidates: List[Tuple[int, int, int]] = field(default_factory=list)
+
+
+def _verse_start_offsets(words: List[Dict[str, Any]]) -> List[Tuple[int, int, int]]:
+    """Return ``(surah, ayah, word_list_index)`` for the first word of each verse, in order."""
+    offsets: List[Tuple[int, int, int]] = []
+    prev_key: Optional[Tuple[int, int]] = None
+    for i, w in enumerate(words):
+        key = (w["surah"], w["ayah"])
+        if key != prev_key:
+            offsets.append((w["surah"], w["ayah"], i))
+            prev_key = key
+    return offsets
+
+
+def _score_offsets(
+    decoded_words: List[str],
+    words: List[Dict[str, Any]],
+    start_indices: List[int],
+) -> Dict[int, float]:
+    """Align the decoded utterance against the reference starting at each index.
+
+    For each start index ``s`` the reference window is ``words[s : s + len(decoded)]``
+    (so a longer utterance that runs into the next verse contributes trailing words
+    that distinguish otherwise-identical verses). Score is ``max(0, 1 - CER)`` over
+    base letters (tashkeel stripped).
+    """
+    decoded_norm = _normalize_for_verse_match(" ".join(decoded_words))
+    scores: Dict[int, float] = {}
+    if not decoded_norm:
+        return scores
+    n = len(decoded_words)
+    for s in start_indices:
+        window = words[s : s + n]
+        ref_norm = _normalize_for_verse_match(
+            " ".join(w["emlaey_text"] for w in window)
+        )
+        if not ref_norm:
+            continue
+        scores[s] = max(0.0, 1.0 - cer(ref_norm, decoded_norm))
+    return scores
 
 
 def _build_verse_candidates(
@@ -73,97 +135,102 @@ def _build_verse_candidates(
 def detect_start_verse(
     audio: np.ndarray,
     words: List[Dict[str, Any]],
-) -> Optional[Tuple[int, int, int, float]]:
-    """Detect which verse the user is reciting from their speech.
+    *,
+    start_chapter: Optional[int] = None,
+    start_verse: Optional[int] = None,
+    is_final: bool = False,
+) -> DetectionResult:
+    """Detect which verse the user is reciting from their first utterance.
+
+    Aligns the whole decoded utterance against every verse start in ``words``.
+    Verses that share a prefix but diverge later are separated because the full
+    utterance is compared; genuinely identical verses tie and yield an
+    ``"ambiguous"`` result so the caller can wait for the next (distinct) verse.
 
     Parameters
     ----------
     audio : np.ndarray
-        16 kHz float32 mono audio of the user's first utterance.
+        16 kHz float32 mono audio of the user's utterance so far.
     words : list
         The flat word list for the session (may span multiple chapters).
+    start_chapter, start_verse : int, optional
+        The range's selected start; used to break an unavoidable tie (on
+        ``is_final``) toward the earliest occurrence at or after it.
+    is_final : bool
+        True when speech has ended. On a tie this forces a best-guess commit
+        instead of waiting forever.
 
     Returns
     -------
-    tuple or None
-        ``(chapter, ayah, word_index, score)`` if a match is found above
-        the configured threshold, otherwise ``None``.
-        ``word_index`` is the index into the session ``words`` list where
-        the matched verse begins.
+    DetectionResult
+        ``word_index`` (when set) is the index into ``words`` where the matched
+        verse begins.
     """
-    n_words = config.verse_detection_word_count
     threshold = config.verse_detection_threshold
+    epsilon = config.verse_detection_tie_epsilon
 
-    candidates = _build_verse_candidates(words, n_words)
-    if not candidates:
+    offsets = _verse_start_offsets(words)
+    if not offsets:
         logger.warning("No verse candidates found in word list")
-        return None
+        return DetectionResult(status="none")
 
-    # Decode audio once
     decoded_text = _decode_audio(audio)
-    if not decoded_text.strip():
-        logger.info("Verse detection: wav2vec2 decoded empty text")
-        return None
-
-    # Compare like-to-like: candidate is first n_words of each verse. Try every
-    # contiguous n_words window in decoded so extra words before/after (e.g. "قل"
-    # from noise) don't break the match.
     decoded_words = decoded_text.split()
+    if not decoded_words:
+        logger.info("Verse detection: wav2vec2 decoded empty text")
+        return DetectionResult(status="none")
+
+    by_index = {idx: (surah, ayah, idx) for (surah, ayah, idx) in offsets}
+    index_scores = _score_offsets(decoded_words, words, list(by_index.keys()))
+    if not index_scores:
+        return DetectionResult(status="none")
+
+    best_score = max(index_scores.values())
     logger.info(
-        "Verse detection: decoded '%s' (%d candidates)",
-        display_arabic(decoded_text),
-        len(candidates),
+        "Verse detection: decoded '%s' (%d verses, best=%.3f, threshold=%.2f)",
+        display_arabic(decoded_text), len(offsets), best_score, threshold,
     )
 
-    best_key: Optional[Tuple[int, int]] = None
-    best_score: float = 0.0
-    best_index: int = 0
+    if best_score < threshold:
+        return DetectionResult(status="none", score=best_score)
 
-    for (surah, ayah), (candidate_text, word_index) in candidates.items():
-        candidate_norm = _normalize_for_verse_match(candidate_text)
-        if not candidate_norm:
-            continue
+    # Tied candidates = identical / near-identical verses within epsilon of the best.
+    # Kept in word order so "earliest at/after start" fallbacks are natural.
+    tied = [
+        by_index[idx]
+        for idx in sorted(index_scores)
+        if index_scores[idx] >= best_score - epsilon
+    ]
 
-        # Use window size = candidate word count so 1-word verses (e.g. "الم") match
-        # when user says only that word; compare like-to-like (base letters only, no tashkeel).
-        candidate_len = len(candidate_text.split())
-        candidate_best = 0.0
-        for start in range(0, len(decoded_words) - candidate_len + 1):
-            window = decoded_words[start : start + candidate_len]
-            decoded_slice_norm = _normalize_for_verse_match(" ".join(window))
-            if not decoded_slice_norm:
-                continue
-            error_rate = cer(candidate_norm, decoded_slice_norm)
-            candidate_best = max(candidate_best, max(0.0, 1.0 - error_rate))
-        score = candidate_best
-
-        logger.debug(
-            "  verse %d:%d: candidate='%s' score=%.3f",
-            surah,
-            ayah,
-            display_arabic(candidate_text),
-            score,
+    if len(tied) == 1:
+        surah, ayah, wi = tied[0]
+        logger.info("Verse detection: matched %d:%d (score=%.3f)", surah, ayah, best_score)
+        return DetectionResult(
+            status="commit", chapter=surah, ayah=ayah, word_index=wi, score=best_score
         )
 
-        if score > best_score:
-            best_score = score
-            best_key = (surah, ayah)
-            best_index = word_index
-
-    if best_key is not None and best_score >= threshold:
+    # Ambiguous: several identical candidates. Wait for the next distinct verse
+    # unless speech has ended, in which case fall back to a sensible default.
+    if not is_final:
         logger.info(
-            "Verse detection: matched %d:%d (score=%.3f, threshold=%.2f)",
-            best_key[0],
-            best_key[1],
-            best_score,
-            threshold,
+            "Verse detection: ambiguous (%d identical candidates: %s) — waiting for more context",
+            len(tied), [f"{s}:{a}" for s, a, _ in tied],
         )
-        return (best_key[0], best_key[1], best_index, best_score)
+        return DetectionResult(status="ambiguous", score=best_score, candidates=tied)
 
+    chosen = None
+    if start_chapter is not None and start_verse is not None:
+        for (surah, ayah, wi) in tied:
+            if (surah, ayah) >= (start_chapter, start_verse):
+                chosen = (surah, ayah, wi)
+                break
+    if chosen is None:
+        chosen = tied[0]
+    surah, ayah, wi = chosen
     logger.info(
-        "Verse detection: no match above threshold (best=%s score=%.3f, threshold=%.2f)",
-        best_key,
-        best_score,
-        threshold,
+        "Verse detection: ambiguous refrain — final fallback to earliest at/after start -> %d:%d",
+        surah, ayah,
     )
-    return None
+    return DetectionResult(
+        status="commit", chapter=surah, ayah=ayah, word_index=wi, score=best_score, candidates=tied
+    )

@@ -217,6 +217,19 @@ async def start_session(sid, data):
     session["end_chapter"] = end_chapter
     session["end_verse"] = end_verse
 
+    # Optional per-session pass/fail cutoff (0-1) sent by the client (e.g. mobile app).
+    # When absent or invalid, fall back to the global SCORE_THRESHOLD config.
+    score_threshold = config.score_threshold
+    raw_threshold = data.get("score_threshold")
+    if raw_threshold is not None:
+        try:
+            score_threshold = min(1.0, max(0.0, float(raw_threshold)))
+        except (TypeError, ValueError):
+            logger.warning(
+                f"Invalid score_threshold {raw_threshold!r} for [{sid}]; using default {config.score_threshold}"
+            )
+    session["score_threshold"] = score_threshold
+
     # When acoustic scoring is enabled, start in detection phase so the user
     # can begin reciting from any verse in the range.
     if config.enable_acoustic_score:
@@ -249,7 +262,8 @@ async def start_session(sid, data):
 
     logger.info(
         f"Session started for {sid}: {start_chapter}:{start_verse} - {end_chapter}:{end_verse}, "
-        f"{len(words)} words (phase={session['phase']}, save_session_data={config.save_session_data}, id={session_id})"
+        f"{len(words)} words (phase={session['phase']}, score_threshold={session['score_threshold']}, "
+        f"save_session_data={config.save_session_data}, id={session_id})"
     )
     await sio.emit("session_started", {
         "id": session_id,
@@ -414,14 +428,19 @@ async def _streaming_transcription_loop(sid: str):
             if session.get("phase") == "detecting":
                 await _detect_verse(sid, audio, is_final=speech_ended)
                 if speech_ended:
+                    # If detection just committed on this final utterance, score the
+                    # SAME audio against the detected start so the words the user
+                    # recited to trigger detection are graded too. Otherwise that
+                    # audio is dropped and the user has to repeat the verse.
+                    if session.get("phase") == "reciting":
+                        await _process_speech(sid, audio, is_final=True)
                     session["vad"].reset()
+                    session["last_interim_index"] = None
                     session["streaming_task"] = None
-                    # If still detecting, restart the loop by returning
-                    # (the next audio_chunk will spawn a new streaming task)
-                    if session.get("phase") == "detecting":
-                        return
-                    # If detection succeeded, fall through to continue the loop
-                    # in reciting mode with fresh VAD state
+                    session["streaming_start_idx"] = session["current_index"]
+                    # End this loop; the next audio_chunk spawns a fresh streaming
+                    # task (in detecting mode if unmatched, reciting mode if matched).
+                    return
                 continue
 
             await _process_speech(sid, audio, is_final=speech_ended)
@@ -461,23 +480,35 @@ async def _detect_verse(sid: str, audio: np.ndarray, is_final: bool = False):
             verse_detection.detect_start_verse,
             audio,
             session["words"],
+            start_chapter=session.get("start_chapter"),
+            start_verse=session.get("start_verse"),
+            is_final=is_final,
         )
 
-        if result is not None:
-            chapter, ayah, word_index, score = result
+        if result.status == "commit":
+            word_index = result.word_index
             session["current_index"] = word_index
             session["streaming_start_idx"] = word_index
             session["phase"] = "reciting"
             word_number = session["words"][word_index]["word_index"]
             logger.info(
-                f"Verse detected for [{sid}]: {chapter}:{ayah}, word_number {word_number}, score {score:.3f}"
+                f"Verse detected for [{sid}]: {result.chapter}:{result.ayah}, "
+                f"word_number {word_number}, score {result.score:.3f}"
             )
             await sio.emit("verse_detected", {
-                "chapter_number": chapter,
-                "verse_number": ayah,
+                "chapter_number": result.chapter,
+                "verse_number": result.ayah,
                 "word_number": word_number,
             }, room=sid)
-        else:
+        elif result.status == "ambiguous":
+            # Identical verses tie — do NOT guess. Stay in the detecting phase and
+            # keep listening; the next (distinct) verse extends the match window and
+            # resolves which occurrence the user is reciting.
+            logger.info(
+                f"Verse detection ambiguous for [{sid}]: {len(result.candidates)} identical "
+                f"candidate(s) — waiting for the next distinct verse"
+            )
+        else:  # "none"
             if is_final:
                 logger.info(f"Verse detection failed for [{sid}], waiting for next utterance")
                 await sio.emit("verse_detection_failed", {}, room=sid)
@@ -509,6 +540,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     """Inner transcription logic (called under the transcribing guard)."""
     idx = session["current_index"]
     words = session["words"]
+    score_threshold = session.get("score_threshold", config.score_threshold)
     if idx >= len(words):
         await sio.emit("session_stopped", {}, room=sid)
         return
@@ -614,7 +646,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
                     candidate[j],
                     config.max_edits_for_correction,
                 )[score_key]
-                >= config.score_threshold
+                >= score_threshold
                 for j in range(prefix_len)
             )
             if all_match:
@@ -686,11 +718,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         
         # Determine if word is correct based on scoring mode
         if config.pass_on_any_score:
-            text_pass = config.enable_text_score and ts >= config.score_threshold
-            acoustic_pass = ac is not None and ac >= config.score_threshold
+            text_pass = config.enable_text_score and ts >= score_threshold
+            acoustic_pass = ac is not None and ac >= score_threshold
             status = "correct" if (text_pass or acoustic_pass) else "incorrect"
         else:
-            status = "correct" if scores["total_score"] >= config.score_threshold else "incorrect"
+            status = "correct" if scores["total_score"] >= score_threshold else "incorrect"
 
         # In streaming mode, mark the last word as interim (it may self-correct)
         word_is_interim = streaming and (i == n_transcribed - 1)

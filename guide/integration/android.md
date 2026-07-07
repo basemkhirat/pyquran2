@@ -348,6 +348,7 @@ class RecitationSession(context: Context) {
             put("start_verse_number", startVerse)
             put("end_chapter_number", endChapter)
             put("end_verse_number", endVerse)
+            // put("score_threshold", 0.6)  // optional (0-1); omit to use server default
         }
         socketManager.socket.emit("start_session", payload)
     }

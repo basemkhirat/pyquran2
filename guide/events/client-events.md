@@ -18,6 +18,7 @@ After connecting to the socket, when the user is ready to begin reciting.
   start_verse_number: number;    // Starting ayah number in start chapter
   end_chapter_number: number;    // Ending surah number (1-114)
   end_verse_number: number;      // Ending ayah number in end chapter
+  score_threshold?: number;      // Optional pass/fail cutoff (0-1). Omit to use the server default.
 }
 ```
 
@@ -31,6 +32,7 @@ socket.emit("start_session", {
   start_verse_number: 1,      // First verse
   end_chapter_number: 1,      // Same chapter (or different for cross-chapter)
   end_verse_number: 7,        // Last verse
+  score_threshold: 0.6,       // optional (0-1); omit to use server default
 });
 ```
 
@@ -40,6 +42,7 @@ socket.emit("start_session", [
     "start_verse_number": 1,
     "end_chapter_number": 1,
     "end_verse_number": 7,
+    "score_threshold": 0.6,   // optional (0-1); omit to use server default
 ])
 ```
 
@@ -49,6 +52,7 @@ val payload = JSONObject().apply {
     put("start_verse_number", 1)
     put("end_chapter_number", 1)
     put("end_verse_number", 7)
+    put("score_threshold", 0.6)  // optional (0-1); omit to use server default
 }
 socket.emit("start_session", payload)
 ```
@@ -64,6 +68,17 @@ The server responds with [`session_started`](/events/server-events#session-start
 - Wait for `session_started` before streaming audio
 - The server loads the words for the specified range and prepares the recognition pipeline
 - Ranges can span multiple chapters (e.g., from Al-Fatiha verse 1 to Al-Baqarah verse 5)
+
+#### `score_threshold` (optional)
+
+A per-session pass/fail cutoff in the range `0`–`1`, applied when scoring each recited word:
+
+- **Higher** (e.g. `0.85`) = stricter — the recitation must match more closely to be marked `correct`.
+- **Lower** (e.g. `0.4`) = more lenient. `0` accepts anything; `1` requires a near-perfect match.
+- **Omitted / `null` / invalid** → the server falls back to its configured default (`SCORE_THRESHOLD`).
+- Out-of-range values are clamped to `[0, 1]` (e.g. `1.5` → `1.0`).
+
+This affects only the word pass/fail cutoff; it does not change verse detection.
 
 
 ## 2. audio_chunk {#audio-chunk}

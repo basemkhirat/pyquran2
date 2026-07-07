@@ -10,7 +10,7 @@ Events your app sends to the server:
 
 | Event | Purpose | Payload |
 |-------|---------|---------|
-| [`start_session`](/events/client-events#start-session) | Begin a new recognition session | Start/end chapter and verse range |
+| [`start_session`](/events/client-events#start-session) | Begin a new recognition session | Start/end chapter and verse range (+ optional `score_threshold`) |
 | [`audio_chunk`](/events/client-events#audio-chunk) | Stream audio data | Binary PCM data |
 | [`stop_session`](/events/client-events#stop-session) | End the current session | None |
 | [`skip_word`](/events/client-events#skip-word) | Skip the current word | None |
@@ -66,7 +66,8 @@ socket.emit("start_session", {
   start_chapter_number: 1,
   start_verse_number: 1,
   end_chapter_number: 1,
-  end_verse_number: 7
+  end_verse_number: 7,
+  score_threshold: 0.6  // optional (0-1); omit to use server default
 });
 socket.emit("audio_chunk", audioBuffer);
 socket.emit("stop_session");
@@ -85,7 +86,8 @@ socket.emit("start_session", [
     "start_chapter_number": 1,
     "start_verse_number": 1,
     "end_chapter_number": 1,
-    "end_verse_number": 7
+    "end_verse_number": 7,
+    "score_threshold": 0.6  // optional (0-1)
 ])
 socket.emit("audio_chunk", audioData)
 socket.emit("stop_session")
@@ -105,6 +107,7 @@ socket.emit("start_session", JSONObject().apply {
     put("start_verse_number", 1)
     put("end_chapter_number", 1)
     put("end_verse_number", 7)
+    put("score_threshold", 0.6)  // optional (0-1)
 })
 socket.emit("audio_chunk", audioByteArray)
 socket.emit("stop_session")

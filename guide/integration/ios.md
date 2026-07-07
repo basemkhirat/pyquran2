@@ -339,7 +339,8 @@ class RecitationSession {
             "start_chapter_number": startChapter,
             "start_verse_number": startVerse,
             "end_chapter_number": endChapter,
-            "end_verse_number": endVerse
+            "end_verse_number": endVerse,
+            // "score_threshold": 0.6,  // optional (0-1); omit to use server default
         ])
     }
     
