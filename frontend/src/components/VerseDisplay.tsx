@@ -68,7 +68,7 @@ export function VerseDisplay() {
                                 >
                                     <span
                                         className={cn(
-                                            "text-2xl leading-relaxed font-[var(--font-arabic)] select-none",
+                                            "text-2xl leading-relaxed font-[var(--font-quran)] select-none",
                                             isInterim && "text-white",
                                             !isInterim && result?.status === "correct" && "text-success",
                                             !isInterim && result?.status === "incorrect" && "text-error",

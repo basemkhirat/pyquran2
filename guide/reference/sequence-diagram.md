@@ -14,7 +14,7 @@ sequenceDiagram
     App->>Server: connect()
     Server-->>App: connected
 
-    App->>Server: start_session({start_chapter_number, start_verse_number, end_chapter_number, end_verse_number[, score_threshold]})
+    App->>Server: start_session({start_chapter_number, start_verse_number, end_chapter_number, end_verse_number[, score_threshold, mode]})
     Server-->>App: session_started
 
     Note over App: Start audio capture

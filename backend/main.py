@@ -173,6 +173,7 @@ async def connect(sid, environ, auth):
         "transcribing": False,
         "streaming_task": None,
         "last_interim_index": None,  # word index of the last interim result
+        "mode": "word_by_word",  # set authoritatively in start_session
     }
 
 
@@ -230,6 +231,15 @@ async def start_session(sid, data):
             )
     session["score_threshold"] = score_threshold
 
+    # Session mode: "word_by_word" (default) blocks on a wrong word until it passes;
+    # "continuous" always scores and advances so the reciter is never held up.
+    mode = data.get("mode")
+    if mode not in ("word_by_word", "continuous"):
+        if mode is not None:
+            logger.warning(f"Invalid mode {mode!r} for [{sid}]; using 'word_by_word'")
+        mode = "word_by_word"
+    session["mode"] = mode
+
     # When acoustic scoring is enabled, start in detection phase so the user
     # can begin reciting from any verse in the range.
     if config.enable_acoustic_score:
@@ -262,7 +272,8 @@ async def start_session(sid, data):
 
     logger.info(
         f"Session started for {sid}: {start_chapter}:{start_verse} - {end_chapter}:{end_verse}, "
-        f"{len(words)} words (phase={session['phase']}, score_threshold={session['score_threshold']}, "
+        f"{len(words)} words (phase={session['phase']}, mode={session['mode']}, "
+        f"score_threshold={session['score_threshold']}, "
         f"save_session_data={config.save_session_data}, id={session_id})"
     )
     await sio.emit("session_started", {
@@ -783,7 +794,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
                     "status": status,
                 }))
 
-            if status == "correct":
+            if scorer.should_advance(status, session.get("mode", "word_by_word")):
                 idx += 1
                 words_processed += 1
             else:

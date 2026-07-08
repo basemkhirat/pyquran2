@@ -95,6 +95,8 @@ No SQL database. All persistence is file-based:
 
 Client → Server: `start_session`, `audio_chunk` (binary PCM16), `skip_word`, `stop_session`
 
+`start_session` accepts two optional per-session fields: `score_threshold` (0-1 pass/fail cutoff) and `mode`. `mode` is `word_by_word` (default — stays on a word until it passes) or `continuous` (always scores and advances so a wrong word never blocks). The advance decision lives in `scorer.should_advance`; the mobile clients and web frontend set these fields.
+
 Server → Client: `session_started`, `word_result`, `session_stopped`, `session_error`, `timeout`, `verse_detected`, `verse_detection_failed`
 
 Authentication: optional `SOCKET_AUTH_API_KEY` env var; frontend sends it as `auth.api_key` on handshake.

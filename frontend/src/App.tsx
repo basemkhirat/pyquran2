@@ -75,13 +75,13 @@ export default function App() {
   }, [words, addWordResult]);
 
   return (
-    <div className="min-h-screen">
-      {/* Setup bar — always visible */}
+    <div className="min-h-screen pb-40 sm:pb-24">
+      {/* Control bar — fixed at the bottom, always visible */}
       <SessionSetup />
 
       {/* Verse display — shown when active */}
       {sessionStatus === "recording" && (
-        <div className="py-6">
+        <div className="pt-6">
           <VerseDisplay />
         </div>
       )}

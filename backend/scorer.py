@@ -98,6 +98,16 @@ def score_word(expected: str, transcribed: str) -> Dict[str, float]:
     }
 
 
+def should_advance(status: str, mode: str) -> bool:
+    """Whether to move to the next word after scoring the current one.
+
+    In "word_by_word" mode the session only advances when the word passed (status
+    "correct"), so the reciter repeats a word until it is right. In "continuous" mode
+    the session always advances — every word is scored and recorded but never blocks.
+    """
+    return status == "correct" or mode == "continuous"
+
+
 def score_word_best(
     emlaey: str, uthmani: str, transcribed: str, max_edits: int
 ) -> Dict[str, Any]:

@@ -19,8 +19,18 @@ After connecting to the socket, when the user is ready to begin reciting.
   end_chapter_number: number;    // Ending surah number (1-114)
   end_verse_number: number;      // Ending ayah number in end chapter
   score_threshold?: number;      // Optional pass/fail cutoff (0-1). Omit to use the server default.
+  mode?: "word_by_word" | "continuous";  // Optional session mode. Omit for "word_by_word".
 }
 ```
+
+### Session Modes
+
+| Mode | Behavior |
+|------|----------|
+| `word_by_word` (default) | The session stays on the current word until it is recited correctly (score ≥ threshold), then advances. Best for drill/practice. |
+| `continuous` | Every word is scored and the session **always** advances to the next word — a wrong word is reported (with its score) but never blocks. Best for reciting straight through / assessment. |
+
+In both modes each `word_result` still carries a `total_score`; only the advancing behavior differs.
 
 ### Example
 
@@ -33,6 +43,7 @@ socket.emit("start_session", {
   end_chapter_number: 1,      // Same chapter (or different for cross-chapter)
   end_verse_number: 7,        // Last verse
   score_threshold: 0.6,       // optional (0-1); omit to use server default
+  mode: "continuous",         // optional; "word_by_word" (default) or "continuous"
 });
 ```
 
@@ -43,6 +54,7 @@ socket.emit("start_session", [
     "end_chapter_number": 1,
     "end_verse_number": 7,
     "score_threshold": 0.6,   // optional (0-1); omit to use server default
+    "mode": "continuous",     // optional; "word_by_word" (default) or "continuous"
 ])
 ```
 
@@ -53,6 +65,7 @@ val payload = JSONObject().apply {
     put("end_chapter_number", 1)
     put("end_verse_number", 7)
     put("score_threshold", 0.6)  // optional (0-1); omit to use server default
+    put("mode", "continuous")    // optional; "word_by_word" (default) or "continuous"
 }
 socket.emit("start_session", payload)
 ```
@@ -68,6 +81,7 @@ The server responds with [`session_started`](/events/server-events#session-start
 - Wait for `session_started` before streaming audio
 - The server loads the words for the specified range and prepares the recognition pipeline
 - Ranges can span multiple chapters (e.g., from Al-Fatiha verse 1 to Al-Baqarah verse 5)
+- `mode` is optional; an omitted or unrecognized value falls back to `word_by_word` (see [Session Modes](#session-modes))
 
 #### `score_threshold` (optional)
 

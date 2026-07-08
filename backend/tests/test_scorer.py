@@ -12,6 +12,7 @@ from backend.scorer import (
     score_word,
     score_word_best,
     align_multi_word,
+    should_advance,
 )
 
 
@@ -173,3 +174,13 @@ class TestAlignMultiWord:
         assert len(results) == 2
         assert results[1]["total_score"] == 0.0
         assert results[1]["status"] == "incorrect"
+
+
+class TestShouldAdvance:
+    def test_word_by_word_advances_only_on_correct(self):
+        assert should_advance("correct", "word_by_word") is True
+        assert should_advance("incorrect", "word_by_word") is False
+
+    def test_continuous_always_advances(self):
+        assert should_advance("correct", "continuous") is True
+        assert should_advance("incorrect", "continuous") is True

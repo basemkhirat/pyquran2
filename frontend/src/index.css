@@ -23,8 +23,11 @@
   --color-gold: #d4a853;
   --color-gold-light: #f0d78c;
 
-  --font-arabic: "UthmanicHafs", "Amiri Quran", "Amiri", "Noto Naskh Arabic", serif;
-  --font-ui: "Inter", "Segoe UI", sans-serif;
+  /* UI font — IBM Plex Sans Arabic for all interface text (labels, buttons, menus, etc.) */
+  --font-arabic: "IBM Plex Sans Arabic", "Segoe UI", system-ui, sans-serif;
+  --font-ui: "IBM Plex Sans Arabic", "Segoe UI", system-ui, sans-serif;
+  /* Quran font — used ONLY for rendered ayah text (see VerseDisplay) */
+  --font-quran: "UthmanicHafs", "Amiri Quran", "Amiri", "Noto Naskh Arabic", serif;
 }
 
 /* Unicode Uthmani Hafs (works with standard uthmani_text) */
@@ -119,18 +122,6 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 3px;
-}
-
-/* Move number input spinner arrows to the left */
-.spinner-left {
-  direction: rtl;
-}
-
-.spinner-left::-webkit-inner-spin-button,
-.spinner-left::-webkit-outer-spin-button {
-  direction: ltr;
-  margin-left: 0;
-  margin-right: auto;
 }
 
 @theme inline {
