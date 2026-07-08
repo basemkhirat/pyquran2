@@ -269,9 +269,8 @@ socket.on("word_result") { args ->
 - For `incorrect` status, the server does NOT automatically advance - the user may retry
 - For `correct` status, the server advances to the next word
 - Multiple `word_result` events may be emitted in succession if the user speaks multiple words
-- Handle `is_interim` (see above) so a preliminary result isn't shown as final — an interim word may be revised by a following `word_result`
-- `total_score` (see [Score](#word-score)) is **always** included, independent of `SEND_WORD_RESULT_DETAILS` — use it for a per-word percentage.
-- When the server has `SEND_WORD_RESULT_DETAILS` enabled, each result also carries extra diagnostic fields (`expected`, `transcribed`, `char_score`, `diacritic_score`, `text_score`, `acoustic_score`, `acoustic_char`, `acoustic_diacritic`, `acoustic_decoded`). They are safe to ignore in production.
+- Handle `is_interim` so a preliminary result isn't shown as final — an interim word may be revised by a following `word_result`
+- `total_score` use it for a per-word percentage.
 
 ---
 
