@@ -41,7 +41,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     sessionStatus: "idle",
     hideUnrecitedWords: false,
     // Per-session pass/fail cutoff (0-1) sent with start_session; matches backend SCORE_THRESHOLD default.
-    scoreThreshold: 0.5,
+    scoreThreshold: 0.76,
 
     setSelectedRange: (range) => set({ selectedRange: range }),
     setHideUnrecitedWords: (hide) => set({ hideUnrecitedWords: hide }),
