@@ -315,6 +315,9 @@ async def skip_word(sid, _data=None):
         "verse_number": word["ayah"],
         "word_number": word["word_index"],
         "status": "skipped",
+        # Always sent (like recognition results) so clients can read total_score
+        # without SEND_WORD_RESULT_DETAILS. A skipped word is never scored, so it's 0.
+        "total_score": 0.0,
     }
     if config.send_word_result_details:
         payload["transcribed"] = ""
@@ -322,7 +325,6 @@ async def skip_word(sid, _data=None):
         payload["char_score"] = 0.0
         payload["diacritic_score"] = 0.0
         payload["text_score"] = 0.0
-        payload["total_score"] = 0.0
     await sio.emit("word_result", payload, room=sid)
 
     # Persist skipped word in background (non-blocking)
@@ -741,6 +743,9 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             "verse_number": word["ayah"],
             "word_number": word["word_index"],
             "status": status,
+            # Always sent (even when send_word_result_details is False) so the client
+            # can show the per-word percentage without the full detail payload.
+            "total_score": scores["total_score"],
         }
         if streaming:
             payload["is_interim"] = word_is_interim

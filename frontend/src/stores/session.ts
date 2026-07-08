@@ -17,9 +17,11 @@ interface SessionState {
     wordResults: Record<number, WordResult>;
     sessionStatus: SessionStatus;
     hideUnrecitedWords: boolean;
+    scoreThreshold: number;
 
     setSelectedRange: (range: SelectedRange) => void;
     setHideUnrecitedWords: (hide: boolean) => void;
+    setScoreThreshold: (value: number) => void;
     setWords: (words: Word[]) => void;
     setCurrentWordIndex: (index: number) => void;
     addWordResult: (index: number, result: WordResult) => void;
@@ -38,9 +40,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     wordResults: {},
     sessionStatus: "idle",
     hideUnrecitedWords: false,
+    // Per-session pass/fail cutoff (0-1) sent with start_session; matches backend SCORE_THRESHOLD default.
+    scoreThreshold: 0.5,
 
     setSelectedRange: (range) => set({ selectedRange: range }),
     setHideUnrecitedWords: (hide) => set({ hideUnrecitedWords: hide }),
+    setScoreThreshold: (value) => set({ scoreThreshold: Math.min(1, Math.max(0, value)) }),
     setWords: (words) => set({ words, currentWordIndex: 0, wordResults: {} }),
     setCurrentWordIndex: (index) => set({ currentWordIndex: index }),
     addWordResult: (index, result) =>

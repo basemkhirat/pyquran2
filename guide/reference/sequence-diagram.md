@@ -22,7 +22,7 @@ sequenceDiagram
     loop While user speaks
         App->>Server: audio_chunk(binary PCM)
         Note over Server: VAD + Whisper processing
-        Server-->>App: word_result({chapter_number, verse_number, word_number, status})
+        Server-->>App: word_result({chapter_number, verse_number, word_number, status, total_score})
     end
 
     App->>Server: stop_session
@@ -120,7 +120,7 @@ sequenceDiagram
     end
 
     loop Recognition results
-        Server-->>App: word_result({chapter_number, verse_number, word_number, status})
+        Server-->>App: word_result({chapter_number, verse_number, word_number, status, total_score})
         Note over App: Update UI
     end
 

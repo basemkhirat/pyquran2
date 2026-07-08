@@ -180,6 +180,7 @@ Contains the recognition result for a single word.
   verse_number: number;     // Ayah number
   word_number: number;      // Word index within the verse (0-based)
   status: "correct" | "incorrect" | "skipped";
+  total_score: number;      // Overall score 0–1 — always present (0 for skipped). See Score below.
   is_interim?: boolean;     // Present only during live streaming — see below
 }
 ```
@@ -198,11 +199,8 @@ While the user is still speaking, the server streams **interim** (preliminary) r
 
 | `is_interim` | Meaning | UI Suggestion |
 |--------------|---------|---------------|
-| `true` | Preliminary result for the word being spoken now — **may be revised** by a later `word_result`. | Render tentatively (e.g. a lighter highlight); don't lock it in. |
+| `true` | Preliminary result for the word being spoken now — **may be revised** by a later `word_result`. | Render word with (e.g. a lighter highlight or loading). |
 | `false` | Confirmed — the server has advanced past this word. | Apply the final highlight. |
-| _absent_ | Confirmed (e.g. the final segment after `stop_session`). | Apply the final highlight. |
-
-Only the latest word in a streaming batch is marked `is_interim: true`; earlier words in the same batch are already confirmed. Wait for `is_interim` to be `false` (or absent) before treating a word as final.
 
 ### Example Handler
 
@@ -210,10 +208,11 @@ Only the latest word in a streaming batch is marked `is_interim: true`; earlier 
 
 ```javascript [JavaScript]
 socket.on("word_result", (data) => {
-  const { chapter_number, verse_number, word_number, status } = data;
-  
-  console.log(`Word ${word_number} in ${chapter_number}:${verse_number} - ${status}`);
-  
+  const { chapter_number, verse_number, word_number, status, total_score } = data;
+  const percent = Math.round(total_score * 100);  // always available (0 for skipped)
+
+  console.log(`Word ${word_number} in ${chapter_number}:${verse_number} - ${status} (${percent}%)`);
+
   switch (status) {
     case "correct":
       highlightWord(word_number, "green");
@@ -271,7 +270,8 @@ socket.on("word_result") { args ->
 - For `correct` status, the server advances to the next word
 - Multiple `word_result` events may be emitted in succession if the user speaks multiple words
 - Handle `is_interim` (see above) so a preliminary result isn't shown as final — an interim word may be revised by a following `word_result`
-- When the server has `SEND_WORD_RESULT_DETAILS` enabled, each result also carries diagnostic fields (`expected`, `transcribed`, `char_score`, `diacritic_score`, `total_score`, and acoustic scores). They are safe to ignore in production.
+- `total_score` (see [Score](#word-score)) is **always** included, independent of `SEND_WORD_RESULT_DETAILS` — use it for a per-word percentage.
+- When the server has `SEND_WORD_RESULT_DETAILS` enabled, each result also carries extra diagnostic fields (`expected`, `transcribed`, `char_score`, `diacritic_score`, `text_score`, `acoustic_score`, `acoustic_char`, `acoustic_diacritic`, `acoustic_decoded`). They are safe to ignore in production.
 
 ---
 

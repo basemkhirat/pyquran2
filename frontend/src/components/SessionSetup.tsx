@@ -15,6 +15,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
 
 const SURAH_NAMES: Record<number, string> = {
     1: "الفاتحة", 2: "البقرة", 3: "آل عمران", 4: "النساء", 5: "المائدة",
@@ -72,7 +81,7 @@ export function SessionSetup() {
     const [endVerseCount, setEndVerseCount] = useState(7);
     const initialLoadDone = useRef(false);
 
-    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords } = useSessionStore();
+    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords, scoreThreshold, setScoreThreshold } = useSessionStore();
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
     const isSessionActive = isRecording;
     const canSkip = isRecording && words.length > 0 && currentWordIndex < words.length;
@@ -84,17 +93,27 @@ export function SessionSetup() {
         return false;
     };
 
+    const [thresholdModalOpen, setThresholdModalOpen] = useState(false);
+    const [pendingThreshold, setPendingThreshold] = useState(scoreThreshold);
+
     const toggleRecording = () => {
         if (isRecording) {
             stopRecording();
             return;
         }
         if (words.length === 0 || !isValidRange()) return;
+        // Ask the user to set the pass/fail threshold before the session begins.
+        setPendingThreshold(scoreThreshold);
+        setThresholdModalOpen(true);
+    };
+
+    const startSessionWithThreshold = (threshold: number) => {
         const payload = {
             start_chapter_number: startChapter,
             start_verse_number: startVerse,
             end_chapter_number: endChapter,
             end_verse_number: endVerse,
+            score_threshold: threshold,
         };
         if (socket.connected) {
             socket.emit("start_session", payload);
@@ -106,6 +125,12 @@ export function SessionSetup() {
                 startRecording();
             });
         }
+    };
+
+    const confirmStart = () => {
+        setScoreThreshold(pendingThreshold);
+        startSessionWithThreshold(pendingThreshold);
+        setThresholdModalOpen(false);
     };
 
     useEffect(() => {
@@ -336,6 +361,58 @@ export function SessionSetup() {
                     </div>
                 </div>
             </div>
+
+            <Dialog open={thresholdModalOpen} onOpenChange={setThresholdModalOpen}>
+                <DialogContent dir="rtl" className="font-[var(--font-arabic)]">
+                    <DialogHeader>
+                        <DialogTitle>ضبط دقّة التقييم</DialogTitle>
+                        <DialogDescription>
+                            اختر مدى صرامة تقييم التلاوة قبل البدء. القيمة الأعلى تتطلّب نطقًا أقرب إلى الصواب لاعتماد الكلمة.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-2">
+                        <div className="mb-6 flex items-center justify-center">
+                            <div className="flex h-16 w-24 items-center justify-center rounded-xl border border-gold/30 bg-gold/10">
+                                <span className="text-3xl font-bold tabular-nums text-gold">
+                                    {pendingThreshold.toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <Slider
+                            dir="ltr"
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            value={[pendingThreshold]}
+                            onValueChange={(v) => setPendingThreshold(v[0])}
+                        />
+
+                        <div className="mt-2 flex justify-between text-xs text-text-muted" dir="ltr">
+                            <span>0.0 · متساهل</span>
+                            <span>صارم · 1.0</span>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <button
+                            type="button"
+                            onClick={() => setThresholdModalOpen(false)}
+                            className="rounded-lg border border-border bg-surface/80 px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-hover"
+                        >
+                            إلغاء
+                        </button>
+                        <button
+                            type="button"
+                            onClick={confirmStart}
+                            className="rounded-lg bg-gradient-to-br from-gold to-gold-light px-5 py-2 text-sm font-semibold text-surface shadow-md shadow-gold/20 transition-opacity hover:opacity-90"
+                        >
+                            ابدأ الجلسة
+                        </button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

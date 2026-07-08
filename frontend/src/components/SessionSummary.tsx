@@ -13,6 +13,7 @@ export function SessionSummary() {
         setSessionStatus,
         setWords,
         selectedRange,
+        scoreThreshold,
     } = useSessionStore();
 
     const totalWords = words.length;
@@ -44,6 +45,7 @@ export function SessionSummary() {
             start_verse_number: selectedRange.startVerse,
             end_chapter_number: selectedRange.endChapter,
             end_verse_number: selectedRange.endVerse,
+            score_threshold: scoreThreshold,
         };
         if (socket.connected) {
             socket.emit("start_session", payload);
