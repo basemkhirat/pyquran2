@@ -82,10 +82,6 @@ class Config:
     wav2vec2_quran_asr_model: str = os.getenv(
         "WAV2VEC2_QURAN_ASR_MODEL", "HamzaSidhu786/wav2vec2-base-word-by-word-quran-asr"
     )
-    wav2vec2_lm_path: str = os.getenv("WAV2VEC2_LM_PATH", "./assets/quran_lm.arpa")
-    wav2vec2_beam_width: int = int(os.getenv("WAV2VEC2_BEAM_WIDTH", "100"))
-    wav2vec2_lm_alpha: float = float(os.getenv("WAV2VEC2_LM_ALPHA", "0.5"))
-    wav2vec2_lm_beta: float = float(os.getenv("WAV2VEC2_LM_BETA", "1.5"))
     score_threshold: float = float(os.getenv("SCORE_THRESHOLD", "0.5"))
     pass_on_any_score: bool = os.getenv("PASS_ON_ANY_SCORE", "false").lower() in ("1", "true", "yes")
     max_edits_for_correction: int = int(os.getenv("MAX_EDITS_FOR_CORRECTION", "2"))
@@ -115,7 +111,6 @@ class Config:
         """Resolve relative paths so they work when cwd is not project root (e.g. Modal)."""
         self.hf_model_path = _resolve_path(self.hf_model_path)
         self.hafs_json_path = _resolve_path(self.hafs_json_path)
-        self.wav2vec2_lm_path = _resolve_path(self.wav2vec2_lm_path)
 
 
 config = Config()
