@@ -6,6 +6,7 @@ from backend.config import config
 from backend.acoustic_scorer import (
     _acoustic_components,
     _acoustic_score_single,
+    _merge_vocative,
     get_acoustic_scores,
 )
 
@@ -48,6 +49,30 @@ class TestAcousticScoreSingle:
         assert blended == pytest.approx(config.weight_char * cs + config.weight_diacritic * ds)
         # With default weights (0.75/0.25) the score is dominated by WEIGHT_CHAR
         assert blended == pytest.approx(config.weight_char)
+
+
+class TestMergeVocative:
+    """Re-fuse a standalone vocative 'يا' onto the following decoded token."""
+
+    def test_merges_ya_into_next(self):
+        assert _merge_vocative(["يا", "أَيُّهَا"]) == ["ياأَيُّهَا"]
+
+    def test_merges_diacritized_ya(self):
+        # يا carrying a fatha still counts as the bare vocative once diacritics are stripped
+        assert _merge_vocative(["يَا", "أيها"]) == ["يَاأيها"]
+
+    def test_trailing_ya_left_alone(self):
+        # Nothing follows the يا -> nothing to fuse
+        assert _merge_vocative(["يا"]) == ["يا"]
+
+    def test_non_vocative_unchanged(self):
+        assert _merge_vocative(["الناس"]) == ["الناس"]
+
+    def test_only_ya_merges_rest_untouched(self):
+        assert _merge_vocative(["يا", "أيها", "الناس"]) == ["ياأيها", "الناس"]
+
+    def test_empty(self):
+        assert _merge_vocative([]) == []
 
 
 class TestGetAcousticScores:
@@ -128,3 +153,31 @@ class TestGetAcousticScores:
         assert res.diac_scores == []
         assert res.best_words == []
         assert res.n_decoded == 0
+
+    def test_vocative_split_is_refused_and_scored_high(self, monkeypatch):
+        """wav2vec2 splits the fused vocative into 'يا' + 'أَيُّهَا'; merging them back lets the
+        single reference word (emlaey يَاأَيُّهَا / uthmani يَٰٓأَيُّهَا) score as correct."""
+        monkeypatch.setattr(
+            "backend.acoustic_scorer._decode_audio",
+            lambda _: "يا أَيُّهَا",
+        )
+        audio = np.zeros(1600, dtype=np.float32)
+        expected = [("يَاأَيُّهَا", "يَٰٓأَيُّهَا")]
+        res = get_acoustic_scores(audio, [], expected)
+        # The two decoded tokens are fused into one, so only the recited word is counted...
+        assert res.n_decoded == 1
+        assert res.best_words == ["ياأَيُّهَا"]
+        # ...and it now clears the pass/fail threshold instead of the buggy 0.70.
+        assert res.scores[0] >= 0.76
+
+    def test_non_vocative_two_words_not_merged(self, monkeypatch):
+        """A decode with no standalone 'يا' is untouched: still two tokens, aligned per-word."""
+        monkeypatch.setattr(
+            "backend.acoustic_scorer._decode_audio",
+            lambda _: "الْحَمْدُ لِلَّهِ",
+        )
+        audio = np.zeros(1600, dtype=np.float32)
+        expected = [("الْحَمْدُ", "الْحَمْدُ"), ("لِلَّهِ", "لِلَّهِ")]
+        res = get_acoustic_scores(audio, [], expected)
+        assert res.n_decoded == 2
+        assert res.best_words == ["الْحَمْدُ", "لِلَّهِ"]

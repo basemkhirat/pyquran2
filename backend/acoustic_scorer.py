@@ -16,7 +16,7 @@ from typing import List, Tuple
 import numpy as np
 
 from backend.config import config, normalize_sukoon
-from backend.scorer import compute_char_score, compute_diacritic_score, compute_text_score
+from backend.scorer import compute_char_score, compute_diacritic_score, compute_text_score, strip_diacritics
 from backend.terminal_arabic import display_arabic
 
 logger = logging.getLogger(__name__)
@@ -79,6 +79,27 @@ def _decode_audio(audio: np.ndarray) -> str:
     text = processor.batch_decode(predicted_ids)[0].strip()
     logger.info("  wav2vec2 decoded: '%s'", display_arabic(text))
     return text
+
+
+# The Quranic vocative يا is written fused to the next word in the reference
+# (emlaey "يَاأَيُّهَا", uthmani "يَٰٓأَيُّهَا"), but wav2vec2 decodes it as two tokens
+# ("يا" + "أَيُّهَا"). Re-fuse a standalone "يا" onto the following token so it aligns to the
+# single reference word instead of being dropped by the one-token best-match in get_acoustic_scores.
+_VOCATIVE_YA = "يا"  # يا — base letters, diacritics stripped
+
+
+def _merge_vocative(parts: List[str]) -> List[str]:
+    """Fuse a standalone vocative 'يا' token onto the decoded token that follows it."""
+    merged: List[str] = []
+    i = 0
+    while i < len(parts):
+        if i + 1 < len(parts) and strip_diacritics(parts[i]).strip() == _VOCATIVE_YA:
+            merged.append(parts[i] + parts[i + 1])
+            i += 2
+        else:
+            merged.append(parts[i])
+            i += 1
+    return merged
 
 
 def _normalize_text(text: str) -> str:
@@ -155,7 +176,7 @@ def get_acoustic_scores(
         return AcousticResult([], [], [], [], 0)
 
     decoded_text = _decode_audio(audio)
-    decoded_parts = decoded_text.split()
+    decoded_parts = _merge_vocative(decoded_text.split())
     n_decoded = len(decoded_parts)
 
     if not decoded_parts:
