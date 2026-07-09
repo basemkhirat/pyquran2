@@ -21,8 +21,15 @@ from backend.terminal_arabic import display_arabic
 
 logger = logging.getLogger(__name__)
 
-# Characters that appear in uthmani_text but are NOT in the wav2vec2 model vocabulary.
-_CHARS_NOT_IN_VOCAB = re.compile("[\u0657\u06E1]")
+# Spelling-only marks folded/stripped before comparison so they never affect the score (none are
+# scored diacritics, so only the character comparison changes). See _normalize_text.
+_ALEF_WASLA = "\u0671"  # \u0671 -> folded to plain alef \u0627
+_ALEF = "\u0627"
+# Stripped so they don't affect the char score: U+0657 inverted damma, U+0640 tatweel,
+# U+0670 dagger alef, and the U+06D6-U+06ED Quranic annotation block (waqf/pause marks such
+# as U+06DA, plus end-of-ayah, sajdah and small-letter pronunciation guides). U+06E1 (alt
+# sukoon) is converted to standard sukoon by normalize_sukoon first, so it is not stripped.
+_STRIP_FOR_COMPARE = re.compile("[\u0657\u0640\u0670\u06D6-\u06ED]")
 
 _model = None
 _processor = None
@@ -103,19 +110,23 @@ def _merge_vocative(parts: List[str]) -> List[str]:
 
 
 def _normalize_text(text: str) -> str:
-    """Normalize text for comparison: normalize sukoon variant, strip out-of-vocab chars.
+    """Normalize text for comparison so spelling-only marks don't affect the char score.
 
     Replaces U+06E1 (ۡ) with U+0652 (ْ) so both sukoon shapes compare equal.
-    Removes the few characters that aren't in the model vocabulary.
+    Folds alef-wasla to plain alef, and strips tatweel (kashida), the superscript "dagger"
+    alef, and the Quranic annotation / waqf marks (U+06D6-U+06ED, e.g. the small high jeem
+    U+06DA). None of these are scored diacritics, so this only affects the character comparison.
     """
-    return _CHARS_NOT_IN_VOCAB.sub("", normalize_sukoon(text)).strip()
+    text = normalize_sukoon(text).replace(_ALEF_WASLA, _ALEF)
+    return _STRIP_FOR_COMPARE.sub("", text).strip()
 
 
 def _acoustic_components(expected: str, decoded: str) -> Tuple[float, float]:
     """Return (char_score, diacritic_score) in [0, 1] for decoded text vs expected.
 
-    Applies the acoustic-specific normalization (sukoon variant + out-of-vocab chars),
-    then reuses the text scorer's char/diacritic accuracy so both scoring paths agree.
+    Applies the acoustic-specific normalization (sukoon variant, alef-wasla folding,
+    tatweel/dagger-alef and waqf-mark stripping), then reuses the text scorer's char/diacritic
+    accuracy so both scoring paths agree.
     """
     exp = _normalize_text(expected)
     dec = _normalize_text(decoded)

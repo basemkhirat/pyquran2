@@ -7,6 +7,7 @@ from backend.acoustic_scorer import (
     _acoustic_components,
     _acoustic_score_single,
     _merge_vocative,
+    _normalize_text,
     get_acoustic_scores,
 )
 
@@ -73,6 +74,44 @@ class TestMergeVocative:
 
     def test_empty(self):
         assert _merge_vocative([]) == []
+
+
+class TestNormalizeText:
+    """Spelling-only marks are folded/stripped so they don't affect the character score."""
+
+    def test_uthmani_folds_to_emlaey_spelling(self):
+        # ٱلرَّحۡمَٰنِ (alef-wasla + dagger-alef) normalizes to the plain الرَّحْمَنِ spelling
+        assert _normalize_text("ٱلرَّحۡمَٰنِ") == "الرَّحْمَنِ"
+
+    def test_folds_alef_wasla_to_alef(self):
+        assert _normalize_text("ٱهدنا") == _normalize_text("اهدنا")
+
+    def test_strips_tatweel(self):
+        assert _normalize_text("مـن") == _normalize_text("من")
+
+    def test_strips_dagger_alef(self):
+        assert _normalize_text("هٰذا") == _normalize_text("هذا")
+
+    def test_strips_quranic_waqf_and_annotation_marks(self):
+        # Every mark in the U+06D6-U+06ED block (waqf/pause, end-of-ayah, sajdah, small-letter
+        # guides) is dropped so it can't inflate the char comparison. U+06E1 is the one exception:
+        # normalize_sukoon turns it into a standard sukoon, so it is preserved (see below).
+        base = "هُ"  # هُ
+        for cp in range(0x06D6, 0x06EE):
+            if cp == 0x06E1:
+                continue
+            assert _normalize_text(base + chr(cp)) == _normalize_text(base), f"U+{cp:04X} not stripped"
+
+    def test_alt_sukoon_head_preserved_as_standard_sukoon(self):
+        # U+06E1 (alternate sukoon head) is normalized to U+0652, not stripped
+        assert _normalize_text("هۡ") == "هْ"
+
+    def test_waqf_mark_does_not_reduce_char_score(self):
+        # A reference carrying a trailing waqf mark still matches a decode without it (char 1.0),
+        # and the scored diacritic next to the mark is kept.
+        cs, _ = _acoustic_components("هُۚ", "هُ")  # هُ + waqf  vs  هُ
+        assert cs == pytest.approx(1.0)
+        assert "ُ" in _normalize_text("هُۚ")
 
 
 class TestGetAcousticScores:
@@ -181,3 +220,16 @@ class TestGetAcousticScores:
         res = get_acoustic_scores(audio, [], expected)
         assert res.n_decoded == 2
         assert res.best_words == ["الْحَمْدُ", "لِلَّهِ"]
+
+    def test_orthographic_marks_dont_penalize_score(self, monkeypatch):
+        """Alef-wasla, tatweel and dagger-alef are spelling-only; a decode differing only by
+        those marks scores a perfect char match instead of the buggy 0.714/0.786."""
+        monkeypatch.setattr(
+            "backend.acoustic_scorer._decode_audio",
+            lambda _: "الرَّحْمَـٰنِ",  # plain alef + tatweel + dagger-alef
+        )
+        audio = np.zeros(1600, dtype=np.float32)
+        expected = [("الرَّحْمَنِ", "ٱلرَّحۡمَٰنِ")]  # emlaey, uthmani (alef-wasla + dagger-alef)
+        res = get_acoustic_scores(audio, [], expected)
+        assert res.char_scores[0] == pytest.approx(1.0)
+        assert res.scores[0] == pytest.approx(1.0)
