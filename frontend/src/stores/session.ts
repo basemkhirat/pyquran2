@@ -20,11 +20,16 @@ interface SessionState {
     currentWordIndex: number;
     wordResults: Record<number, WordResult>;
     sessionStatus: SessionStatus;
+    // True only while the mic is actually recording. `sessionStatus` becomes "recording"
+    // as soon as a range is picked (to preview the verses), so this is the real signal for
+    // "the reciter has started" — used to gate the active-word highlight.
+    isSessionActive: boolean;
     hideUnrecitedWords: boolean;
     scoreThreshold: number;
     sessionMode: SessionMode;
 
     setSelectedRange: (range: SelectedRange) => void;
+    setSessionActive: (active: boolean) => void;
     setHideUnrecitedWords: (hide: boolean) => void;
     setScoreThreshold: (value: number) => void;
     setSessionMode: (mode: SessionMode) => void;
@@ -45,6 +50,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     currentWordIndex: 0,
     wordResults: {},
     sessionStatus: "idle",
+    isSessionActive: false,
     hideUnrecitedWords: false,
     // Per-session pass/fail cutoff (0-1) sent with start_session; matches backend SCORE_THRESHOLD default.
     scoreThreshold: 0.76,
@@ -52,6 +58,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     sessionMode: "word_by_word",
 
     setSelectedRange: (range) => set({ selectedRange: range }),
+    setSessionActive: (active) => set({ isSessionActive: active }),
     setHideUnrecitedWords: (hide) => set({ hideUnrecitedWords: hide }),
     setScoreThreshold: (value) => set({ scoreThreshold: Math.min(1, Math.max(0, value)) }),
     setSessionMode: (mode) => set({ sessionMode: mode }),
@@ -83,6 +90,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             currentWordIndex: 0,
             wordResults: {},
             sessionStatus: "idle",
+            isSessionActive: false,
         }),
 
     getCorrectCount: () => {

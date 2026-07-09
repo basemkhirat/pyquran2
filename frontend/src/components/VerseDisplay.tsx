@@ -46,8 +46,9 @@ const WordChip = memo(function WordChip({
             )}
         >
             <span
+                style={{ fontFamily: "var(--font-quran)" }}
                 className={cn(
-                    "text-2xl leading-relaxed font-[var(--font-quran)] select-none",
+                    "text-2xl leading-relaxed select-none",
                     isInterim && "text-white",
                     !isInterim && result?.status === "correct" && "text-success",
                     !isInterim && result?.status === "incorrect" && "text-error",
@@ -69,7 +70,7 @@ const WordChip = memo(function WordChip({
 });
 
 export function VerseDisplay() {
-    const { words, currentWordIndex, wordResults, hideUnrecitedWords } = useSessionStore();
+    const { words, currentWordIndex, wordResults, hideUnrecitedWords, isSessionActive } = useSessionStore();
     const activeVerseRef = useRef<HTMLDivElement>(null);
 
     // Group words by (surah, ayah) to support cross-chapter ranges. Memoized so the O(n)
@@ -133,7 +134,9 @@ export function VerseDisplay() {
                         {words.slice(group.startIdx, group.endIdx + 1).map((word, offsetIdx) => {
                             const globalIdx = group.startIdx + offsetIdx;
                             const result = wordResults[globalIdx];
-                            const isActive = globalIdx === currentWordIndex;
+                            // Only highlight the current word once the mic is actually recording,
+                            // not during the range-selection preview.
+                            const isActive = globalIdx === currentWordIndex && isSessionActive;
                             const isPast = globalIdx < currentWordIndex;
                             const isInterim = result?.is_interim === true;
                             const notRecitedYet = globalIdx >= currentWordIndex; // current + future

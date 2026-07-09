@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { socket } from "../lib/socket";
+import { useSessionStore } from "../stores/session";
 
 const SAMPLE_RATE = 16000;
 const CHUNK_DURATION_MS = 150;
@@ -71,6 +72,8 @@ export function useAudioRecorder() {
             updateVolume();
 
             setIsRecording(true);
+            // Mic is live now — mark the session active so the UI can highlight the current word.
+            useSessionStore.getState().setSessionActive(true);
         } catch (err) {
             console.error("Microphone access denied:", err);
         }
@@ -95,6 +98,7 @@ export function useAudioRecorder() {
         socket.emit("stop_session");
         setIsRecording(false);
         setVolume(0);
+        useSessionStore.getState().setSessionActive(false);
     }, []);
 
     return { isRecording, volume, startRecording, stopRecording };
