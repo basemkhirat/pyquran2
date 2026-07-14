@@ -7,8 +7,6 @@ export function SessionSummary() {
         words,
         wordResults,
         getCorrectCount,
-        getAverageCharScore,
-        getAverageDiacriticScore,
         reset,
         setSessionStatus,
         setWords,
@@ -25,8 +23,6 @@ export function SessionSummary() {
     const skippedCount = Object.values(wordResults).filter(
         (r) => r.status === "skipped"
     ).length;
-    const avgChar = Math.round(getAverageCharScore() * 100);
-    const avgDiacritic = Math.round(getAverageDiacriticScore() * 100);
     const overallPercent = totalWords > 0 ? Math.round((correctCount / totalWords) * 100) : 0;
 
     const handleRestart = () => {
@@ -114,14 +110,6 @@ export function SessionSummary() {
                     <div className="bg-surface/60 rounded-xl p-4 text-center border border-border/50">
                         <p className="text-2xl font-bold text-success">{correctCount}</p>
                         <p className="text-xs text-text-muted mt-1">كلمات صحيحة</p>
-                    </div>
-                    <div className="bg-surface/60 rounded-xl p-4 text-center border border-border/50">
-                        <p className="text-2xl font-bold text-gold">{avgChar}%</p>
-                        <p className="text-xs text-text-muted mt-1">دقة الحروف</p>
-                    </div>
-                    <div className="bg-surface/60 rounded-xl p-4 text-center border border-border/50">
-                        <p className="text-2xl font-bold text-gold">{avgDiacritic}%</p>
-                        <p className="text-xs text-text-muted mt-1">دقة التشكيل</p>
                     </div>
                 </div>
 

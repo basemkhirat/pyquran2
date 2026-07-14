@@ -181,7 +181,9 @@ Contains the recognition result for a single word.
   word_number: number;      // Word index within the verse (0-based)
   status: "correct" | "incorrect" | "skipped";
   total_score: number;      // Overall score 0–1 — always present (0 for skipped). See Score below.
-  is_interim?: boolean;     // Present only during live streaming — see below
+  expected_text: string;    // The expected text
+  detected_text: string;    // The recognized text
+  is_interim?: boolean;     // For live streaming — see below
 }
 ```
 
@@ -271,6 +273,7 @@ socket.on("word_result") { args ->
 - Multiple `word_result` events may be emitted in succession if the user speaks multiple words
 - Handle `is_interim` so a preliminary result isn't shown as final — an interim word may be revised by a following `word_result`
 - `total_score` use it for a per-word percentage.
+- `expected_text` is the reference word; `detected_text` is what the recognizer decoded (empty string when acoustic scoring is disabled or no match was found).
 
 ---
 

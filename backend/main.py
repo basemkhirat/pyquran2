@@ -326,16 +326,11 @@ async def skip_word(sid, _data=None):
         "verse_number": word["ayah"],
         "word_number": word["word_index"],
         "status": "skipped",
-        # Always sent (like recognition results) so clients can read total_score
-        # without SEND_WORD_RESULT_DETAILS. A skipped word is never scored, so it's 0.
+        # A skipped word is never scored, so total_score is 0 and detected_text is empty.
         "total_score": 0.0,
+        "expected_text": word["uthmani_text"],
+        "detected_text": "",
     }
-    if config.send_word_result_details:
-        payload["transcribed"] = ""
-        payload["expected"] = word["uthmani_text"]
-        payload["char_score"] = 0.0
-        payload["diacritic_score"] = 0.0
-        payload["text_score"] = 0.0
     await sio.emit("word_result", payload, room=sid)
 
     # Persist skipped word in background (non-blocking)
@@ -592,8 +587,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     
     text = ""
     acoustic_scores_full: list[float] = []
-    acoustic_char_full: list[float] = []
-    acoustic_diac_full: list[float] = []
     acoustic_decoded_full: list[str] = []
     n_decoded_words = 0
 
@@ -604,8 +597,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         )
         text, ac_res = await asyncio.gather(whisper_task, wav2vec_task)
         acoustic_scores_full = ac_res.scores
-        acoustic_char_full = ac_res.char_scores
-        acoustic_diac_full = ac_res.diac_scores
         acoustic_decoded_full = ac_res.best_words
         n_decoded_words = ac_res.n_decoded
         text = text.strip()
@@ -621,8 +612,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             acoustic_scorer.get_acoustic_scores, audio, previous_expected_chunk, expected_chunk_max
         )
         acoustic_scores_full = ac_res.scores
-        acoustic_char_full = ac_res.char_scores
-        acoustic_diac_full = ac_res.diac_scores
         acoustic_decoded_full = ac_res.best_words
         n_decoded_words = ac_res.n_decoded
         logger.info("  Wav2vec (acoustic only, %d decoded words) took %.2fs", n_decoded_words, time.time() - t0)
@@ -672,16 +661,12 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
 
     # Slice parallel wav2vec scores to actual chunk size (after backtrack)
     acoustic_scores: list[float] = []
-    acoustic_char: list[float] = []
-    acoustic_diac: list[float] = []
     acoustic_decoded: list[str] = []
     if config.enable_acoustic_score and acoustic_scores_full:
         # Acoustic scores align with EXPECTED chunk, not transcribed chunk.
         # Length of expected_chunk_max was min(remaining, 20).
         n_words_chunk = min(remaining, 20)
         acoustic_scores = acoustic_scores_full[:n_words_chunk]
-        acoustic_char = acoustic_char_full[:n_words_chunk]
-        acoustic_diac = acoustic_diac_full[:n_words_chunk]
         acoustic_decoded = acoustic_decoded_full[:n_words_chunk]
 
     streaming = not is_final
@@ -709,8 +694,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         # Since `idx` advances by 1 for each correct word, the offset into the original
         # `acoustic_scores` array (from the start of the current chunk) is `words_processed`.
         ac = (acoustic_scores[words_processed] if words_processed < len(acoustic_scores) else None) if config.enable_acoustic_score else None
-        ac_char = (acoustic_char[words_processed] if words_processed < len(acoustic_char) else None) if config.enable_acoustic_score else None
-        ac_diac = (acoustic_diac[words_processed] if words_processed < len(acoustic_diac) else None) if config.enable_acoustic_score else None
         ac_decoded = (acoustic_decoded[words_processed] if words_processed < len(acoustic_decoded) else None) if config.enable_acoustic_score else None
 
         # Noise guard (acoustic-only mode): an empty best match means wav2vec2 found no word
@@ -723,8 +706,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             )
             break
 
-        if ac is not None:
-            scores["acoustic_score"] = round(ac, 3)
         scores["total_score"] = round(
             scorer.compute_total_score(scores["char_score"], ds, ac), 3
         )
@@ -754,22 +735,13 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             "verse_number": word["ayah"],
             "word_number": word["word_index"],
             "status": status,
-            # Always sent (even when send_word_result_details is False) so the client
-            # can show the per-word percentage without the full detail payload.
             "total_score": scores["total_score"],
+            "expected_text": word["uthmani_text"],
+            # "" when acoustic scoring is off or wav2vec2 found no match for this word.
+            "detected_text": ac_decoded or "",
         }
         if streaming:
             payload["is_interim"] = word_is_interim
-        if config.send_word_result_details:
-            payload["transcribed"] = t_corrected
-            payload["expected"] = word["uthmani_text"]
-            if ac_decoded is not None:
-                payload["acoustic_decoded"] = ac_decoded
-            if ac_char is not None:
-                payload["acoustic_char"] = round(ac_char, 3)
-            if ac_diac is not None:
-                payload["acoustic_diacritic"] = round(ac_diac, 3)
-            payload.update(scores)
 
         # Emit result
         if word_is_interim:

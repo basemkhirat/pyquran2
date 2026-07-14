@@ -19,18 +19,14 @@ export default function App() {
 
     const onWordResult = (data: any) => {
       console.log(
-        "word_result — expected:", data.expected,
-        "| decoded:", data.transcribed,
-        "| wav2vec2:", data.acoustic_decoded,
+        "word_result — expected:", data.expected_text,
+        "| detected:", data.detected_text,
         "| score:", data.total_score,
-        "| acoustic:", data.acoustic_score,
-        "| acoustic_char:", data.acoustic_char,
-        "| acoustic_diacritic:", data.acoustic_diacritic,
         "| status:", data.status,
         "| interim:", data.is_interim === true
       );
       if (data.is_interim === true) {
-        console.log("  ⏳ interim word (may self-correct):", data.expected ?? data.transcribed);
+        console.log("  ⏳ interim word (may self-correct):", data.expected_text);
       }
       const idx = wordIndexFor(data);
       if (idx !== -1) addWordResult(idx, data);

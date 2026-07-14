@@ -87,8 +87,6 @@ class Config:
     max_edits_for_correction: int = int(os.getenv("MAX_EDITS_FOR_CORRECTION", "2"))
     silence_timeout_ms: int = int(os.getenv("SILENCE_TIMEOUT_MS", "3000"))
     audio_sample_rate: int = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
-    # When True, word_result includes transcribed, expected, char_score, diacritic_score, total_score, acoustic_score.
-    send_word_result_details: bool = os.getenv("SEND_WORD_RESULT_DETAILS", "false").lower() in ("1", "true", "yes")
     # When set, socket connections must send this value in handshake auth.api_key; when empty, auth is disabled.
     socket_auth_api_key: str = os.getenv("SOCKET_AUTH_API_KEY", "")
     # Interval in ms between streaming transcription runs

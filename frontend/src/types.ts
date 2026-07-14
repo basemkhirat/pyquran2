@@ -10,16 +10,10 @@ export interface WordResult {
     chapter_number: number;
     verse_number: number;
     word_number: number;
-    transcribed?: string;
-    expected?: string;
-    char_score?: number;
-    diacritic_score?: number;
-    text_score?: number;
-    total_score?: number;
-    acoustic_score?: number;
-    acoustic_char?: number;
-    acoustic_diacritic?: number;
     status: "correct" | "incorrect" | "skipped";
+    total_score: number;
+    expected_text: string;
+    detected_text: string;
     is_interim?: boolean;
 }
 

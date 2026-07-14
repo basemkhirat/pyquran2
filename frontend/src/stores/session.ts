@@ -40,8 +40,6 @@ interface SessionState {
     advanceWord: () => void;
     reset: () => void;
     getCorrectCount: () => number;
-    getAverageCharScore: () => number;
-    getAverageDiacriticScore: () => number;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -96,26 +94,5 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     getCorrectCount: () => {
         const { wordResults } = get();
         return Object.values(wordResults).filter((r) => r.status === "correct").length;
-    },
-
-    getAverageCharScore: () => {
-        const { wordResults } = get();
-        const values = Object.values(wordResults).filter((r) => r.char_score != null);
-        if (values.length === 0) return 0;
-        return values.reduce((sum, r) => sum + (r.char_score ?? 0), 0) / values.length;
-    },
-
-    getAverageDiacriticScore: () => {
-        const { wordResults } = get();
-        const values = Object.values(wordResults).filter((r) => r.diacritic_score != null);
-        if (values.length === 0) return 0;
-        return values.reduce((sum, r) => sum + (r.diacritic_score ?? 0), 0) / values.length;
-    },
-
-    getAverageAcousticScore: () => {
-        const { wordResults } = get();
-        const values = Object.values(wordResults).filter((r) => r.acoustic_score != null);
-        if (values.length === 0) return undefined;
-        return values.reduce((sum, r) => sum + (r.acoustic_score ?? 0), 0) / values.length;
     },
 }));
