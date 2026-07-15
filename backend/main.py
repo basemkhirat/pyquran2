@@ -824,8 +824,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             "status": status,
             "total_score": scores["total_score"],
             "expected_text": word["uthmani_text"],
-            # "" when acoustic scoring is off or wav2vec2 found no match for this word.
-            "detected_text": ac_decoded or "",
+            # Prefer the wav2vec2 decode; fall back to the Whisper transcription
+            # when acoustic scoring is off (text-only mode). In acoustic-only mode
+            # t_word is a placeholder (== expected), so it's excluded. "" only when
+            # neither a decode nor a text transcription is available for this word.
+            "detected_text": ac_decoded or (t_word if config.enable_text_score else ""),
         }
         if streaming:
             payload["is_interim"] = word_is_interim
