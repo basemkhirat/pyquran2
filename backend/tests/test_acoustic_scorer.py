@@ -6,8 +6,10 @@ from backend.config import config
 from backend.acoustic_scorer import (
     _acoustic_components,
     _acoustic_score_single,
+    _align_decoded_to_expected,
     _merge_vocative,
     _normalize_text,
+    _MATCH_FLOOR,
     get_acoustic_scores,
 )
 
@@ -233,3 +235,70 @@ class TestGetAcousticScores:
         res = get_acoustic_scores(audio, [], expected)
         assert res.char_scores[0] == pytest.approx(1.0)
         assert res.scores[0] == pytest.approx(1.0)
+
+    def test_repeated_word_does_not_desync_current_chunk(self, monkeypatch):
+        """Regression: a word repeated earlier in the utterance ('في' twice here) used to drift
+        the greedy forward pointer so later correctly-recited words ('كبيرا', 'فاذا', 'جاء')
+        matched the wrong token and scored ~0.15. The current chunk must align to its own tokens."""
+        decoded = "في الارض في الكتاب ولتعلن علوا كبيرا فاذا جاء"
+        monkeypatch.setattr("backend.acoustic_scorer._decode_audio", lambda _: decoded)
+        audio = np.zeros(1600, dtype=np.float32)
+        previous = [(w, w) for w in ["في", "الارض", "في", "الكتاب", "ولتعلن", "علوا"]]
+        expected = [(w, w) for w in ["كبيرا", "فاذا", "جاء"]]
+        res = get_acoustic_scores(audio, previous, expected)
+        # Sliced to the current chunk; each word maps to its own decoded token.
+        assert res.best_words == ["كبيرا", "فاذا", "جاء"]
+        assert all(s > 0.7 for s in res.scores)
+
+
+class TestAlignDecodedToExpected:
+    """The monotonic (Needleman-Wunsch) alignment that replaced the greedy forward matcher."""
+
+    def test_clean_diagonal(self):
+        words = ["الف", "باء", "تاء"]
+        expected = [(w, w) for w in words]
+        scores, _, _, best = _align_decoded_to_expected(words, expected)
+        assert best == words
+        assert all(s == pytest.approx(1.0) for s in scores)
+
+    def test_repeated_reference_words_align_positionally(self):
+        # "في" appears twice; each expected occurrence maps to its own decoded token instead of
+        # collapsing onto one (the old greedy matcher's leapfrog/stick failure).
+        decoded = ["في", "الارض", "في", "الكتاب"]
+        expected = [(w, w) for w in decoded]
+        scores, _, _, best = _align_decoded_to_expected(decoded, expected)
+        assert best == decoded
+        assert all(s == pytest.approx(1.0) for s in scores)
+
+    def test_missing_middle_token_leaves_word_unmatched_without_shifting(self):
+        # The middle word wasn't decoded. A monotonic alignment leaves THAT word unmatched and
+        # still lines the last word up with its own token -- it must not shift over by one.
+        expected = [(w, w) for w in ["اول", "وسط", "اخر"]]
+        scores, _, _, best = _align_decoded_to_expected(["اول", "اخر"], expected)
+        assert best == ["اول", "", "اخر"]
+        assert scores[0] == pytest.approx(1.0)
+        assert scores[1] == 0.0
+        assert scores[2] == pytest.approx(1.0)
+
+    def test_below_floor_token_is_unmatched(self):
+        # A decoded token too dissimilar to the expected word is left unmatched (best_word ""),
+        # which drives the caller's noise/silence guard instead of a false low-score "incorrect".
+        scores, _, _, best = _align_decoded_to_expected(["زقز"], [("بِسْمِ", "بِسْمِ")])
+        assert best == [""]
+        assert scores[0] == 0.0
+
+    def test_extra_tokens_are_skipped(self):
+        decoded = ["الف", "باء", "تاء"]
+        scores, _, _, best = _align_decoded_to_expected(decoded, [("باء", "باء")])
+        assert best == ["باء"]
+        assert scores[0] == pytest.approx(1.0)
+
+    def test_duplicate_expected_single_token_not_double_counted(self):
+        # Same word expected twice but recited once: exactly one occurrence matches the token.
+        scores, _, _, best = _align_decoded_to_expected(["مثل"], [("مثل", "مثل"), ("مثل", "مثل")])
+        assert best.count("مثل") == 1
+        assert best.count("") == 1
+
+    def test_match_floor_is_the_advance_gate_value(self):
+        # Guards the intended floor; alignment treats blends below this as no-match.
+        assert _MATCH_FLOOR == 0.4

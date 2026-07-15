@@ -1,0 +1,833 @@
+INFO:backend.main:Wav2vec2 model ready.
+INFO:backend.main:Client connected: rx5NfOlYkA_ApnhzAAAB
+INFO:backend.main:Session started for rx5NfOlYkA_ApnhzAAAB: 31:1 - 31:34, 546 words (phase=detecting, mode=continuous, score_threshold=0.8, save_session_data=False, id=5ba58200-3b53-4b47-8254-4a41ff4eb951)
+INFO:backend.main:Streaming: starting periodic transcription for [rx5NfOlYkA_ApnhzAAAB]
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻦِﻤُﻃ'
+INFO:backend.verse_detection:Verse detection: decoded 'َﻦِﻤُﻃ' (34 verses, best=0.667, threshold=0.70)
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ُﺾُﻴْﻟﺍ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.verse_detection:Verse detection: decoded 'ُﺾُﻴْﻟﺍ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ' (34 verses, best=0.941, threshold=0.70)
+INFO:backend.verse_detection:Verse detection: matched 31:6 (score=0.941)
+INFO:backend.main:Verse detected for [rx5NfOlYkA_ApnhzAAAB]: 31:6, word_number 1, score 0.941
+INFO:backend.main:Processing 4.50s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #25: 'َﻦِﻣَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 7 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='َﻦِﻣَﻭ' decoded='َﻦِﻣَﻭ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﺱﺎَّﻨﻟﭐ' decoded='ِﺱﺎَّﻨﻟﭐ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﻦَﻣ' decoded='ﻦَﻣ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﻱِﺮَﺘۡﺸَﻳ' decoded='ﻱِﺮَﺘۡﺸَﻳ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='َﻮۡﻬَﻟ' decoded='َﻮۡﻬَﻟ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﺚﻳِﺪَﺤۡﻟﭐ' decoded='ِﺚﻳِﺪَﺤۡﻟﭐ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='َّﻞِﻀُﻴِﻟ' decoded='َّﻞِﻀُﻴِﻟ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 5.20s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #31: 'َّﻞِﻀُﻴِﻟ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 9 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='َّﻞِﻀُﻴِﻟ' decoded='َّﻞِﻀُﻴِﻟ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﻦَﻋ' decoded='ﻦَﻋ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﻞﻴِﺒَﺳ' decoded='ِﻞﻴِﺒَﺳ' total=0.917 status=correct interim=True
+INFO:backend.main:Processing 5.80s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #33: 'ِﻞﻴِﺒَﺳ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 10 decoded words) took 0.05s
+INFO:backend.main:  Word score expected='ِﻞﻴِﺒَﺳ' decoded='ِﻞﻴِﺒَﺳ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﻪَّﻠﻟﭐ' decoded='ِﻪَّﻠﻟﭐ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 6.50s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #34: 'ِﻪَّﻠﻟﭐ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 12 decoded words) took 0.05s
+INFO:backend.main:  Word score expected='ِﻪَّﻠﻟﭐ' decoded='ِﻪَّﻠﻟﭐ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﺮۡﻴَﻐِﺑ' decoded='ِﺮۡﻴَﻐِﺑ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ٖﻢۡﻠِﻋ' decoded='ٖﻢۡﻠِﻋ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 7.10s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #36: 'ٖﻢۡﻠِﻋ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 12 decoded words) took 0.05s
+INFO:backend.main:  Word score expected='ٖﻢۡﻠِﻋ' decoded='ٖﻢۡﻠِﻋ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 7.80s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #36: 'ٖﻢۡﻠِﻋ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 13 decoded words) took 0.05s
+INFO:backend.main:  Word score expected='ٖﻢۡﻠِﻋ' decoded='ٖﻢۡﻠِﻋ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ' decoded='ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ' total=0.750 status=incorrect interim=True
+INFO:backend.main:Processing 8.20s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #37: 'ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 13 decoded words) took 0.05s
+INFO:backend.main:  Word score expected='ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ' decoded='ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 9.10s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #37: 'ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 13 decoded words) took 0.06s
+INFO:backend.main:  Word score expected='ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ' decoded='ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 9.80s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #37: 'ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﻭﺎَﻫ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 14 decoded words) took 0.07s
+INFO:backend.main:  Word score expected='ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ' decoded='ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ۚﺍًﻭُﺰُﻫ' decoded='ۚﺍًﻭُﺰُﻫ' total=0.562 status=incorrect interim=True
+INFO:backend.main:Processing 10.40s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #38: 'ۚﺍًﻭُﺰُﻫ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﻝُﻭﺍَﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 14 decoded words) took 0.07s
+INFO:backend.main:  Word score expected='ۚﺍًﻭُﺰُﻫ' decoded='ۚﺍًﻭُﺰُﻫ' total=0.312 status=incorrect interim=True
+INFO:backend.main:Processing 11.10s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #38: 'ۚﺍًﻭُﺰُﻫ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ُﻪَﻟ َﻚِﺌٰـَﻟﻭُﺃ ٰﻯَﻭَﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 16 decoded words) took 0.07s
+INFO:backend.main:  Word score expected='ۚﺍًﻭُﺰُﻫ' decoded='ۚﺍًﻭُﺰُﻫ' total=0.188 status=incorrect interim=False
+INFO:backend.main:  Word score expected='َﻚِﺌَٰٓﻟْﻭُﺃ' decoded='َﻚِﺌَٰٓﻟْﻭُﺃ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ۡﻢُﻬَﻟ' decoded='ۡﻢُﻬَﻟ' total=0.750 status=incorrect interim=True
+INFO:backend.main:Processing 11.80s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #40: 'ۡﻢُﻬَﻟ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ٰﻯَﻭَُﻭَﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 17 decoded words) took 0.08s
+INFO:backend.main:  Word score expected='ۡﻢُﻬَﻟ' decoded='ۡﻢُﻬَﻟ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ٞﺏﺍَﺬَﻋ' decoded='ٞﺏﺍَﺬَﻋ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 12.50s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #41: 'ٞﺏﺍَﺬَﻋ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ٰﻯًﻭُﻭَﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 17 decoded words) took 0.08s
+INFO:backend.main:  Word score expected='ٞﺏﺍَﺬَﻋ' decoded='ٞﺏﺍَﺬَﻋ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 13.10s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #41: 'ٞﺏﺍَﺬَﻋ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﻯًﻭَُﻭَﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 18 decoded words) took 0.09s
+INFO:backend.main:  Word score expected='ٞﺏﺍَﺬَﻋ' decoded='ٞﺏﺍَﺬَﻋ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ٞﻦﻴِﻬُّﻣ' decoded='ٞﻦﻴِﻬُّﻣ' total=0.917 status=correct interim=True
+INFO:backend.main:Processing 13.80s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #42: 'ٞﻦﻴِﻬُّﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﻩ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﻯًﻭُﻭَﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 18 decoded words) took 0.09s
+INFO:backend.main:  Word score expected='ٞﻦﻴِﻬُّﻣ' decoded='ٞﻦﻴِﻬُّﻣ' total=0.188 status=incorrect interim=True
+INFO:backend.main:Processing 14.50s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #42: 'ٞﻦﻴِﻬُّﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﻯًﻭََُﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 21 decoded words) took 0.11s
+INFO:backend.main:  Word score expected='ٞﻦﻴِﻬُّﻣ' decoded='ٞﻦﻴِﻬُّﻣ' total=0.917 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺍَﺫِﺇَﻭ' decoded='ﺍَﺫِﺇَﻭ' total=0.729 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ٰﻰَﻠۡﺘُﺗ' decoded='ٰﻰَﻠۡﺘُﺗ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﻪۡﻴَﻠَﻋ' decoded='ِﻪۡﻴَﻠَﻋ' total=0.917 status=correct interim=True
+INFO:backend.main:Processing 15.30s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #45: 'ِﻪۡﻴَﻠَﻋ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٌﺕﺎَﻳﺁ ِﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ٰﻯًﻭَُﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 22 decoded words) took 0.11s
+INFO:backend.main:  Word score expected='ِﻪۡﻴَﻠَﻋ' decoded='ِﻪۡﻴَﻠَﻋ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺎَﻨُﺘَٰﻳﺍَﺀ' decoded='ﺎَﻨُﺘَٰﻳﺍَﺀ' total=0.583 status=incorrect interim=True
+INFO:backend.main:Processing 16.00s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #46: 'ﺎَﻨُﺘَٰﻳﺍَﺀ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َّﻝَﻭﺎَﻨُﺗﺎَﻳﺁ ِﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﻯًﻭَُﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 22 decoded words) took 0.11s
+INFO:backend.main:  Word score expected='ﺎَﻨُﺘَٰﻳﺍَﺀ' decoded='ﺎَﻨُﺘَٰﻳﺍَﺀ' total=0.500 status=incorrect interim=True
+INFO:backend.main:Processing 16.70s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #46: 'ﺎَﻨُﺘَٰﻳﺍَﺀ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٌﺮِﺒْﻜَﺘْﺴُﻣ ٰﻰَّﻟَﻭ ﺎَﻨُﺗﺎَﻳﺁ ِﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﻯًﻭََُﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 24 decoded words) took 0.11s
+INFO:backend.main:  Word score expected='ﺎَﻨُﺘَٰﻳﺍَﺀ' decoded='ﺎَﻨُﺘَٰﻳﺍَﺀ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ٰﻰَّﻟَﻭ' decoded='ٰﻰَّﻟَﻭ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺍٗﺮِﺒۡﻜَﺘۡﺴُﻣ' decoded='ﺍٗﺮِﺒۡﻜَﺘۡﺴُﻣ' total=0.893 status=correct interim=True
+INFO:backend.main:Processing 17.40s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #48: 'ﺍٗﺮِﺒۡﻜَﺘۡﺴُﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺮِﺒْﻜَﺘْﺴُﻣ ٰﻰَّﻟَﻭ َﻦُﺗﺎَﻳﺁ ِﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﻯًﻭََُﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 24 decoded words) took 0.11s
+INFO:backend.main:  Word score expected='ﺍٗﺮِﺒۡﻜَﺘۡﺴُﻣ' decoded='ﺍٗﺮِﺒۡﻜَﺘۡﺴُﻣ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 18.10s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #48: 'ﺍٗﺮِﺒۡﻜَﺘۡﺴُﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٌﻢْﺴَﻳ ْﻢَّﻟَﺄَﻛ ﺍًﺮِﺒْﻜَﺘْﺴُﻣ ٰﻰَّﻟَﻮَﻨُﺗﺎَﻳﺁ ِﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﻯًﻭَُﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 25 decoded words) took 0.13s
+INFO:backend.main:  Word score expected='ﺍٗﺮِﺒۡﻜَﺘۡﺴُﻣ' decoded='ﺍٗﺮِﺒۡﻜَﺘۡﺴُﻣ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﻥَﺄَﻛ' decoded='ﻥَﺄَﻛ' total=0.250 status=incorrect interim=True
+INFO:backend.main:Processing 18.90s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #49: 'ﻥَﺄَﻛ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻚﻬْﻌَﻤْﺴَﻳ ْﻢَّﻟَﺄَﻛ ﺍًﺮِﺒْﻜَﺘْﺴُﻣ ٰﻰَّﻟَﻭ َﻦُﺗﺎَﻳﺁ ِﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﺍًﻭَُﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 26 decoded words) took 0.13s
+INFO:backend.main:  Word score expected='ﻥَﺄَﻛ' decoded='ﻥَﺄَﻛ' total=0.250 status=incorrect interim=False
+INFO:backend.main:  No wav2vec2 match for 'ۡﻢَّﻟ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 19.60s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #50: 'ۡﻢَّﻟ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َّﻥَﺄَﻛ ﺎَﻬْﻌَﻤْﺴَﻳ ْﻢَّﻟ ﻥَﺄَﻛ ﺍًﺮِﺒْﻜَﺘْﺴُﻣ ٰﻰَّﻟَﻭ َﻦُﺗﺎَﻳﺁ ِﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﻯًﻭَُﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 28 decoded words) took 0.15s
+INFO:backend.main:  Word score expected='ۡﻢَّﻟ' decoded='ۡﻢَّﻟ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺎَﻬۡﻌَﻤۡﺴَﻳ' decoded='ﺎَﻬۡﻌَﻤۡﺴَﻳ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='َّﻥَﺄَﻛ' decoded='َّﻥَﺄَﻛ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 20.40s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #52: 'َّﻥَﺄَﻛ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﻪْﻴَﻧُﺫُﺃ ﻲِﻓ َّﻥَﺄَﻛ ﺎَﻬْﻌَﻤْﺴَﻳ ْﻢَّﻟَﺄَﻛ ﺍًﺮِﺒْﻜَﺘْﺴُﻣ ٰﻰَّﻟَﻭ ﺎَﻨُﺗﺎَﻳﺁ ِﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﻯًﻭَُﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 29 decoded words) took 0.15s
+INFO:backend.main:  No wav2vec2 match for 'َّﻥَﺄَﻛ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 21.10s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #52: 'َّﻥَﺄَﻛ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺮْﻗَﻭ ِﻪْﻴَﻧُﺫُﺃ ﻲِﻓ َّﻥَﺄَﻛ ﺎَﻬْﻌَﻤْﺴَﻳ ْﻢَّﻟَﺄَﻛ ﺍًﺮِﺒْﻜَﺘْﺴُﻣ ٰﻰَّﻟَﻮَﻨُﺗﺎَﻳﺁ ِﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﻯًﻮُﻫََﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 29 decoded words) took 0.17s
+INFO:backend.main:  Word score expected='َّﻥَﺄَﻛ' decoded='َّﻥَﺄَﻛ' total=0.062 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ٓﻲِﻓ' decoded='ٓﻲِﻓ' total=1.000 status=correct interim=True
+INFO:backend.vad:Streaming flush: 21.90s
+INFO:backend.main:Processing 21.90s of audio for [rx5NfOlYkA_ApnhzAAAB] (final)...
+INFO:backend.main:  Expected word #53: 'ٓﻲِﻓ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺮْﻗَﻭ ِﻪْﻴَﻧُﺫُﺃ ﻲِﻓ َّﻥَﺄَﻛ ﺎَﻬْﻌَﻤْﺴَﻳ ْﻢَّﻟَﺄَﻛ ﺍًﺮِﺒْﻜَﺘْﺴُﻣ ٰﻰَّﻟَﻮَﻨُﺗﺎَﻳﺁ ِﻪْﻴَﻠَﻋ ٰﻰَﻠْﺘُﺗ ﺍَﺫِﺇ ٌﻦﻴِﻬُﻣ ٌﺏﺍَﺬَﻋ ْﻢُﻬَﻟ َﻚِﺌٰـَﻟﻭُﺃ ﺍًﻮُﻫَﻭَﻭ ﺎَﻫَﺬِﺨَّﺘَﻳَﻭ ٍﻢْﻠِﻋ ِﺮْﻴَﻐِﺑ ِﻪَّﻠﻟﺍ ِﻞﻴِﺒَﺳ ْﻦَﻋ َّﻞِﻀُﻴِﻟ ِﺚﻳِﺪَﺤْﻟﺍ َﻮْﻬَﻟ ﻱِﺮَﺘْﺸَﻳ ْﻦَﻣ ِﺱﺎَّﻨﻟﺍ َﻦِﻣَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 29 decoded words) took 0.16s
+INFO:backend.main:  Word score expected='ٓﻲِﻓ' decoded='ٓﻲِﻓ' total=1.000 status=correct interim=False
+INFO:backend.main:Streaming: starting periodic transcription for [rx5NfOlYkA_ApnhzAAAB]
+INFO:backend.main:Processing 1.60s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #54: 'ِﻪۡﻴَﻧُﺫُﺃ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 2 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='ِﻪۡﻴَﻧُﺫُﺃ' decoded='ِﻪۡﻴَﻧُﺫُﺃ' total=0.150 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ۖﺍٗﺮۡﻗَﻭ' decoded='ۖﺍٗﺮۡﻗَﻭ' total=0.188 status=incorrect interim=True
+INFO:backend.main:Processing 2.20s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 2 decoded words) took 0.02s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 2.80s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 3 decoded words) took 0.03s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 3.40s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 3 decoded words) took 0.03s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 4.10s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻦﻳِﺬْﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 5 decoded words) took 0.03s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 4.70s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 6 decoded words) took 0.04s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 5.40s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 7 decoded words) took 0.04s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 6.00s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺔَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 8 decoded words) took 0.04s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 6.60s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 9 decoded words) took 0.05s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 7.30s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻦَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 10 decoded words) took 0.04s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 7.90s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٌﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 10 decoded words) took 0.06s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 8.60s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﻢﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 11 decoded words) took 0.05s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 9.30s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﻢﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 11 decoded words) took 0.05s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 9.90s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﻢﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 11 decoded words) took 0.05s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 10.60s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻦﻳِﺪِﻟﺎَﺧ ِﻢﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 12 decoded words) took 0.06s
+INFO:backend.main:  No wav2vec2 match for 'ۖﺍٗﺮۡﻗَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 11.20s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #55: 'ۖﺍٗﺮۡﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ِﻢﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 13 decoded words) took 0.06s
+INFO:backend.main:  Word score expected='ۖﺍٗﺮۡﻗَﻭ' decoded='ۖﺍٗﺮۡﻗَﻭ' total=0.188 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ُﻩۡﺮِّﺸَﺒَﻓ' decoded='ُﻩۡﺮِّﺸَﺒَﻓ' total=0.200 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ٍﺏﺍَﺬَﻌِﺑ' decoded='ٍﺏﺍَﺬَﻌِﺑ' total=0.317 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ٍﻢﻴِﻟَﺃ' decoded='ٍﻢﻴِﻟَﺃ' total=0.500 status=incorrect interim=False
+INFO:backend.main:  Word score expected='َّﻥِﺇ' decoded='َّﻥِﺇ' total=0.167 status=incorrect interim=False
+INFO:backend.main:  Word score expected='َﻦﻳِﺬَّﻟﭐ' decoded='َﻦﻳِﺬَّﻟﭐ' total=0.575 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ْﺍﻮُﻨَﻣﺍَﺀ' decoded='ْﺍﻮُﻨَﻣﺍَﺀ' total=0.208 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ْﺍﻮُﻠِﻤَﻋَﻭ' decoded='ْﺍﻮُﻠِﻤَﻋَﻭ' total=0.187 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ِﺖَٰﺤِﻠَّٰﺼﻟﭐ' decoded='ِﺖَٰﺤِﻠَّٰﺼﻟﭐ' total=0.194 status=incorrect interim=False
+INFO:backend.main:  No wav2vec2 match for 'ۡﻢُﻬَﻟ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 11.90s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #64: 'ۡﻢُﻬَﻟ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺪَﺑَﺃ ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ِﻢﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 14 decoded words) took 0.07s
+INFO:backend.main:  Word score expected='ۡﻢُﻬَﻟ' decoded='ۡﻢُﻬَﻟ' total=0.125 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ُﺖَّٰﻨَﺟ' decoded='ُﺖَّٰﻨَﺟ' total=0.125 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ِﻢﻴِﻌَّﻨﻟﭐ' decoded='ِﻢﻴِﻌَّﻨﻟﭐ' total=0.062 status=incorrect interim=False
+INFO:backend.main:  Word score expected='َﻦﻳِﺪِﻠَٰﺧ' decoded='َﻦﻳِﺪِﻠَٰﺧ' total=0.275 status=incorrect interim=True
+INFO:backend.main:Processing 12.60s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #67: 'َﻦﻳِﺪِﻠَٰﺧ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺪَﺑَﺃ ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ِﻢﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 14 decoded words) took 0.08s
+INFO:backend.main:  Word score expected='َﻦﻳِﺪِﻠَٰﺧ' decoded='َﻦﻳِﺪِﻠَٰﺧ' total=0.275 status=incorrect interim=True
+INFO:backend.main:Processing 13.30s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #67: 'َﻦﻳِﺪِﻠَٰﺧ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻦﻳِﺪِﻟﺎَﺧ ﺍًﺪَﺑَﺃ ﺎَﻬﻴِﻓ ﻥﺪﻠِﻴِﻌَﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 14 decoded words) took 0.08s
+INFO:backend.main:  No wav2vec2 match for 'َﻦﻳِﺪِﻠَٰﺧ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 14.00s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #67: 'َﻦﻳِﺪِﻠَٰﺧ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ﺎًَﻴﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 13 decoded words) took 0.08s
+INFO:backend.main:Processing 14.60s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #67: 'َﻦﻳِﺪِﻠَٰﺧ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﻪَّﻠﻟﺍ َﺪْﻋَﻭ ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ﺍًﺎﻴﻌَﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 15 decoded words) took 0.09s
+INFO:backend.main:  No wav2vec2 match for 'َﻦﻳِﺪِﻠَٰﺧ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 15.30s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #67: 'َﻦﻳِﺪِﻠَٰﺧ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎًّﻘَﺣ ِﻪَّﻠﻟﺍ َﺪْﻋَﻭ ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ﺍًﺪَﺑَﺃﺎﻬﻴِﻤﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 16 decoded words) took 0.09s
+INFO:backend.main:  Word score expected='َﻦﻳِﺪِﻠَٰﺧ' decoded='َﻦﻳِﺪِﻠَٰﺧ' total=0.062 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ۖﺎَﻬﻴِﻓ' decoded='ۖﺎَﻬﻴِﻓ' total=0.188 status=incorrect interim=False
+INFO:backend.main:  Word score expected='َﺪۡﻋَﻭ' decoded='َﺪۡﻋَﻭ' total=0.125 status=incorrect interim=True
+INFO:backend.main:Processing 16.00s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #69: 'َﺪۡﻋَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎًّﻘَﺣ ِﻪَّﻠﻟﺍ َﺪْﻋَﻭ ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ﺍًﺪَﺑَﺃﺎَﻬﻴِﻔِﻤﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 16 decoded words) took 0.10s
+INFO:backend.main:  Word score expected='َﺪۡﻋَﻭ' decoded='َﺪۡﻋَﻭ' total=0.125 status=incorrect interim=True
+INFO:backend.main:Processing 16.70s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #69: 'َﺪۡﻋَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َُﻦﻳِﺰَﻌْﻟﺍ َﻮُﻫَﻭ ﺎًّﻘَﺣ ِﻪَّﻠﻟﺍ َﺪْﻋَﻭ ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ﺍًﺪَﺑَﺃﺎَﻬﻴﻔِﻤﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 18 decoded words) took 0.10s
+INFO:backend.main:  No wav2vec2 match for 'َﺪۡﻋَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 17.40s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #69: 'َﺪۡﻋَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ُﻢﻴﻜَﺤْﻟﺍ ُﺰﻳِﺰَﻌْﻟﺍ َﻮُﻫَﻭ ﺎًّﻘَﺣ ِﻪَّﻠﻟﺍ َﺪْﻋَﻭ ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ﺍًﺪَﺑَﺃﺎَﻬﻴﻔِﻤﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 19 decoded words) took 0.10s
+INFO:backend.main:  No wav2vec2 match for 'َﺪۡﻋَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 18.10s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #69: 'َﺪۡﻋَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ُﻢﻴِﻜَﺤْﻟﺍ ُﺰﻳِﺰَﻌْﻟﺍ َﻮُﻫَﻭ ﺎًّﻘَﺣ ِﻪَّﻠﻟﺍ َﺪْﻋَﻭ ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ﺍًﺪَﺑَﺃﺎﻬﻴِﻤﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 19 decoded words) took 0.12s
+INFO:backend.main:  No wav2vec2 match for 'َﺪۡﻋَﻭ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 18.90s of audio for [rx5NfOlYkA_ApnhzAAAB] (interim)...
+INFO:backend.main:  Expected word #69: 'َﺪۡﻋَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ُﻢﻴِﻜَﺤْﻟﺍ ُﺰﻳِﺰَﻌْﻟﺍ َﻮُﻫَﻭ ﺎًّﻘَﺣ ِﻪَّﻠﻟﺍ َﺪْﻋَﻭ ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ﺍًﺪَﺑَﺃ ﺎَﻬﻴِﻔﻨِﻤﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 20 decoded words) took 0.12s
+INFO:backend.main:  No wav2vec2 match for 'َﺪۡﻋَﻭ' (noise/silence) — skipping word_result
+INFO:backend.vad:Streaming flush: 19.60s
+INFO:backend.main:Processing 19.60s of audio for [rx5NfOlYkA_ApnhzAAAB] (final)...
+INFO:backend.main:  Expected word #69: 'َﺪۡﻋَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ُﻢﻴِﻜَﺤْﻟﺍ ُﺰﻳِﺰَﻌْﻟﺍ َﻮُﻫَﻭ ﺎًّﻘَﺣ ِﻪَّﻠﻟﺍ َﺪْﻋَﻭ ﺎَﻬﻴِﻓ َﻦﻳِﺪِﻟﺎَﺧ ﺍًﺪَﺑَﺃ ﺎَﻬﻴِﻔﻨﻳِﺪِﻟﺎِﻤﻴِﻌَّﻨﻟﺍ ُﺕﺎَّﻨَﺟ ْﻢُﻬَﻟ ِﺕﺎَﺤِﻟﺎَّﺼﻟﺍ ﺍﻮُﻠِﻤَﻋَﻭ ﺍﻮُﻨَﻣﺁ َﻦﻳِﺬَّﻟﺍ َّﻥِﺇ ٍﻢﻴِﻟَﺃ ٍﺏﺍَﺬَﻌِﺑ ُﻩْﺮِّﺸَﺒَﺗ'
+INFO:backend.main:  Wav2vec (acoustic only, 20 decoded words) took 0.13s
+INFO:backend.main:  No wav2vec2 match for 'َﺪۡﻋَﻭ' (noise/silence) — skipping word_result
+Task's current input(s) ["in-01KXHRV8QD5GY4BT7RQ6J0D8ZT:1784081654509-0"] cancelled because: Task's current input in-01KXHRV8QD5GY4BT7RQ6J0D8ZT:1784081654509-0 hit its timeout of 300s
+INFO:backend.main:Client disconnected: rx5NfOlYkA_ApnhzAAAB
+CONNECT /socket.io/ -> 101 Switching Protocols  (duration: 300.0 s, execution: 289.2 s)
+INFO:backend.main:Client connected: awPK7hGpMK94_211AAAD
+INFO:backend.main:Session started for awPK7hGpMK94_211AAAD: 17:1 - 17:111, 1556 words (phase=detecting, mode=continuous, score_threshold=0.8, save_session_data=False, id=7a345fce-cdb3-4ebe-b6fd-e2fda41de918)
+INFO:backend.main:Streaming: starting periodic transcription for [awPK7hGpMK94_211AAAD]
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.verse_detection:Verse detection: decoded 'ﺎَﻨْﻴَﺗﺁَﻭ' (111 verses, best=1.000, threshold=0.70)
+INFO:backend.verse_detection:Verse detection: matched 17:2 (score=1.000)
+INFO:backend.main:Verse detected for [awPK7hGpMK94_211AAAD]: 17:2, word_number 1, score 1.000
+INFO:backend.main:Processing 1.90s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #21: 'ﺎَﻨۡﻴَﺗﺍَﺀَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﺮَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 2 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='ﺎَﻨۡﻴَﺗﺍَﺀَﻭ' decoded='ﺎَﻨۡﻴَﺗﺍَﺀَﻭ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﻰَﺳﻮُﻣ' decoded='ﻰَﺳﻮُﻣ' total=0.688 status=incorrect interim=True
+INFO:backend.main:Processing 2.30s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #22: 'ﻰَﺳﻮُﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 3 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='ﻰَﺳﻮُﻣ' decoded='ﻰَﺳﻮُﻣ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='َﺐَٰﺘِﻜۡﻟﭐ' decoded='َﺐَٰﺘِﻜۡﻟﭐ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 3.20s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #23: 'َﺐَٰﺘِﻜۡﻟﭐ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 3 decoded words) took 0.02s
+INFO:backend.main:  Word score expected='َﺐَٰﺘِﻜۡﻟﭐ' decoded='َﺐَٰﺘِﻜۡﻟﭐ' total=0.917 status=correct interim=True
+INFO:backend.main:Processing 3.80s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #23: 'َﺐَٰﺘِﻜۡﻟﭐ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﻯَﺪُﻫ ُﻩﺎَﻧْ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 5 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='َﺐَٰﺘِﻜۡﻟﭐ' decoded='َﺐَٰﺘِﻜۡﻟﭐ' total=0.917 status=correct interim=False
+INFO:backend.main:  Word score expected='ُﻪَٰﻨۡﻠَﻌَﺟَﻭ' decoded='ُﻪَٰﻨۡﻠَﻌَﺟَﻭ' total=0.421 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ﻯٗﺪُﻫ' decoded='ﻯٗﺪُﻫ' total=0.750 status=incorrect interim=True
+INFO:backend.main:Processing 4.40s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #25: 'ﻯٗﺪُﻫ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 5 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='ﻯٗﺪُﻫ' decoded='ﻯٗﺪُﻫ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 5.00s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #25: 'ﻯٗﺪُﻫ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﺮْﺴﻴِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 5 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='ﻯٗﺪُﻫ' decoded='ﻯٗﺪُﻫ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 5.70s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #25: 'ﻯٗﺪُﻫ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻟ َﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 7 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='ﻯٗﺪُﻫ' decoded='ﻯٗﺪُﻫ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ٓﻲِﻨَﺒِّﻟ' decoded='ٓﻲِﻨَﺒِّﻟ' total=0.938 status=correct interim=False
+INFO:backend.main:  Word score expected='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' decoded='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' total=0.554 status=incorrect interim=True
+INFO:backend.main:Processing 6.30s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #27: 'َﻞﻳِﺀَٰٓﺮۡﺳِﺇ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 6 decoded words) took 0.04s
+INFO:backend.main:Processing 7.00s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #27: 'َﻞﻳِﺀَٰٓﺮۡﺳِﺇ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ْﺖَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 8 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' decoded='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺎَّﻟَﺃ' decoded='ﺎَّﻟَﺃ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 7.60s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #28: 'ﺎَّﻟَﺃ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻥﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 8 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='ﺎَّﻟَﺃ' decoded='ﺎَّﻟَﺃ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 8.30s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #28: 'ﺎَّﻟَﺃ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻦِﻧﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 8 decoded words) took 0.05s
+INFO:backend.main:  Word score expected='ﺎَّﻟَﺃ' decoded='ﺎَّﻟَﺃ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 8.90s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #28: 'ﺎَّﻟَﺃ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 10 decoded words) took 0.05s
+INFO:backend.main:  Word score expected='ﺎَّﻟَﺃ' decoded='ﺎَّﻟَﺃ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ْﺍﻭُﺬِﺨَّﺘَﺗ' decoded='ْﺍﻭُﺬِﺨَّﺘَﺗ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﻦِﻣ' decoded='ﻦِﻣ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 9.60s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #30: 'ﻦِﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 11 decoded words) took 0.06s
+INFO:backend.main:  Word score expected='ﻦِﻣ' decoded='ﻦِﻣ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﻲِﻧﻭُﺩ' decoded='ﻲِﻧﻭُﺩ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 10.20s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #31: 'ﻲِﻧﻭُﺩ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 11 decoded words) took 0.06s
+INFO:backend.main:  Word score expected='ﻲِﻧﻭُﺩ' decoded='ﻲِﻧﻭُﺩ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 10.90s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #31: 'ﻲِﻧﻭُﺩ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﻱِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 12 decoded words) took 0.06s
+INFO:backend.main:  Word score expected='ﻲِﻧﻭُﺩ' decoded='ﻲِﻧﻭُﺩ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺎٗﻠﻴِﻛَﻭ' decoded='ﺎٗﻠﻴِﻛَﻭ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 11.60s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #32: 'ﺎٗﻠﻴِﻛَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺢْﻨَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 13 decoded words) took 0.07s
+INFO:backend.main:  Word score expected='ﺎٗﻠﻴِﻛَﻭ' decoded='ﺎٗﻠﻴِﻛَﻭ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='َﺔَّﻳِّﺭُﺫ' decoded='َﺔَّﻳِّﺭُﺫ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 12.20s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #33: 'َﺔَّﻳِّﺭُﺫ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 14 decoded words) took 0.07s
+INFO:backend.main:  No wav2vec2 match for 'َﺔَّﻳِّﺭُﺫ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 12.90s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #33: 'َﺔَّﻳِّﺭُﺫ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻮُﻨَﻌَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 15 decoded words) took 0.08s
+INFO:backend.main:  Word score expected='َﺔَّﻳِّﺭُﺫ' decoded='َﺔَّﻳِّﺭُﺫ' total=0.042 status=incorrect interim=False
+INFO:backend.main:  No wav2vec2 match for 'ۡﻦَﻣ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 13.60s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #34: 'ۡﻦَﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 16 decoded words) took 0.08s
+INFO:backend.main:  Word score expected='ۡﻦَﻣ' decoded='ۡﻦَﻣ' total=0.375 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ﺎَﻨۡﻠَﻤَﺣ' decoded='ﺎَﻨۡﻠَﻤَﺣ' total=0.317 status=incorrect interim=False
+INFO:backend.main:  Word score expected='َﻊَﻣ' decoded='َﻊَﻣ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 14.30s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #36: 'َﻊَﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 16 decoded words) took 0.09s
+INFO:backend.main:  Word score expected='َﻊَﻣ' decoded='َﻊَﻣ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 14.90s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #36: 'َﻊَﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ُﺔَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 17 decoded words) took 0.09s
+INFO:backend.main:  Word score expected='َﻊَﻣ' decoded='َﻊَﻣ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ٍۚﺡﻮُﻧ' decoded='ٍۚﺡﻮُﻧ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 15.60s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #37: 'ٍۚﺡﻮُﻧ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 18 decoded words) took 0.09s
+INFO:backend.main:  No wav2vec2 match for 'ٍۚﺡﻮُﻧ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 16.30s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #37: 'ٍۚﺡﻮُﻧ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَﻠُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 19 decoded words) took 0.09s
+INFO:backend.main:  No wav2vec2 match for 'ٍۚﺡﻮُﻧ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 17.00s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #37: 'ٍۚﺡﻮُﻧ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 20 decoded words) took 0.09s
+INFO:backend.main:  No wav2vec2 match for 'ٍۚﺡﻮُﻧ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 17.70s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #37: 'ٍۚﺡﻮُﻧ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 21 decoded words) took 0.11s
+INFO:backend.main:  Word score expected='ٍۚﺡﻮُﻧ' decoded='ٍۚﺡﻮُﻧ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ۥُﻪَّﻧِﺇ' decoded='ۥُﻪَّﻧِﺇ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='َﻥﺎَﻛ' decoded='َﻥﺎَﻛ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺍٗﺪۡﺒَﻋ' decoded='ﺍٗﺪۡﺒَﻋ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺍٗﺭﻮُﻜَﺷ' decoded='ﺍٗﺭﻮُﻜَﺷ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 18.40s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #41: 'ﺍٗﺭﻮُﻜَﺷ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 22 decoded words) took 0.11s
+INFO:backend.main:  No wav2vec2 match for 'ﺍٗﺭﻮُﻜَﺷ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 19.20s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #41: 'ﺍٗﺭﻮُﻜَﺷ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 23 decoded words) took 0.11s
+INFO:backend.main:  No wav2vec2 match for 'ﺍٗﺭﻮُﻜَﺷ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 19.90s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #41: 'ﺍٗﺭﻮُﻜَﺷ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 24 decoded words) took 0.12s
+INFO:backend.main:  No wav2vec2 match for 'ﺍٗﺭﻮُﻜَﺷ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 20.60s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #41: 'ﺍٗﺭﻮُﻜَﺷ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 24 decoded words) took 0.11s
+INFO:backend.main:  No wav2vec2 match for 'ﺍٗﺭﻮُﻜَﺷ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 21.30s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #41: 'ﺍٗﺭﻮُﻜَﺷ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِِﻑ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 25 decoded words) took 0.14s
+INFO:backend.main:  No wav2vec2 match for 'ﺍٗﺭﻮُﻜَﺷ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 22.10s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #41: 'ﺍٗﺭﻮُﻜَﺷ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ُﺖَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻠﻧَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 27 decoded words) took 0.14s
+INFO:backend.main:  Word score expected='ﺍٗﺭﻮُﻜَﺷ' decoded='ﺍٗﺭﻮُﻜَﺷ' total=0.250 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ٓﺎَﻨۡﻴَﻀَﻗَﻭ' decoded='ٓﺎَﻨۡﻴَﻀَﻗَﻭ' total=0.062 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ٰﻰَﻟِﺇ' decoded='ٰﻰَﻟِﺇ' total=0.250 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ٓﻲِﻨَﺑ' decoded='ٓﻲِﻨَﺑ' total=0.125 status=incorrect interim=False
+INFO:backend.main:  Word score expected='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' decoded='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' total=0.062 status=incorrect interim=False
+INFO:backend.main:  No wav2vec2 match for 'ﻲِﻓ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 22.80s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #46: 'ﻲِﻓ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻠﻧَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 27 decoded words) took 0.13s
+INFO:backend.main:  No wav2vec2 match for 'ﻲِﻓ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 23.50s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #46: 'ﻲِﻓ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻠﻧَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 30 decoded words) took 0.16s
+INFO:backend.main:  Word score expected='ﻲِﻓ' decoded='ﻲِﻓ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﺐَٰﺘِﻜۡﻟﭐ' decoded='ِﺐَٰﺘِﻜۡﻟﭐ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='َّﻥُﺪِﺴۡﻔُﺘَﻟ' decoded='َّﻥُﺪِﺴۡﻔُﺘَﻟ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﻲِﻓ' decoded='ﻲِﻓ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﺽۡﺭَﺄۡﻟﭐ' decoded='ِﺽۡﺭَﺄۡﻟﭐ' total=0.850 status=correct interim=True
+INFO:backend.main:Processing 24.30s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #50: 'ِﺽۡﺭَﺄۡﻟﭐ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﺓَّﺮَﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻠﻧَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 31 decoded words) took 0.16s
+INFO:backend.main:  No wav2vec2 match for 'ِﺽۡﺭَﺄۡﻟﭐ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 25.10s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #50: 'ِﺽۡﺭَﺄۡﻟﭐ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻠﻧَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 31 decoded words) took 0.17s
+INFO:backend.main:  Word score expected='ِﺽۡﺭَﺄۡﻟﭐ' decoded='ِﺽۡﺭَﺄۡﻟﭐ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﻦۡﻴَﺗَّﺮَﻣ' decoded='ِﻦۡﻴَﺗَّﺮَﻣ' total=0.950 status=correct interim=True
+INFO:backend.main:Processing 25.80s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #51: 'ِﻦۡﻴَﺗَّﺮَﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 31 decoded words) took 0.18s
+INFO:backend.main:  Word score expected='ِﻦۡﻴَﺗَّﺮَﻣ' decoded='ِﻦۡﻴَﺗَّﺮَﻣ' total=0.950 status=correct interim=True
+INFO:backend.main:Processing 26.60s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #51: 'ِﻦۡﻴَﺗَّﺮَﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ُﻢُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 32 decoded words) took 0.18s
+INFO:backend.main:  Word score expected='ِﻦۡﻴَﺗَّﺮَﻣ' decoded='ِﻦۡﻴَﺗَّﺮَﻣ' total=0.950 status=correct interim=False
+INFO:backend.main:  Word score expected='َّﻦُﻠۡﻌَﺘَﻟَﻭ' decoded='َّﻦُﻠۡﻌَﺘَﻟَﻭ' total=0.792 status=incorrect interim=True
+INFO:backend.main:Processing 27.40s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #52: 'َّﻦُﻠۡﻌَﺘَﻟَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ّﻦﻟﺎُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 32 decoded words) took 0.19s
+INFO:backend.main:  Word score expected='َّﻦُﻠۡﻌَﺘَﻟَﻭ' decoded='َّﻦُﻠۡﻌَﺘَﻟَﻭ' total=0.708 status=incorrect interim=True
+INFO:backend.main:Processing 28.20s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #52: 'َّﻦُﻠۡﻌَﺘَﻟَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 33 decoded words) took 0.20s
+INFO:backend.main:  Word score expected='َّﻦُﻠۡﻌَﺘَﻟَﻭ' decoded='َّﻦُﻠۡﻌَﺘَﻟَﻭ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺍّٗﻮُﻠُﻋ' decoded='ﺍّٗﻮُﻠُﻋ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 29.00s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #53: 'ﺍّٗﻮُﻠُﻋ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 34 decoded words) took 0.20s
+INFO:backend.main:  No wav2vec2 match for 'ﺍّٗﻮُﻠُﻋ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 29.80s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #53: 'ﺍّٗﻮُﻠُﻋ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 34 decoded words) took 0.20s
+INFO:backend.main:  No wav2vec2 match for 'ﺍّٗﻮُﻠُﻋ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 30.60s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #53: 'ﺍّٗﻮُﻠُﻋ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍَﺫِﺈَﻓﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 34 decoded words) took 0.22s
+INFO:backend.main:  Word score expected='ﺍّٗﻮُﻠُﻋ' decoded='ﺍّٗﻮُﻠُﻋ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺍٗﺮﻴِﺒَﻛ' decoded='ﺍٗﺮﻴِﺒَﻛ' total=0.150 status=incorrect interim=True
+INFO:backend.main:Processing 31.40s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #54: 'ﺍٗﺮﻴِﺒَﻛ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 36 decoded words) took 0.21s
+INFO:backend.main:  No wav2vec2 match for 'ﺍٗﺮﻴِﺒَﻛ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 32.20s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #54: 'ﺍٗﺮﻴِﺒَﻛ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍﻭُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 37 decoded words) took 0.23s
+INFO:backend.main:  No wav2vec2 match for 'ﺍٗﺮﻴِﺒَﻛ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 33.10s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #54: 'ﺍٗﺮﻴِﺒَﻛ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻤُﻫﺎَﻟ ﻭُﺅُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 38 decoded words) took 0.23s
+INFO:backend.main:  Word score expected='ﺍٗﺮﻴِﺒَﻛ' decoded='ﺍٗﺮﻴِﺒَﻛ' total=0.150 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ﺍَﺫِﺈَﻓ' decoded='ﺍَﺫِﺈَﻓ' total=0.167 status=incorrect interim=False
+INFO:backend.main:  Word score expected='َﺀٓﺎَﺟ' decoded='َﺀٓﺎَﺟ' total=0.125 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ُﺪۡﻋَﻭ' decoded='ُﺪۡﻋَﻭ' total=0.375 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ﺎَﻤُﻬٰﯩَﻟﻭُﺃ' decoded='ﺎَﻤُﻬٰﯩَﻟﻭُﺃ' total=0.723 status=incorrect interim=True
+INFO:backend.main:Processing 33.90s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #58: 'ﺎَﻤُﻬٰﯩَﻟﻭُﺃ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟﻭُﺅُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 38 decoded words) took 0.22s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻤُﻬٰﯩَﻟﻭُﺃ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 34.70s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #58: 'ﺎَﻤُﻬٰﯩَﻟﻭُﺃ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 39 decoded words) took 0.23s
+INFO:backend.main:  Word score expected='ﺎَﻤُﻬٰﯩَﻟﻭُﺃ' decoded='ﺎَﻤُﻬٰﯩَﻟﻭُﺃ' total=0.339 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ﺎَﻨۡﺜَﻌَﺑ' decoded='ﺎَﻨۡﺜَﻌَﺑ' total=0.167 status=incorrect interim=True
+INFO:backend.main:Processing 35.60s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟ ﻭُﺅُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 41 decoded words) took 0.22s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻨۡﺜَﻌَﺑ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 36.40s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+[W715 02:20:52.838660570 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 239075328 bytes (free: 64094208, total: 23659151360).
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﺒﻴِﻟُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟ ﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 43 decoded words) took 0.49s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻨۡﺜَﻌَﺑ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 37.50s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟ ﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻠﻧَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻨَُﺑﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 43 decoded words) took 0.25s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻨۡﺜَﻌَﺑ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 38.30s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﺪﻳِﺪَﺷ ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟ ﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻠﻧَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 45 decoded words) took 0.26s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻨۡﺜَﻌَﺑ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 39.20s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٌﺱﺎَﺠَﻓ ٍﺪﻳِﺪَﺷ ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟ ﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻠﻧَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 46 decoded words) took 0.28s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻨۡﺜَﻌَﺑ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 40.10s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎًﻟﺎَﻠِﺧ ﺍﻮُﺳﺎَﺠَﻓ ٍﺪﻳِﺪَﺷ ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟ ﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 47 decoded words) took 0.28s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻨۡﺜَﻌَﺑ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 41.00s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﺭﺎَﻳِّﺪﻟﺍ َﻝﺎَﻠِﺧ ﺍﻮُﺳﺎَﺠَﻓ ٍﺪﻳِﺪَﺷ ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟ ﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 48 decoded words) took 0.30s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻨۡﺜَﻌَﺑ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 41.90s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﺭﺎَﻳِّﺪﻟﺍ َﻝﺎَﻠِﺧ ﺍﻮُﺳﺎَﺠَﻓ ٍﺪﻳِﺪَﺷ ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟ ﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 48 decoded words) took 0.30s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻨۡﺜَﻌَﺑ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 42.80s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻥﺎَﻛَﻭ ِﺭﺎَﻳِّﺪﻟﺍ َﻝﺎَﻠِﺧ ﺍﻮُﺳﺎَﺠَﻓ ٍﺪﻳِﺪَﺷ ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻬَﻟ ﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 49 decoded words) took 0.30s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻨۡﺜَﻌَﺑ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 43.70s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺪْﻋَﻭ َﻥﺎَﻛَﻭ ِﺭﺎَﻳِّﺪﻟﺍ َﻝﺎَﻠِﺧ ﺍﻮُﺳﺎَﺠَﻓ ٍﺪﻳِﺪَﺷ ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 49 decoded words) took 0.30s
+INFO:backend.main:  No wav2vec2 match for 'ﺎَﻨۡﺜَﻌَﺑ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 44.60s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #59: 'ﺎَﻨۡﺜَﻌَﺑ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﺭﻮُﻌْﻔَﻣ ﺍًﺪْﻋَﻭ َﻥﺎَﻛَﻭ ِﺭﺎَﻳِّﺪﻟﺍ َﻝﺎَﻠِﺧ ﺍﻮُﺳﺎَﺠَﻓ ٍﺪﻳِﺪَﺷ ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟ ﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 51 decoded words) took 0.32s
+INFO:backend.main:  Word score expected='ﺎَﻨۡﺜَﻌَﺑ' decoded='ﺎَﻨۡﺜَﻌَﺑ' total=0.083 status=incorrect interim=False
+INFO:backend.main:  Word score expected='ۡﻢُﻜۡﻴَﻠَﻋ' decoded='ۡﻢُﻜۡﻴَﻠَﻋ' total=0.167 status=incorrect interim=False
+INFO:backend.main:  No wav2vec2 match for 'ﺍٗﺩﺎَﺒِﻋ' (noise/silence) — skipping word_result
+INFO:backend.main:Processing 45.50s of audio for [awPK7hGpMK94_211AAAD] (interim)...
+INFO:backend.main:  Expected word #61: 'ﺍٗﺩﺎَﺒِﻋ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎًﻟﻮُﻌْﻔَﻣ ﺍًﺪْﻋَﻭ َﻥﺎَﻛَﻭ ِﺭﺎَﻳِّﺪﻟﺍ َﻝﺎَﻠِﺧ ﺍﻮُﺳﺎَﺠَﻓ ٍﺪﻳِﺪَﺷ ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 50 decoded words) took 0.31s
+INFO:backend.main:  No wav2vec2 match for 'ﺍٗﺩﺎَﺒِﻋ' (noise/silence) — skipping word_result
+INFO:backend.vad:Streaming flush: 46.40s
+INFO:backend.main:Processing 46.40s of audio for [awPK7hGpMK94_211AAAD] (final)...
+INFO:backend.main:  Expected word #61: 'ﺍٗﺩﺎَﺒِﻋ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎًﻟﻮُﻌْﻔَﻣ ﺍًﺪْﻋَﻭ َﻥﺎَﻛَﻭ ِﺭﺎَﻳِّﺪﻟﺍ َﻝﺎَﻠِﺧ ﺍﻮُﺳﺎَﺠَﻓ ٍﺪﻳِﺪَﺷ ٍﺱْﺄَﺑ ﻲِﻟﻭُﺃ ﺎَﻨَﻟ ﺍًﺩﺎَﺒِﻋ ْﻢُﻜْﻴَﻠَﻋ ﺎَﻨْﺜَﻌَﺑ ﺎَﻤُﻫﺎَﻟﻭُﺀُﺪْﻋَﻭ َﺀﺎَﺟ ﺍَﺫِﺈَﻓ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠُﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮُﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ ﺍًﺭﻮُﻜَﺷ ﺍًﺪْﺒَﻋ َﻥﺎَﻛ ُﻪَّﻧِﺇ ٍﺡﻮُﻧ َﻊَﻣ ﺎَﻨْﻠَﻤَﺣ ْﻦَﻣ َﺔَّﻳِّﺭُﺫ ﺎًﻠﻴِﻛَﻭ ﻲِﻧﻭُﺩ ْﻦِﻣ ﺍﻭُﺬِﺨَّﺘَﺗ ﺎَّﻟَﺃ َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺒِﻟ ﻯًﺪُﻫ ُﻩﺎَﻧَ ُﺏﺎَﺘِﻜْﻟﺍ ﻰَﺳﻮُﻣ ﺎَﻨْﻴَﺗﺁَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 50 decoded words) took 0.34s
+INFO:backend.main:  No wav2vec2 match for 'ﺍٗﺩﺎَﺒِﻋ' (noise/silence) — skipping word_result
+Task's current input(s) ["in-01KXHS5N0E6KS1G631R75A66ZH:1784081994767-0"] cancelled because: Task's current input in-01KXHS5N0E6KS1G631R75A66ZH:1784081994767-0 hit its timeout of 300s
+INFO:backend.main:Client disconnected: awPK7hGpMK94_211AAAD
+CONNECT /socket.io/ -> 101 Switching Protocols  (duration: 300.1 s, execution: 294.0 s)
+INFO:backend.main:Client connected: apgdrIx6BMEUFrzNAAAF
+Task's current input(s) ["in-01KXHSEW4MMSEH6C8Q1PZ0A8PA:1784082296981-0"] cancelled because: Task's current input in-01KXHSEW4MMSEH6C8Q1PZ0A8PA:1784082296981-0 hit its timeout of 300s
+INFO:backend.main:Client disconnected: apgdrIx6BMEUFrzNAAAF
+CONNECT /socket.io/ -> 101 Switching Protocols  (duration: 300.0 s, execution: 291.8 s)
+INFO:backend.main:Client connected: bmNWp7u84T_WGF_nAAAH
+Task's current input(s) ["in-01KXHSR25W3VRFK7C6FD085VFA:1784082598076-0"] cancelled because: Task's current input in-01KXHSR25W3VRFK7C6FD085VFA:1784082598076-0 hit its timeout of 300s
+INFO:backend.main:Client disconnected: bmNWp7u84T_WGF_nAAAH
+CONNECT /socket.io/ -> 101 Switching Protocols  (duration: 300.0 s, execution: 290.8 s)
+INFO:backend.main:Client connected: ltiJkPund5ZZO_JkAAAJ
+Task's current input(s) ["in-01KXHT188ZDZ017G2198NYAY53:1784082899231-0"] cancelled because: Task's current input in-01KXHT188ZDZ017G2198NYAY53:1784082899231-0 hit its timeout of 300s
+INFO:backend.main:Client disconnected: ltiJkPund5ZZO_JkAAAJ
+CONNECT /socket.io/ -> 101 Switching Protocols  (duration: 300.0 s, execution: 289.7 s)
+INFO:backend.main:Client connected: 1W3-L270hDOn2xDaAAAL
+INFO:backend.main:Client disconnected: 1W3-L270hDOn2xDaAAAL
+CONNECT /socket.io/ -> 101 Switching Protocols  (duration: 215.5 s, execution: 215.5 s)
+    GET /api/verse-count -> 200 OK  (duration: 85.9 ms, execution: 16.8 ms)
+    GET /api/chapters -> 200 OK  (duration: 176.6 ms, execution: 117.5 ms)
+    GET /api/words -> 200 OK  (duration: 168.9 ms, execution: 134.6 ms)
+    GET /api/verse-count -> 200 OK  (duration: 44.8 ms, execution: 10.3 ms)
+    GET /api/words -> 200 OK  (duration: 47.6 ms, execution: 13.0 ms)
+    GET /api/verse-count -> 200 OK  (duration: 59.1 ms, execution: 13.0 ms)
+    GET /api/verse-count -> 200 OK  (duration: 44.5 ms, execution: 9.9 ms)
+    GET /api/words -> 200 OK  (duration: 63.6 ms, execution: 32.6 ms)
+INFO:backend.main:Client connected: bKQ03rMkPGsq2W9SAAAN
+INFO:backend.main:Session started for bKQ03rMkPGsq2W9SAAAN: 17:1 - 17:111, 1556 words (phase=detecting, mode=word_by_word, score_threshold=0.76, save_session_data=False, id=c61a9e3c-f95b-47cf-8664-4dd51834e994)
+INFO:backend.main:Streaming: starting periodic transcription for [bKQ03rMkPGsq2W9SAAAN]
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎًﻠِﺋَﺭ ﺎَﻨْﻴَﻀَﻘَﻋَﻭ'
+INFO:backend.verse_detection:Verse detection: decoded 'ﺎًﻠِﺋَﺭ ﺎَﻨْﻴَﻀَﻘَﻋَﻭ' (111 verses, best=0.600, threshold=0.70)
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ'
+INFO:backend.verse_detection:Verse detection: decoded 'ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ' (111 verses, best=1.000, threshold=0.70)
+INFO:backend.verse_detection:Verse detection: matched 17:4 (score=1.000)
+INFO:backend.main:Verse detected for [bKQ03rMkPGsq2W9SAAAN]: 17:4, word_number 1, score 1.000
+INFO:backend.main:Processing 2.56s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #42: 'ٓﺎَﻨۡﻴَﻀَﻗَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 4 decoded words) took 0.02s
+INFO:backend.main:  Word score expected='ٓﺎَﻨۡﻴَﻀَﻗَﻭ' decoded='ٓﺎَﻨۡﻴَﻀَﻗَﻭ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ٰﻰَﻟِﺇ' decoded='ٰﻰَﻟِﺇ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ٓﻲِﻨَﺑ' decoded='ٓﻲِﻨَﺑ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' decoded='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' total=0.554 status=incorrect interim=True
+INFO:backend.main:Processing 3.33s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #45: 'َﻞﻳِﺀَٰٓﺮۡﺳِﺇ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 4 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' decoded='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' total=1.000 status=correct interim=True
+INFO:backend.vad:Streaming flush: 3.84s
+INFO:backend.main:Processing 3.84s of audio for [bKQ03rMkPGsq2W9SAAAN] (final)...
+INFO:backend.main:  Expected word #45: 'َﻞﻳِﺀَٰٓﺮۡﺳِﺇ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َﻞﻴِﺋﺍَﺮْﺳِﺇ ﻲِﻨَﺑ ٰﻰَﻟِﺇ ﺎَﻨْﻴَﻀَﻗَﻭ'
+INFO:backend.main:  Wav2vec (acoustic only, 4 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' decoded='َﻞﻳِﺀَٰٓﺮۡﺳِﺇ' total=1.000 status=correct interim=False
+INFO:backend.main:Streaming: starting periodic transcription for [bKQ03rMkPGsq2W9SAAAN]
+INFO:backend.main:Processing 1.02s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #46: 'ﻲِﻓ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 2 decoded words) took 0.02s
+INFO:backend.main:  Word score expected='ﻲِﻓ' decoded='ﻲِﻓ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﺐَٰﺘِﻜۡﻟﭐ' decoded='ِﺐَٰﺘِﻜۡﻟﭐ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 1.54s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #47: 'ِﺐَٰﺘِﻜۡﻟﭐ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 2 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='ِﺐَٰﺘِﻜۡﻟﭐ' decoded='ِﺐَٰﺘِﻜۡﻟﭐ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 2.30s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #47: 'ِﺐَٰﺘِﻜۡﻟﭐ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 2 decoded words) took 0.02s
+INFO:backend.main:  Word score expected='ِﺐَٰﺘِﻜۡﻟﭐ' decoded='ِﺐَٰﺘِﻜۡﻟﭐ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 2.82s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #47: 'ِﺐَٰﺘِﻜۡﻟﭐ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ُﺪُﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 3 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='ِﺐَٰﺘِﻜۡﻟﭐ' decoded='ِﺐَٰﺘِﻜۡﻟﭐ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='َّﻥُﺪِﺴۡﻔُﺘَﻟ' decoded='َّﻥُﺪِﺴۡﻔُﺘَﻟ' total=0.750 status=incorrect interim=True
+INFO:backend.main:Processing 3.58s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #48: 'َّﻥُﺪِﺴۡﻔُﺘَﻟ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 5 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='َّﻥُﺪِﺴۡﻔُﺘَﻟ' decoded='َّﻥُﺪِﺴۡﻔُﺘَﻟ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﻲِﻓ' decoded='ﻲِﻓ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﺽۡﺭَﺄۡﻟﭐ' decoded='ِﺽۡﺭَﺄۡﻟﭐ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 4.10s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #50: 'ِﺽۡﺭَﺄۡﻟﭐ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٌﺕَّﺮَﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 6 decoded words) took 0.03s
+INFO:backend.main:  Word score expected='ِﺽۡﺭَﺄۡﻟﭐ' decoded='ِﺽۡﺭَﺄۡﻟﭐ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ِﻦۡﻴَﺗَّﺮَﻣ' decoded='ِﻦۡﻴَﺗَّﺮَﻣ' total=0.600 status=incorrect interim=True
+INFO:backend.main:Processing 4.86s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #51: 'ِﻦۡﻴَﺗَّﺮَﻣ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﻭ ِﻦْﻴَﺗَّﺮَﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 7 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='ِﻦۡﻴَﺗَّﺮَﻣ' decoded='ِﻦۡﻴَﺗَّﺮَﻣ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='َّﻦُﻠۡﻌَﺘَﻟَﻭ' decoded='َّﻦُﻠۡﻌَﺘَﻟَﻭ' total=0.125 status=incorrect interim=True
+INFO:backend.main:Processing 5.38s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #52: 'َّﻦُﻠۡﻌَﺘَﻟَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮَﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 7 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='َّﻦُﻠۡﻌَﺘَﻟَﻭ' decoded='َّﻦُﻠۡﻌَﺘَﻟَﻭ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 6.14s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #52: 'َّﻦُﻠۡﻌَﺘَﻟَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ِﻕ ﺍًّﻮُﻠَﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮَﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 9 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='َّﻦُﻠۡﻌَﺘَﻟَﻭ' decoded='َّﻦُﻠۡﻌَﺘَﻟَﻭ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺍّٗﻮُﻠُﻋ' decoded='ﺍّٗﻮُﻠُﻋ' total=0.917 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺍٗﺮﻴِﺒَﻛ' decoded='ﺍٗﺮﻴِﺒَﻛ' total=0.125 status=incorrect interim=True
+INFO:backend.main:Processing 6.66s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #54: 'ﺍٗﺮﻴِﺒَﻛ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠَﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮَﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 9 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='ﺍٗﺮﻴِﺒَﻛ' decoded='ﺍٗﺮﻴِﺒَﻛ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 7.17s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #54: 'ﺍٗﺮﻴِﺒَﻛ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠَﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮَﻣ ِﺽْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪِﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 9 decoded words) took 0.04s
+INFO:backend.main:  Word score expected='ﺍٗﺮﻴِﺒَﻛ' decoded='ﺍٗﺮﻴِﺒَﻛ' total=1.000 status=correct interim=True
+INFO:backend.main:Processing 7.94s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #54: 'ﺍٗﺮﻴِﺒَﻛ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎًﺟﺍَﺯِﺈَﻛ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠَﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮَﻣ ِﺝْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪُﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 10 decoded words) took 0.05s
+INFO:backend.main:  Word score expected='ﺍٗﺮﻴِﺒَﻛ' decoded='ﺍٗﺮﻴِﺒَﻛ' total=1.000 status=correct interim=False
+INFO:backend.main:  Word score expected='ﺍَﺫِﺈَﻓ' decoded='ﺍَﺫِﺈَﻓ' total=0.250 status=incorrect interim=True
+INFO:backend.main:Processing 8.70s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #55: 'ﺍَﺫِﺈَﻓ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ٍﻂْﻋَﻮُﻧ ًﺀﺎَﺟ ﺍَﺫِﺈَﻛ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠَﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮَﻣ ِﺝْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪُﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 12 decoded words) took 0.05s
+INFO:backend.main:  Word score expected='ﺍَﺫِﺈَﻓ' decoded='ﺍَﺫِﺈَﻓ' total=0.812 status=correct interim=False
+INFO:backend.main:  Word score expected='َﺀٓﺎَﺟ' decoded='َﺀٓﺎَﺟ' total=0.875 status=correct interim=False
+INFO:backend.main:  Word score expected='ُﺪۡﻋَﻭ' decoded='ُﺪۡﻋَﻭ' total=0.250 status=incorrect interim=True
+INFO:backend.main:Processing 9.22s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #57: 'ُﺪۡﻋَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎًﻟﻮُﺋ ُﺖْﻌَﻌُﻧ َﺀﺎَﺟ ﺍَﺫِﺈَﻛ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠَﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮَﻣ ِﺕْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪُﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 13 decoded words) took 0.06s
+INFO:backend.main:  Word score expected='ُﺪۡﻋَﻭ' decoded='ُﺪۡﻋَﻭ' total=0.125 status=incorrect interim=False
+INFO:backend.main:Processing 9.98s of audio for [bKQ03rMkPGsq2W9SAAAN] (interim)...
+INFO:backend.main:  Expected word #57: 'ُﺪۡﻋَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻤُﻫﺎَﻟﻭُﺃ ُﺪْﻌَﻌُﻧ َﺀﺎَﺟ ﺍَﺫِﺈَﻛ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠَﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮَﻣ ِﺕْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪُﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 13 decoded words) took 0.06s
+INFO:backend.main:  Word score expected='ُﺪۡﻋَﻭ' decoded='ُﺪۡﻋَﻭ' total=0.375 status=incorrect interim=False
+INFO:backend.vad:Streaming flush: 10.50s
+INFO:backend.main:Processing 10.50s of audio for [bKQ03rMkPGsq2W9SAAAN] (final)...
+INFO:backend.main:  Expected word #57: 'ُﺪۡﻋَﻭ'
+INFO:backend.acoustic_scorer:  wav2vec2 decoded: 'ﺎَﻤُﻫﺎَﻟﻭُﺃ ُﺪْﻌَﻌُﻧ َﺀﺎَﺟ ﺍَﺫِﺈَﻛ ﺍًﺮﻴِﺒَﻛ ﺍًّﻮُﻠَﻋ َّﻦُﻠْﻌَﺘَﻟَﻭ ِﻦْﻴَﺗَّﺮَﻣ ِﺕْﺭَﺄْﻟﺍ ﻲِﻓ َّﻥُﺪُﺴْﻔُﺘَﻟ ِﺏﺎَﺘِﻜْﻟﺍ ﻲِﻓ'
+INFO:backend.main:  Wav2vec (acoustic only, 13 decoded words) took 0.06s
+INFO:backend.main:  Word score expected='ُﺪۡﻋَﻭ' decoded='ُﺪۡﻋَﻭ' total=0.375 status=incorrect interim=False
+    GET /api/verse-count -> 200 OK  (duration: 50.3 ms, execution: 11.0 ms)
+    GET /api/chapters -> 200 OK  (duration: 61.9 ms, execution: 15.4 ms)
+    GET /api/words -> 200 OK  (duration: 64.3 ms, execution: 14.9 ms)
+    GET /api/verse-count -> 200 OK  (duration: 53.8 ms, execution: 10.3 ms)
+INFO:backend.main:Client disconnected: bKQ03rMkPGsq2W9SAAAN
+CONNECT /socket.io/ -> 101 Switching Protocols  (duration: 105.3 s, execution: 105.3 s)
+    GET /api/verse-count -> 200 OK  (duration: 47.4 ms, execution: 11.5 ms)
+    GET /api/chapters -> 200 OK  (duration: 53.8 ms, execution: 11.6 ms)
+    GET /api/words -> 200 OK  (duration: 81.2 ms, execution: 32.2 ms)
+    GET /api/verse-count -> 200 OK  (duration: 44.7 ms, execution: 11.5 ms)

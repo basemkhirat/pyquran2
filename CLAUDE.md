@@ -114,6 +114,7 @@ Copy `.env.example` to `.env` in the project root. Key vars:
 | `SCORE_THRESHOLD` | Pass/fail cutoff (default: `0.5`) |
 | `SCORE_FATHA` / `SCORE_DAMMA` / `SCORE_KASRA` / `SCORE_SHADDA` / `SCORE_SUKOON` | Per-diacritic scoring toggles (all default `true`); a disabled mark is ignored everywhere. Defined by `SCORABLE_DIACRITICS` in `config.py` |
 | `SOCKET_AUTH_API_KEY` | Optional socket auth key |
+| `APP_PASSWORD` | Optional password gate for the frontend, validated server-side via `POST /api/login` (empty = disabled) |
 | `SAVE_SESSION_DATA` | Persist session JSON/WAV to disk |
 
 Frontend: `frontend/.env` with `VITE_BACKEND_URL` and `VITE_SOCKET_API_KEY`.

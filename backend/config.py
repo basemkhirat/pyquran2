@@ -89,6 +89,9 @@ class Config:
     audio_sample_rate: int = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
     # When set, socket connections must send this value in handshake auth.api_key; when empty, auth is disabled.
     socket_auth_api_key: str = os.getenv("SOCKET_AUTH_API_KEY", "")
+    # When set, the frontend requires this password (validated server-side via POST /api/login)
+    # before the UI unlocks. Empty = no password gate.
+    app_password: str = os.getenv("APP_PASSWORD", "")
     # Interval in ms between streaming transcription runs
     streaming_interval_ms: int = int(os.getenv("STREAMING_INTERVAL_MS", "1500"))
     # Minimum audio buffer (seconds) before first streaming transcription

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { SessionSetup } from "./components/SessionSetup";
 import { VerseDisplay } from "./components/VerseDisplay";
+import { DetectedWordToast } from "./components/DetectedWordToast";
 import { useSessionStore } from "./stores/session";
 import { socket } from "./lib/socket";
 
@@ -81,6 +82,9 @@ export default function App() {
           <VerseDisplay />
         </div>
       )}
+
+      {/* Bottom-center toast with the detected word text (confirmed words only) */}
+      <DetectedWordToast />
     </div>
   );
 }

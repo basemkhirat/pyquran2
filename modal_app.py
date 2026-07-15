@@ -48,7 +48,7 @@ app = modal.App("memorize-quran", image=IMAGE)
 
 
 @app.function(
-    gpu="L4", # lowe: T4
+    gpu="L4", # lower: T4
     secrets=[modal.Secret.from_name("custom-secret")],
     min_containers=1,  # always keep 1 container warm — no scale-to-zero, no cold starts
 )

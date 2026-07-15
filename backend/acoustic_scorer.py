@@ -165,6 +165,81 @@ class AcousticResult:
     n_decoded: int             # number of words the model decoded from the audio
 
 
+# Minimum blended similarity for a decoded token to count as a real match during alignment.
+# Below this, the expected word is treated as unmatched (best_word=""), which the caller's
+# noise/silence guard uses to keep the reciter on the word instead of emitting a false miss.
+_MATCH_FLOOR = 0.4
+
+
+def _align_decoded_to_expected(
+    decoded_parts: List[str],
+    all_expected: List[Tuple[str, str]],
+) -> Tuple[List[float], List[float], List[float], List[str]]:
+    """Monotonically align decoded tokens to expected words (Needleman-Wunsch / weighted LCS).
+
+    Returns four lists parallel to all_expected: (blended score, char score, diacritic score,
+    best-matching decoded token). An expected word the alignment leaves unmatched -- or whose
+    best aligned token scores below _MATCH_FLOOR -- gets score 0.0 and best_word "".
+
+    Unlike a greedy forward pointer, this global alignment can't leapfrog to a distant duplicate
+    word or stick on a low-scoring token, so words repeated within the reference (common in Quran
+    text) no longer desync the rest of the sequence.
+    """
+    m = len(all_expected)
+    n = len(decoded_parts)
+
+    # Precompute blended similarity + (char, diac) components for every (expected word, token) pair.
+    sim = [[0.0] * n for _ in range(m)]
+    comp: List[List[Tuple[float, float]]] = [[(0.0, 0.0)] * n for _ in range(m)]
+    for i, (emlaey, uthmani) in enumerate(all_expected):
+        for j in range(n):
+            blend, cs, ds = _acoustic_score_best(emlaey, uthmani, decoded_parts[j])
+            sim[i][j] = blend
+            comp[i][j] = (cs, ds)
+
+    # dp[i][j] = best total (sim - floor) aligning the first i expected words with the first j
+    # tokens. Using the floored gain means a match below _MATCH_FLOOR never beats skipping, so
+    # low-similarity tokens are left unmatched. Backpointers record the chosen move per cell.
+    dp = [[0.0] * (n + 1) for _ in range(m + 1)]
+    bp = [["up"] * (n + 1) for _ in range(m + 1)]  # "match" | "up" (word skipped) | "left" (token skipped)
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            up_score = dp[i - 1][j]                                    # expected word i-1 unmatched
+            left_score = dp[i][j - 1]                                  # decoded token j-1 skipped
+            match_score = dp[i - 1][j - 1] + (sim[i - 1][j - 1] - _MATCH_FLOOR)
+            # Ties prefer a skip over a match, so a match is taken only when sim > _MATCH_FLOOR.
+            best, move = up_score, "up"
+            if left_score > best:
+                best, move = left_score, "left"
+            if match_score > best:
+                best, move = match_score, "match"
+            dp[i][j] = best
+            bp[i][j] = move
+
+    scores = [0.0] * m
+    char_scores = [0.0] * m
+    diac_scores = [0.0] * m
+    best_words = [""] * m
+
+    i, j = m, n
+    while i > 0 and j > 0:
+        move = bp[i][j]
+        if move == "match":
+            cs, ds = comp[i - 1][j - 1]
+            scores[i - 1] = sim[i - 1][j - 1]
+            char_scores[i - 1] = cs
+            diac_scores[i - 1] = ds
+            best_words[i - 1] = decoded_parts[j - 1]
+            i -= 1
+            j -= 1
+        elif move == "up":
+            i -= 1
+        else:  # "left"
+            j -= 1
+
+    return scores, char_scores, diac_scores, best_words
+
+
 def get_acoustic_scores(
     audio: np.ndarray,
     previous_words: List[Tuple[str, str]],
@@ -195,34 +270,16 @@ def get_acoustic_scores(
         return AcousticResult([0.5] * n, [0.5] * n, [0.5] * n, [""] * n, 0)
 
     all_expected = previous_words + expected_words
-    scores: List[float] = []
-    char_scores: List[float] = []
-    diac_scores: List[float] = []
-    best_words: List[str] = []
-    last_match_idx = 0
+    scores, char_scores, diac_scores, best_words = _align_decoded_to_expected(
+        decoded_parts, all_expected
+    )
 
-    for emlaey, uthmani in all_expected:
-        best_score, best_cs, best_ds = 0.0, 0.0, 0.0
-        best_word = ""
-        best_word_idx = -1
-        for j in range(last_match_idx, len(decoded_parts)):
-            decoded_word = decoded_parts[j]
-            blend, cs, ds = _acoustic_score_best(emlaey, uthmani, decoded_word)
-            if blend > best_score:
-                best_score, best_cs, best_ds = blend, cs, ds
-                best_word = decoded_word
-                best_word_idx = j
-
-        scores.append(best_score)
-        char_scores.append(best_cs)
-        diac_scores.append(best_ds)
-        best_words.append(best_word)
-        if best_word_idx != -1 and best_score >= 0.4:
-            last_match_idx = best_word_idx + 1
-
+    for (_, uthmani), score, cs, ds, best_word in zip(
+        all_expected, scores, char_scores, diac_scores, best_words
+    ):
         logger.debug(
             "  acoustic: expected='%s' best_match='%s' score=%.2f (char=%.2f diac=%.2f)",
-            display_arabic(uthmani), display_arabic(best_word), best_score, best_cs, best_ds,
+            display_arabic(uthmani), display_arabic(best_word), score, cs, ds,
         )
 
     k = len(previous_words)

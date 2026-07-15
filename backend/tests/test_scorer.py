@@ -13,6 +13,7 @@ from backend.scorer import (
     score_word_best,
     align_multi_word,
     should_advance,
+    should_skip_forward,
 )
 
 
@@ -184,3 +185,31 @@ class TestShouldAdvance:
     def test_continuous_always_advances(self):
         assert should_advance("correct", "continuous") is True
         assert should_advance("incorrect", "continuous") is True
+
+
+class TestShouldSkipForward:
+    """Advancing past an expected word that got no acoustic match (reciter substituted/skipped)."""
+
+    THRESHOLD = 0.76
+
+    def test_confident_later_pass_skips_forward(self):
+        # A later word recited correctly (>= threshold) is evidence the reciter moved on -> advance.
+        assert should_skip_forward("continuous", [0.0, 0.95, 0.0], self.THRESHOLD, False) is True
+
+    def test_weak_later_match_waits_on_interim(self):
+        # A weak later match (below threshold) on an interim decode = decode still catching up;
+        # don't confirm the word wrong yet — wait.
+        assert should_skip_forward("continuous", [0.0, 0.45, 0.0], self.THRESHOLD, False) is False
+
+    def test_weak_later_match_advances_on_final(self):
+        # On the final pass there's no more audio; any later match is enough to avoid sticking.
+        assert should_skip_forward("continuous", [0.0, 0.45, 0.0], self.THRESHOLD, True) is True
+
+    def test_no_later_match_stays(self):
+        assert should_skip_forward("continuous", [0.0, 0.0], self.THRESHOLD, False) is False
+        assert should_skip_forward("continuous", [0.0, 0.0], self.THRESHOLD, True) is False
+        assert should_skip_forward("continuous", [], self.THRESHOLD, True) is False
+
+    def test_word_by_word_never_skips_forward(self):
+        # In word_by_word mode the reciter repeats the word; never auto-advance on a miss.
+        assert should_skip_forward("word_by_word", [0.95], self.THRESHOLD, True) is False

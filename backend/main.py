@@ -1,6 +1,8 @@
 import asyncio
+import hmac
 import logging
 import os
+import secrets
 import time
 import uuid
 from typing import Dict, Any
@@ -8,8 +10,9 @@ from typing import Dict, Any
 import numpy as np
 import socketio
 from socketio.exceptions import ConnectionRefusedError
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from backend.config import config
 from backend import quran_data, scorer
@@ -153,6 +156,28 @@ def api_words(
 @app.get("/api/verse-count")
 def api_verse_count(surah: int = Query(...)):
     return {"count": quran_data.get_chapter_verse_count(surah)}
+
+
+# --- Password gate --------------------------------------------------------------------
+# The app password is validated here (server-side) so it never ships in the frontend
+# bundle. Enabled by setting APP_PASSWORD; when unset the gate is disabled.
+
+class LoginRequest(BaseModel):
+    password: str
+
+
+@app.get("/api/auth-config")
+def api_auth_config():
+    """Tell the frontend whether a password gate is enabled (without revealing the password)."""
+    return {"password_required": bool(config.app_password)}
+
+
+@app.post("/api/login")
+def api_login(body: LoginRequest):
+    """Validate the app password server-side; return a session token on success."""
+    if config.app_password and not hmac.compare_digest(body.password, config.app_password):
+        raise HTTPException(status_code=401, detail="invalid_password")
+    return {"token": secrets.token_urlsafe(32)}
 
 
 # ===================== Socket.IO Events =====================
@@ -617,11 +642,20 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         logger.info("  Wav2vec (acoustic only, %d decoded words) took %.2fs", n_decoded_words, time.time() - t0)
 
     # When text scoring is disabled, use expected words as transcribed words for acoustic scoring.
-    # Limit to n_decoded_words (minus previous_words) so we only process words the user actually spoke.
+    # Bound the span by the alignment itself: process expected words up to and including the last
+    # one that got a decoded-token match (acoustic_decoded_full is parallel to the current chunk,
+    # idx onwards). Interior unmatched words are kept (the no-match branch handles them); trailing
+    # unmatched words — not recited yet — are excluded. This is robust to a previous word that got
+    # no token (skipped/dropped): the old `n_decoded - len(previous)` count assumed every previous
+    # word consumed a token, so a skipped one over-subtracted and dropped a genuinely-decoded
+    # trailing word (e.g. بِرَبِّكَ decoded right after a skipped نُوحٍ never got an event).
     if not config.enable_text_score and config.enable_acoustic_score:
-        n_new_decoded = max(0, n_decoded_words - len(previous_expected_chunk))
+        last_matched = max(
+            (i + 1 for i, w in enumerate(acoustic_decoded_full) if w),
+            default=0,
+        )
         transcribed_words = [
-            words[idx + i]["uthmani_text"] for i in range(min(remaining, n_new_decoded))
+            words[idx + i]["uthmani_text"] for i in range(min(remaining, last_matched))
         ]
     elif not text:
         return
@@ -696,14 +730,66 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         ac = (acoustic_scores[words_processed] if words_processed < len(acoustic_scores) else None) if config.enable_acoustic_score else None
         ac_decoded = (acoustic_decoded[words_processed] if words_processed < len(acoustic_decoded) else None) if config.enable_acoustic_score else None
 
-        # Noise guard (acoustic-only mode): an empty best match means wav2vec2 found no word
-        # matching this expected word — likely silence/noise, not a real recitation attempt.
-        # Don't emit a misleading "incorrect" word_result; stay on this word for the retry.
+        # No wav2vec2 token matched this expected word. Two cases:
         if config.enable_acoustic_score and not config.enable_text_score and not ac_decoded:
+            # (a) continuous mode AND a later word was recited confidently (passed) -> the reciter
+            # moved past this word without a matching decode. Mark it incorrect (a flagged 0% miss)
+            # and advance so scoring keeps up with what they actually recited. A merely-weak later
+            # match on an interim decode is treated as the decode still catching up (see helper).
+            if scorer.should_skip_forward(
+                session.get("mode", "word_by_word"),
+                acoustic_scores[words_processed + 1:],
+                score_threshold,
+                is_final,
+            ):
+                logger.info(
+                    "  No wav2vec2 match for '%s' — reciter moved on; marking incorrect and advancing",
+                    display_arabic(word["uthmani_text"]),
+                )
+                missed_payload = {
+                    "chapter_number": word["surah"],
+                    "verse_number": word["ayah"],
+                    "word_number": word["word_index"],
+                    "status": "incorrect",
+                    "total_score": 0.0,
+                    "expected_text": word["uthmani_text"],
+                    "detected_text": "",
+                }
+                if streaming:
+                    missed_payload["is_interim"] = False
+                await sio.emit("word_result", missed_payload, room=sid)
+                queue = session.get("store_queue")
+                if queue is not None:
+                    queue.put_nowait(("word", {
+                        "chapter_number": word["surah"],
+                        "verse_number": word["ayah"],
+                        "word_number": word["word_index"],
+                        "word_text": word["uthmani_text"],
+                        "score": 0.0,
+                        "status": "incorrect",
+                    }))
+                idx += 1
+                words_processed += 1
+                continue
+            # (b) word_by_word mode, or nothing ahead matched (a genuine pause/silence, or the
+            # decode still catching up). Stay on the word, but still emit a word_result so the
+            # client always gets an event. It is marked interim (is_interim=True) unconditionally,
+            # so it never advances the index or gets persisted, and is overwritten once the word is
+            # actually decoded — the client renders it as a neutral "listening" chip, not a miss.
             logger.info(
-                "  No wav2vec2 match for '%s' (noise/silence) — skipping word_result",
+                "  No wav2vec2 match for '%s' (noise/silence) — emitting interim word_result, staying on word",
                 display_arabic(word["uthmani_text"]),
             )
+            await sio.emit("word_result", {
+                "chapter_number": word["surah"],
+                "verse_number": word["ayah"],
+                "word_number": word["word_index"],
+                "status": "incorrect",
+                "total_score": 0.0,
+                "expected_text": word["uthmani_text"],
+                "detected_text": "",
+                "is_interim": True,
+            }, room=sid)
             break
 
         scores["total_score"] = round(
@@ -723,7 +809,8 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         logger.info(
             "  Word score expected='%s' decoded='%s' total=%.3f status=%s interim=%s",
             display_arabic(word["uthmani_text"]),
-            display_arabic(t_word),
+            # Log the real wav2vec2 match, not the acoustic-only placeholder t_word (== expected).
+            display_arabic(ac_decoded or t_word),
             scores["total_score"],
             status,
             word_is_interim,

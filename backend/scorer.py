@@ -108,6 +108,28 @@ def should_advance(status: str, mode: str) -> bool:
     return status == "correct" or mode == "continuous"
 
 
+def should_skip_forward(
+    mode: str, later_scores: List[float], threshold: float, is_final: bool
+) -> bool:
+    """Whether to advance past an expected word that got no acoustic match (continuous mode only).
+
+    Advance only on real evidence the reciter substituted/skipped this word and moved on: a LATER
+    word in the current buffer was recited *confidently* — its score clears `threshold` (a real
+    pass). Requiring a clean pass, not just a weak best-match, avoids irreversibly confirming a word
+    as wrong on a transient/partial interim decode where the reciter is still mid-word; such a word
+    stays pending until the decode catches up and then scores normally.
+
+    On the final pass (`is_final`) there is no more audio to wait for, so any later match at all
+    (score > 0) is enough to advance rather than get stuck. In "word_by_word" mode the reciter
+    repeats the word, so never skip.
+    """
+    if mode != "continuous":
+        return False
+    if any(s >= threshold for s in later_scores):
+        return True
+    return is_final and any(s > 0.0 for s in later_scores)
+
+
 def score_word_best(
     emlaey: str, uthmani: str, transcribed: str, max_edits: int
 ) -> Dict[str, Any]:
