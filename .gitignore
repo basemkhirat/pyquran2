@@ -6,3 +6,7 @@ dist/
 .DS_Store
 models/
 data/
+
+# Local environment files with secrets — never commit these (templates: *.env.example)
+.env
+frontend/.env
