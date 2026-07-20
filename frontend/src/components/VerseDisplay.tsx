@@ -1,7 +1,6 @@
-import { memo, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useSessionStore } from "../stores/session";
-import type { Word, WordResult } from "../types";
-import { cn } from "../lib/cn";
+import { WordChip } from "./WordChip";
 
 // How many verses to render ahead of the active verse. The long tail of unrecited future
 // verses in a large range is not mounted until the reciter approaches it. Look-behind is
@@ -14,60 +13,6 @@ interface VerseGroup {
     startIdx: number;
     endIdx: number;
 }
-
-// Single word node. Memoized so an incoming word_result re-renders only the 1-2 chips whose
-// props actually changed, not every mounted word.
-const WordChip = memo(function WordChip({
-    word,
-    result,
-    isActive,
-    isPast,
-    isInterim,
-    dimUnrecited,
-}: {
-    word: Word;
-    result: WordResult | undefined;
-    isActive: boolean;
-    isPast: boolean;
-    isInterim: boolean;
-    dimUnrecited: boolean;
-}) {
-    return (
-        <div
-            className={cn(
-                "relative inline-flex flex-col items-center px-3 py-2 rounded-xl transition-all duration-300",
-                dimUnrecited && "opacity-0",
-                !dimUnrecited && !isPast && !isActive && !isInterim && !result && "opacity-40",
-                isActive && !result && !dimUnrecited && "word-active bg-gold/10 border border-gold/40 opacity-100",
-                isInterim && "word-interim bg-white/5 border border-white/30 opacity-90",
-                !isInterim && result?.status === "correct" && "bg-success/10 border border-success/30 opacity-100",
-                !isInterim && result?.status === "incorrect" && "bg-error/10 border border-error/30 opacity-100",
-                result?.status === "skipped" && "bg-surface-hover/50 border border-border opacity-70"
-            )}
-        >
-            <span
-                style={{ fontFamily: "var(--font-quran)" }}
-                className={cn(
-                    "text-2xl leading-relaxed select-none",
-                    isInterim && "text-white",
-                    !isInterim && result?.status === "correct" && "text-success",
-                    !isInterim && result?.status === "incorrect" && "text-error",
-                    result?.status === "skipped" && "text-text-muted",
-                    isActive && !result && "text-gold-light",
-                    !result && !isActive && "text-text-primary"
-                )}
-            >
-                {word.uthmani_text}
-            </span>
-
-            {result && result.status !== "skipped" && result.total_score != null && (
-                <div className="flex flex-col items-center gap-0.5 mt-1 text-[10px] text-text-muted">
-                    <span className="text-text-muted/80" title="Total score">{Math.round(result.total_score * 100)}%</span>
-                </div>
-            )}
-        </div>
-    );
-});
 
 export function VerseDisplay() {
     const { words, currentWordIndex, wordResults, hideUnrecitedWords, isSessionActive } = useSessionStore();

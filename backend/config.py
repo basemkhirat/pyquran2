@@ -105,13 +105,19 @@ class Config:
     # tie (identical/near-identical verses). A genuine tie is left "ambiguous" so detection
     # waits for the next distinct verse instead of guessing the wrong occurrence.
     verse_detection_tie_epsilon: float = float(os.getenv("VERSE_DETECTION_TIE_EPSILON", "0.05"))
-    # When True, persist data.json and recording.wav to data/sessions/{uuid}/ in background (non-blocking)
-    save_session_data: bool = os.getenv("SAVE_SESSION_DATA", "true").lower() in ("1", "true", "yes")
+    # Fallback for the per-session `record` flag on start_session: used only when the client
+    # does not send `record`. When enabled, info.json and recording.wav are persisted to
+    # data/sessions/{uuid}/ in background (non-blocking).
+    save_session_data: bool = _env_bool("SAVE_SESSION_DATA", False)
+    # Where recorded sessions live ({dir}/{uuid}/info.json + recording.wav). Configurable so
+    # deployments can point it at durable storage (e.g. a Modal Volume mounted at /data).
+    sessions_dir: str = os.getenv("SESSIONS_DIR", "./data/sessions")
 
     def __post_init__(self) -> None:
         """Resolve relative paths so they work when cwd is not project root (e.g. Modal)."""
         self.hf_model_path = _resolve_path(self.hf_model_path)
         self.hafs_json_path = _resolve_path(self.hafs_json_path)
+        self.sessions_dir = _resolve_path(self.sessions_dir)
 
 
 config = Config()

@@ -20,6 +20,7 @@ After connecting to the socket, when the user is ready to begin reciting.
   end_verse_number: number;      // Ending ayah number in end chapter
   score_threshold?: number;      // Optional pass/fail cutoff (0-1). Omit to use the server default.
   mode?: "word_by_word" | "continuous";  // Optional session mode. Omit for "word_by_word".
+  record?: boolean;              // Optional. Persist this session's audio + results server-side.
 }
 ```
 
@@ -44,6 +45,7 @@ socket.emit("start_session", {
   end_verse_number: 7,        // Last verse
   score_threshold: 0.6,       // optional (0-1); omit to use server default
   mode: "continuous",         // optional; "word_by_word" (default) or "continuous"
+  record: true,               // optional; persist this session server-side
 });
 ```
 
@@ -55,6 +57,7 @@ socket.emit("start_session", [
     "end_verse_number": 7,
     "score_threshold": 0.6,   // optional (0-1); omit to use server default
     "mode": "continuous",     // optional; "word_by_word" (default) or "continuous"
+    "record": true,           // optional; persist this session server-side
 ])
 ```
 
@@ -66,6 +69,7 @@ val payload = JSONObject().apply {
     put("end_verse_number", 7)
     put("score_threshold", 0.6)  // optional (0-1); omit to use server default
     put("mode", "continuous")    // optional; "word_by_word" (default) or "continuous"
+    put("record", true)          // optional; persist this session server-side
 }
 socket.emit("start_session", payload)
 ```
@@ -93,6 +97,16 @@ A per-session pass/fail cutoff in the range `0`–`1`, applied when scoring each
 - Out-of-range values are clamped to `[0, 1]` (e.g. `1.5` → `1.0`).
 
 This affects only the word pass/fail cutoff; it does not change verse detection.
+
+#### `record` (optional)
+
+Controls whether the server persists this session to disk — `info.json` (session metadata, including the recited verse range you passed here, plus each spoken word with its `start_time`/`end_time` in ms) and `recording.wav` (the full-session audio), under `data/sessions/{id}/`.
+
+- **`true`** → the session is recorded and stored.
+- **`false`** → nothing is written to disk; the session is scored in memory only.
+- **Omitted / `null`** → the server falls back to its configured default (`SAVE_SESSION_DATA`, itself `false` by default), so recitations are **not** recorded unless explicitly requested.
+
+The resolved value is echoed back on [`session_started`](/events/server-events#session-started) as `record`, so a client can confirm what the server actually did. Note that the session `id` is always generated and returned, whether or not anything is persisted.
 
 
 ## 2. audio_chunk {#audio-chunk}

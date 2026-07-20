@@ -110,6 +110,17 @@ body {
   animation: mic-pulse 1.5s infinite;
 }
 
+/* Respect reduced-motion for the looping attention animations above */
+@media (prefers-reduced-motion: reduce) {
+  .word-active,
+  .word-interim,
+  .mic-recording {
+    animation: none;
+  }
+  .word-active { box-shadow: 0 0 0 2px rgba(212, 168, 83, 0.6); }
+  .word-interim { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35); }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

@@ -33,7 +33,16 @@ yarn lint                 # ESLint
 ```bash
 pytest backend/tests -v             # All backend tests
 pytest backend/tests/test_scorer.py # Single test file
+
+cd frontend && yarn check:playback  # Regression check for the playback audio hook
 ```
+
+There is no frontend test runner (yarn 1 cannot link vitest against vite here).
+`yarn check:playback` runs `frontend/scripts/check-audio-playback.mts` on bare node + jsdom
+to guard one specific trap: the `<audio>` element mounts later than `useAudioPlayback`,
+because the page renders a spinner until the session loads. With a plain `RefObject` the
+listener effect runs once against a null ref and never re-runs, so audio plays while the
+words and seek bar sit frozen — hence the callback ref.
 
 ### Guide (VitePress docs)
 
@@ -69,32 +78,49 @@ FastAPI + python-socketio ASGI app. The Socket.IO server wraps FastAPI and is ex
 - `main.py` — Socket.IO event handlers (`start_session`, `audio_chunk`, `skip_word`, `stop_session`) + REST endpoints
 - `config.py` — All configuration via env vars with defaults; used everywhere as `from backend.config import config`
 - `quran_data.py` — Loads `assets/narrations/hafs.json`; provides chapter/verse/word lookups
-- `session_store.py` — Background async writer; persists word results to `data/sessions/{uuid}/data.json` and audio to `recording.wav`
+- `session_reader.py` — Reads recorded sessions back for playback (`GET /api/sessions/{id}`). Merges the stored timeline with `quran_data.get_words_range` so each attempt carries a `display_index` into the word list — resolving the `surah/ayah/word_index` vs `chapter_number/verse_number/word_number` naming split server-side. Also infers the verse range for sessions recorded before those fields existed, and computes WAV duration from the file rather than trusting a possibly-unfinalized RIFF header
+- `session_store.py` — Persists per-session info to `data/sessions/{uuid}/info.json` (session metadata — id, type/mode, narration_id, score_threshold, and the recited range as `start_chapter_number`/`start_verse_number`/`end_chapter_number`/`end_verse_number` — plus a `words` array, each word with `start_time`/`end_time` in ms relative to `recording.wav`) plus the full-session audio `recording.wav`; driven by a background writer task in `main.py`
 
 ### Frontend (`frontend/src/`)
 
-React 19 + TypeScript + Zustand + Socket.IO client. Single page app.
+React 19 + TypeScript + Zustand + Socket.IO client, with `react-router-dom` routing two pages: `/` (live recitation) and `/sessions/:sessionId` (playback of a recorded session). Routes live in `main.tsx` inside `AuthGate`, so both inherit the password gate. `App` is mounted only on `/` — it renders `SessionSetup`, which rewrites the URL via `history.replaceState` and would clobber the playback route.
 
-- `App.tsx` — Mounts Socket.IO listeners and routes between Setup/Recording/Summary views
+- `App.tsx` — Mounts Socket.IO listeners; the live recitation view
 - `stores/session.ts` — Zustand store; holds session state, word list, scores
 - `hooks/useAudioRecorder.ts` — Captures microphone, encodes to PCM16, sends chunks via socket
+- `hooks/useAudioPlayback.ts` — Drives the playback `<audio>` element; publishes position from a single rAF loop to subscribers rather than React state, so the verse list re-renders per word instead of per frame
 - `lib/socket.ts` — Socket.IO client singleton (connects to `VITE_BACKEND_URL`)
+- `lib/playbackTimeline.ts` — Builds a binary-searchable index over a recorded timeline and answers "how should this word look at time T". The verdict flips at an attempt's **end**, not its start, so a word retried in `word_by_word` mode renders gold → red → gold → green as playback crosses each attempt
 - `components/SessionSetup.tsx` — Chapter/verse range picker, start button
+- `components/WordChip.tsx` — Single colour-coded word, shared by the live view and playback
 - `components/VerseDisplay.tsx` — Live word display with color-coded pass/fail
-- `components/SessionSummary.tsx` — Post-session results
+- `components/playback/` — Playback header/verses/audio bar/progress/transport
+- `pages/SessionPlaybackPage.tsx` — Fetches a session and composes the playback UI
+- `components/SessionSummary.tsx` — Post-session results (currently unreferenced)
 
 ### Data
 
 No SQL database. All persistence is file-based:
 - **Quran text**: `assets/narrations/hafs.json` — reference text with emlaei/uthmani variants
 - **Whisper model**: `models/whisper-quran-v1/` — Hugging Face checkpoint (local)
-- **Sessions**: `data/sessions/{uuid}/` — `data.json` (word results) + `recording.wav`
+- **Sessions**: `data/sessions/{uuid}/` — `info.json` (session metadata + a `words` array; each confirmed spoken word with WAV-relative start/end times in ms) + `recording.wav` (one WAV per session). Location is `SESSIONS_DIR`; on Modal it is a mounted Volume, since the container filesystem is ephemeral. Note the `words` array is **sparse** (skipped words are never written) and **not unique** (a word retried in `word_by_word` mode is recorded once per attempt)
+
+### REST Endpoints
+
+`GET /api/chapters`, `GET /api/words`, `GET /api/verse-count`, `GET /api/auth-config`, `POST /api/login`, plus session playback:
+
+- `GET /api/sessions/{id}` — merged playback payload: metadata, the verse range as display words, and the timeline with each attempt's `display_index`, status, score and ms offsets
+- `GET /api/sessions/{id}/recording` — the session WAV via `FileResponse`, which supports Range/206 so `<audio>` can seek
+
+Both return 404 for unknown, malformed or unreadable ids alike, so the id space cannot be probed. Like every other REST endpoint, they are unauthenticated.
 
 ### Socket.IO Protocol
 
 Client → Server: `start_session`, `audio_chunk` (binary PCM16), `skip_word`, `stop_session`
 
-`start_session` accepts two optional per-session fields: `score_threshold` (0-1 pass/fail cutoff) and `mode`. `mode` is `word_by_word` (default — stays on a word until it passes) or `continuous` (always scores and advances so a wrong word never blocks). The advance decision lives in `scorer.should_advance`; the mobile clients and web frontend set these fields.
+`start_session` accepts three optional per-session fields: `score_threshold` (0-1 pass/fail cutoff), `mode`, and `record`. `mode` is `word_by_word` (default — stays on a word until it passes) or `continuous` (always scores and advances so a wrong word never blocks). The advance decision lives in `scorer.should_advance`. `record` (boolean) decides whether the session is persisted to `data/sessions/{uuid}/`; when omitted it falls back to the `SAVE_SESSION_DATA` config, which defaults to `false` — so sessions are not recorded unless asked for. The mobile clients and web frontend set these fields.
+
+`session_started` echoes back `{id, record}` so clients can confirm the resolved recording decision. The session `id` is always generated, even when nothing is persisted.
 
 Server → Client: `session_started`, `word_result`, `session_stopped`, `session_error`, `timeout`, `verse_detected`, `verse_detection_failed`
 
@@ -115,7 +141,8 @@ Copy `.env.example` to `.env` in the project root. Key vars:
 | `SCORE_FATHA` / `SCORE_DAMMA` / `SCORE_KASRA` / `SCORE_SHADDA` / `SCORE_SUKOON` | Per-diacritic scoring toggles (all default `true`); a disabled mark is ignored everywhere. Defined by `SCORABLE_DIACRITICS` in `config.py` |
 | `SOCKET_AUTH_API_KEY` | Optional socket auth key |
 | `APP_PASSWORD` | Optional password gate for the frontend, validated server-side via `POST /api/login` (empty = disabled) |
-| `SAVE_SESSION_DATA` | Persist session JSON/WAV to disk |
+| `SAVE_SESSION_DATA` | Fallback for `start_session`'s `record` field when the client omits it; persists session JSON/WAV to disk (default: `false`) |
+| `SESSIONS_DIR` | Where recorded sessions are stored (default: `./data/sessions`; `/data/sessions` on Modal) |
 
 Frontend: `frontend/.env` with `VITE_BACKEND_URL` and `VITE_SOCKET_API_KEY`.
 

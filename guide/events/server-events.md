@@ -14,7 +14,8 @@ After emitting `start_session`, when the server has loaded the words and prepare
 
 ```typescript
 {
-  id: string;  // Unique session id
+  id: string;       // Unique session id
+  record: boolean;  // Whether this session is being persisted server-side
 }
 ```
 
@@ -49,6 +50,7 @@ socket.on("session_started") {
 
 - Wait for this event before starting to stream audio
 - If you don't receive this event, check for `session_error` event
+- `record` reflects the server's resolved decision for the [`record`](/events/client-events#start-session) field you sent (or the server default when you omitted it). `id` is always returned, even when the session is not being persisted.
 
 ---
 

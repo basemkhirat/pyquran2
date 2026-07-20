@@ -12,10 +12,11 @@ import socketio
 from socketio.exceptions import ConnectionRefusedError
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.config import config
-from backend import quran_data, scorer
+from backend import quran_data, scorer, session_reader, session_store
 from backend.session_store import SessionStore
 from backend.terminal_arabic import display_arabic
 from backend.vad import VADProcessor
@@ -93,7 +94,7 @@ socket_app = _cors_middleware
 # Per-session state
 sessions: Dict[str, Dict[str, Any]] = {}
 
-# Queue item: ("audio", bytes) | ("word", kwargs) | ("close",)
+# Queue item: ("audio", bytes) | ("word", timeline_kwargs) | ("close",)
 _store_done = object()
 
 
@@ -108,11 +109,14 @@ async def _store_writer_loop(store: SessionStore, queue: asyncio.Queue):
             if item[0] == "audio":
                 await asyncio.to_thread(store.append_audio, item[1])
             elif item[0] == "word":
-                await asyncio.to_thread(store.add_word, **item[1])
+                await asyncio.to_thread(store.add_timeline_word, **item[1])
     except Exception:
         logger.exception("Session store writer error")
     finally:
         store.close_audio()
+        # Runs on both the clean-close and the error path. Once per session — never per
+        # word, since a Volume commit is far too expensive for _flush()'s cadence.
+        await asyncio.to_thread(session_store.commit)
 
 
 @app.on_event("startup")
@@ -158,6 +162,31 @@ def api_verse_count(surah: int = Query(...)):
     return {"count": quran_data.get_chapter_verse_count(surah)}
 
 
+# --- Recorded session playback ---------------------------------------------------------
+# Reads back sessions written by SessionStore when start_session was sent with record=true.
+# An unknown, malformed or unreadable id all return the same 404 so the id space cannot be
+# probed for which sessions exist.
+
+@app.get("/api/sessions/{session_id}")
+def api_session(session_id: str):
+    """Session metadata + display words + the recorded timeline, merged for playback."""
+    payload = session_reader.build_playback(session_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="session_not_found")
+    return payload
+
+
+@app.get("/api/sessions/{session_id}/recording")
+def api_session_recording(session_id: str):
+    """The session's WAV. FileResponse handles Range/206, which <audio> needs to seek."""
+    path = session_reader.recording_path(session_id)
+    if path is None:
+        raise HTTPException(status_code=404, detail="recording_not_found")
+    # No filename= — that sets a Content-Disposition: attachment, and this is meant to be
+    # played inline by an <audio> element, not downloaded.
+    return FileResponse(path, media_type="audio/wav")
+
+
 # --- Password gate --------------------------------------------------------------------
 # The app password is validated here (server-side) so it never ships in the frontend
 # bundle. Enabled by setting APP_PASSWORD; when unset the gate is disabled.
@@ -199,6 +228,9 @@ async def connect(sid, environ, auth):
         "streaming_task": None,
         "last_interim_index": None,  # word index of the last interim result
         "mode": "word_by_word",  # set authoritatively in start_session
+        "record": False,  # set authoritatively in start_session
+        "total_samples": 0,  # session sample clock == frames written to recording.wav
+        "timeline_cursor_sec": None,  # fallback per-word timing cursor (seconds into the WAV)
     }
 
 
@@ -236,6 +268,8 @@ async def start_session(sid, data):
     session["words"] = words
     session["current_index"] = 0
     session["vad"].reset()
+    session["total_samples"] = 0
+    session["timeline_cursor_sec"] = None
     session["streaming_start_idx"] = 0
     session["last_interim_index"] = None
     session["start_chapter"] = start_chapter
@@ -265,6 +299,17 @@ async def start_session(sid, data):
         mode = "word_by_word"
     session["mode"] = mode
 
+    # Whether to persist this session (info.json + recording.wav) to disk. Opt-in per
+    # session; when the client omits `record`, fall back to the global SAVE_SESSION_DATA.
+    raw_record = data.get("record")
+    if raw_record is None:
+        record = config.save_session_data
+    elif isinstance(raw_record, str):
+        record = raw_record.strip().lower() in ("1", "true", "yes", "on")
+    else:
+        record = bool(raw_record)
+    session["record"] = record
+
     # When acoustic scoring is enabled, start in detection phase so the user
     # can begin reciting from any verse in the range.
     if config.enable_acoustic_score:
@@ -283,13 +328,21 @@ async def start_session(sid, data):
         session["store_queue"] = None
         session["store"] = None
 
-    # Session id is always generated; optional store persists data when config.save_session_data
+    # Session id is always generated; the optional store persists data only when `record`
     session_id = str(uuid.uuid4())
     session["store"] = None
     session["store_queue"] = None
     session["store_task"] = None
-    if config.save_session_data:
-        store = SessionStore(session_id=session_id)
+    if record:
+        store = SessionStore(
+            session_id=session_id,
+            mode=session["mode"],
+            score_threshold=session["score_threshold"],
+            start_chapter_number=start_chapter,
+            start_verse_number=start_verse,
+            end_chapter_number=end_chapter,
+            end_verse_number=end_verse,
+        )
         session["store"] = store
         queue: asyncio.Queue = asyncio.Queue()
         session["store_queue"] = queue
@@ -299,10 +352,11 @@ async def start_session(sid, data):
         f"Session started for {sid}: {start_chapter}:{start_verse} - {end_chapter}:{end_verse}, "
         f"{len(words)} words (phase={session['phase']}, mode={session['mode']}, "
         f"score_threshold={session['score_threshold']}, "
-        f"save_session_data={config.save_session_data}, id={session_id})"
+        f"record={record}, id={session_id})"
     )
     await sio.emit("session_started", {
         "id": session_id,
+        "record": record,
     }, room=sid)
 
 
@@ -313,10 +367,12 @@ async def audio_chunk(sid, data):
     if not session or not session["words"]:
         return
 
-    # Append to session recording in background (non-blocking)
+    # Append to session recording in background (non-blocking) and advance the session
+    # sample clock in lockstep, so total_samples == frames written to recording.wav.
     queue = session.get("store_queue")
     if queue is not None:
         queue.put_nowait(("audio", data))
+        session["total_samples"] = session.get("total_samples", 0) + len(data) // 2
 
     idx = session["current_index"]
     if idx >= len(session["words"]):
@@ -358,20 +414,12 @@ async def skip_word(sid, _data=None):
     }
     await sio.emit("word_result", payload, room=sid)
 
-    # Persist skipped word in background (non-blocking)
-    queue = session.get("store_queue")
-    if queue is not None:
-        queue.put_nowait(("word", {
-            "chapter_number": word["surah"],
-            "verse_number": word["ayah"],
-            "word_number": word["word_index"],
-            "word_text": word["uthmani_text"],
-            "score": 0.0,
-            "status": "skipped",
-        }))
+    # A skipped word has no spoken audio, so it is not written to the timeline
+    # (timeline.json holds only actually-spoken words).
 
     session["current_index"] += 1
     session["vad"].reset()
+    session["timeline_cursor_sec"] = None
     session["streaming_start_idx"] = session["current_index"]
     session["last_interim_index"] = None
 
@@ -391,9 +439,10 @@ async def stop_session(sid, _data=None):
         session["streaming_task"].cancel()
         session["streaming_task"] = None
 
+    captured_total = session.get("total_samples", 0)
     segment = session["vad"].streaming_flush()
     if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
-        await _process_speech(sid, segment, is_final=True)
+        await _process_speech(sid, segment, is_final=True, captured_total=captured_total)
 
     # Signal store writer to close and wait for it (so WAV is finalized)
     queue = session.get("store_queue")
@@ -430,11 +479,13 @@ async def _streaming_transcription_loop(sid: str):
             vad = session["vad"]
             speech_ended = vad.detect_speech_end()
 
-            # Get accumulated audio
+            # Get accumulated audio + snapshot the session sample clock in the same
+            # synchronous step (no await between) so seg_start = captured_total - len(audio).
             if speech_ended:
                 audio = vad.streaming_flush()
             else:
                 audio = vad.get_accumulated_audio()
+            captured_total = session.get("total_samples", 0)
 
             if audio is None:
                 if speech_ended:
@@ -466,8 +517,9 @@ async def _streaming_transcription_loop(sid: str):
                     # recited to trigger detection are graded too. Otherwise that
                     # audio is dropped and the user has to repeat the verse.
                     if session.get("phase") == "reciting":
-                        await _process_speech(sid, audio, is_final=True)
+                        await _process_speech(sid, audio, is_final=True, captured_total=captured_total)
                     session["vad"].reset()
+                    session["timeline_cursor_sec"] = None
                     session["last_interim_index"] = None
                     session["streaming_task"] = None
                     session["streaming_start_idx"] = session["current_index"]
@@ -476,11 +528,12 @@ async def _streaming_transcription_loop(sid: str):
                     return
                 continue
 
-            await _process_speech(sid, audio, is_final=speech_ended)
+            await _process_speech(sid, audio, is_final=speech_ended, captured_total=captured_total)
 
             if speech_ended:
                 # Reset VAD for next utterance and restart loop
                 session["vad"].reset()
+                session["timeline_cursor_sec"] = None
                 session["last_interim_index"] = None
                 session["streaming_task"] = None
                 session["streaming_start_idx"] = session["current_index"]
@@ -551,8 +604,12 @@ async def _detect_verse(sid: str, audio: np.ndarray, is_final: bool = False):
 
 # ===================== Internal Helpers =====================
 
-async def _process_speech(sid: str, audio: np.ndarray, is_final: bool = False):
-    """Transcribe speech segment and score against expected word(s)."""
+async def _process_speech(sid: str, audio: np.ndarray, is_final: bool = False, captured_total: int = 0):
+    """Transcribe speech segment and score against expected word(s).
+
+    captured_total is the session sample clock snapshotted when `audio` was grabbed; it
+    anchors the segment (and each confirmed word's timing) to a position in recording.wav.
+    """
     session = sessions.get(sid)
     if not session:
         return
@@ -564,12 +621,12 @@ async def _process_speech(sid: str, audio: np.ndarray, is_final: bool = False):
     session["transcribing"] = True
 
     try:
-        await _do_process_speech(sid, session, audio, is_final)
+        await _do_process_speech(sid, session, audio, is_final, captured_total)
     finally:
         session["transcribing"] = False
 
 
-async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_final: bool = False):
+async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_final: bool = False, captured_total: int = 0):
     """Inner transcription logic (called under the transcribing guard)."""
     idx = session["current_index"]
     words = session["words"]
@@ -583,6 +640,17 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     if audio_duration < 0.5:
         logger.info(f"Audio too short ({audio_duration:.2f}s), skipping transcription")
         return
+
+    # Timing anchor: where this segment sits inside recording.wav. Every chunk feeds both
+    # the WAV and the VAD, and the VAD buffer is a contiguous suffix of the received stream,
+    # so seg_start = captured_total - len(audio). cursor_sec advances as words are attributed
+    # (drives the proportional timing fallback and keeps timeline entries monotonic).
+    sr = config.audio_sample_rate
+    seg_start_sec = max(0.0, (captured_total - len(audio)) / sr)
+    seg_end_sec = seg_start_sec + audio_duration
+    cursor_sec = session.get("timeline_cursor_sec")
+    if cursor_sec is None:
+        cursor_sec = seg_start_sec
 
     current_word = words[idx]
     start_idx = session.get("streaming_start_idx", idx)
@@ -613,6 +681,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     text = ""
     acoustic_scores_full: list[float] = []
     acoustic_decoded_full: list[str] = []
+    acoustic_offsets_full: list = []
     n_decoded_words = 0
 
     if config.enable_text_score and config.enable_acoustic_score and expected_chunk_max:
@@ -623,6 +692,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         text, ac_res = await asyncio.gather(whisper_task, wav2vec_task)
         acoustic_scores_full = ac_res.scores
         acoustic_decoded_full = ac_res.best_words
+        acoustic_offsets_full = ac_res.offsets
         n_decoded_words = ac_res.n_decoded
         text = text.strip()
         logger.info("  Whisper transcription: '%s'", display_arabic(text))
@@ -638,6 +708,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         )
         acoustic_scores_full = ac_res.scores
         acoustic_decoded_full = ac_res.best_words
+        acoustic_offsets_full = ac_res.offsets
         n_decoded_words = ac_res.n_decoded
         logger.info("  Wav2vec (acoustic only, %d decoded words) took %.2fs", n_decoded_words, time.time() - t0)
 
@@ -696,12 +767,14 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     # Slice parallel wav2vec scores to actual chunk size (after backtrack)
     acoustic_scores: list[float] = []
     acoustic_decoded: list[str] = []
+    acoustic_offsets: list = []
     if config.enable_acoustic_score and acoustic_scores_full:
         # Acoustic scores align with EXPECTED chunk, not transcribed chunk.
         # Length of expected_chunk_max was min(remaining, 20).
         n_words_chunk = min(remaining, 20)
         acoustic_scores = acoustic_scores_full[:n_words_chunk]
         acoustic_decoded = acoustic_decoded_full[:n_words_chunk]
+        acoustic_offsets = acoustic_offsets_full[:n_words_chunk]
 
     streaming = not is_final
     n_transcribed = len(transcribed_words)
@@ -758,16 +831,8 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
                 if streaming:
                     missed_payload["is_interim"] = False
                 await sio.emit("word_result", missed_payload, room=sid)
-                queue = session.get("store_queue")
-                if queue is not None:
-                    queue.put_nowait(("word", {
-                        "chapter_number": word["surah"],
-                        "verse_number": word["ayah"],
-                        "word_number": word["word_index"],
-                        "word_text": word["uthmani_text"],
-                        "score": 0.0,
-                        "status": "incorrect",
-                    }))
+                # Not written to the timeline: the reciter moved on, so this word has no
+                # spoken audio (timeline.json holds only actually-spoken words).
                 idx += 1
                 words_processed += 1
                 continue
@@ -844,16 +909,37 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             # Confirmed word: advance index
             await sio.emit("word_result", payload, room=sid)
 
-            # Persist confirmed word in background (non-blocking)
+            # Persist confirmed spoken word (correct/incorrect) with its time span in
+            # recording.wav. Primary timing from wav2vec2 CTC offsets; proportional
+            # fallback (split the segment span by text length) when no offset is available.
             queue = session.get("store_queue")
             if queue is not None:
+                ac_off = (
+                    acoustic_offsets[words_processed]
+                    if config.enable_acoustic_score and words_processed < len(acoustic_offsets)
+                    else None
+                )
+                if ac_off is not None:
+                    w_start = seg_start_sec + ac_off[0]
+                    w_end = seg_start_sec + ac_off[1]
+                else:
+                    remaining_chars = sum(len(w) for w in transcribed_words[i:]) or 1
+                    frac = (len(t_word) or 1) / remaining_chars
+                    w_start = cursor_sec
+                    w_end = cursor_sec + (seg_end_sec - cursor_sec) * frac
+                # Keep entries monotonic and within the segment.
+                w_start = min(max(w_start, cursor_sec), seg_end_sec)
+                w_end = min(max(w_end, w_start), seg_end_sec)
+                cursor_sec = w_end
                 queue.put_nowait(("word", {
                     "chapter_number": word["surah"],
                     "verse_number": word["ayah"],
                     "word_number": word["word_index"],
                     "word_text": word["uthmani_text"],
-                    "score": scores["total_score"],
                     "status": status,
+                    "score": scores["total_score"],
+                    "start_time": w_start,
+                    "end_time": w_end,
                 }))
 
             if scorer.should_advance(status, session.get("mode", "word_by_word")):
@@ -863,6 +949,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
                 break
 
     session["current_index"] = idx
+    session["timeline_cursor_sec"] = cursor_sec
 
     if idx >= len(words):
         # Cancel streaming task if running

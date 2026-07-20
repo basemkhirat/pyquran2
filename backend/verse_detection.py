@@ -174,7 +174,7 @@ def detect_start_verse(
         logger.warning("No verse candidates found in word list")
         return DetectionResult(status="none")
 
-    decoded_text = _decode_audio(audio)
+    decoded_text, _ = _decode_audio(audio)
     decoded_words = decoded_text.split()
     if not decoded_words:
         logger.info("Verse detection: wav2vec2 decoded empty text")

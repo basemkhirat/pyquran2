@@ -67,7 +67,7 @@ RAHMAN_WORDS = (
 
 
 def _patch_decode(monkeypatch, text):
-    monkeypatch.setattr("backend.verse_detection._decode_audio", lambda _: text)
+    monkeypatch.setattr("backend.verse_detection._decode_audio", lambda _: (text, []))
 
 
 AUDIO = np.zeros(16000, dtype=np.float32)

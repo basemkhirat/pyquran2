@@ -27,12 +27,17 @@ interface SessionState {
     hideUnrecitedWords: boolean;
     scoreThreshold: number;
     sessionMode: SessionMode;
+    record: boolean;
+    /** Id of the most recent *recorded* session, so the UI can link to its playback page. */
+    lastSessionId: string | null;
 
     setSelectedRange: (range: SelectedRange) => void;
     setSessionActive: (active: boolean) => void;
     setHideUnrecitedWords: (hide: boolean) => void;
     setScoreThreshold: (value: number) => void;
     setSessionMode: (mode: SessionMode) => void;
+    setRecord: (value: boolean) => void;
+    setLastSessionId: (id: string | null) => void;
     setWords: (words: Word[]) => void;
     setCurrentWordIndex: (index: number) => void;
     addWordResult: (index: number, result: WordResult) => void;
@@ -54,12 +59,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     scoreThreshold: 0.76,
     // Per-session mode sent with start_session; "word_by_word" matches the backend default.
     sessionMode: "word_by_word",
+    // Whether the backend persists this session's audio + results; off by default.
+    record: false,
+    lastSessionId: null,
 
     setSelectedRange: (range) => set({ selectedRange: range }),
     setSessionActive: (active) => set({ isSessionActive: active }),
     setHideUnrecitedWords: (hide) => set({ hideUnrecitedWords: hide }),
     setScoreThreshold: (value) => set({ scoreThreshold: Math.min(1, Math.max(0, value)) }),
     setSessionMode: (mode) => set({ sessionMode: mode }),
+    setRecord: (value) => set({ record: value }),
+    setLastSessionId: (id) => set({ lastSessionId: id }),
     setWords: (words) => set({ words, currentWordIndex: 0, wordResults: {} }),
     setCurrentWordIndex: (index) => set({ currentWordIndex: index }),
     addWordResult: (index, result) =>
@@ -89,6 +99,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             wordResults: {},
             sessionStatus: "idle",
             isSessionActive: false,
+            lastSessionId: null,
         }),
 
     getCorrectCount: () => {

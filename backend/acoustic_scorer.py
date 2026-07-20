@@ -11,7 +11,7 @@ Optimizations over baseline:
 import logging
 import re
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -62,8 +62,15 @@ def _normalize_audio(audio: np.ndarray) -> np.ndarray:
     return audio
 
 
-def _decode_audio(audio: np.ndarray) -> str:
-    """Run wav2vec2 on 16kHz float32 mono audio and return greedily-decoded text."""
+def _decode_audio(audio: np.ndarray) -> Tuple[str, List[Tuple[float, float]]]:
+    """Run wav2vec2 on 16kHz float32 mono audio.
+
+    Returns the greedily-decoded text plus a list of per-word (start_sec, end_sec) time
+    spans relative to the start of `audio`, derived from the CTC frame offsets (each
+    model output frame spans ``inputs_to_logits_ratio`` input samples). When the
+    tokenizer can't produce word offsets, the offsets list is empty and callers fall
+    back to proportional timing.
+    """
     model, processor = _get_model()
     import torch
 
@@ -83,9 +90,30 @@ def _decode_audio(audio: np.ndarray) -> str:
 
     # Greedy CTC decoding: argmax over the vocab, then collapse repeats + drop blanks
     predicted_ids = torch.argmax(logits, dim=-1)
-    text = processor.batch_decode(predicted_ids)[0].strip()
+
+    offsets: List[Tuple[float, float]] = []
+    try:
+        decoded = processor.batch_decode(predicted_ids, output_word_offsets=True)
+        text = decoded["text"][0].strip()
+    except (TypeError, KeyError, ValueError):
+        # Tokenizer/processor doesn't support word offsets — decode without them.
+        text = processor.batch_decode(predicted_ids)[0].strip()
+        decoded = None
+    if decoded is not None:
+        try:
+            sec_per_frame = model.config.inputs_to_logits_ratio / config.audio_sample_rate
+            cand = [
+                (w["start_offset"] * sec_per_frame, w["end_offset"] * sec_per_frame)
+                for w in decoded["word_offsets"][0]
+            ]
+            # Only trust offsets that line up 1:1 with the whitespace-split words.
+            if len(cand) == len(text.split()):
+                offsets = cand
+        except (KeyError, AttributeError, TypeError, ValueError):
+            offsets = []
+
     logger.info("  wav2vec2 decoded: '%s'", display_arabic(text))
-    return text
+    return text, offsets
 
 
 # The Quranic vocative يا is written fused to the next word in the reference
@@ -97,16 +125,35 @@ _VOCATIVE_YA = "يا"  # يا — base letters, diacritics stripped
 
 def _merge_vocative(parts: List[str]) -> List[str]:
     """Fuse a standalone vocative 'يا' token onto the decoded token that follows it."""
+    merged, _ = _merge_vocative_with_offsets(parts, None)
+    return merged
+
+
+def _merge_vocative_with_offsets(
+    parts: List[str], offsets: Optional[List[Tuple[float, float]]]
+) -> Tuple[List[str], Optional[List[Tuple[float, float]]]]:
+    """Fuse a standalone vocative 'يا' token onto the following token, keeping any
+    parallel (start_sec, end_sec) offsets in sync.
+
+    When two tokens merge, the merged span runs from the first token's start to the
+    second token's end. Returns (merged_parts, merged_offsets); merged_offsets is None
+    when offsets is None.
+    """
     merged: List[str] = []
+    merged_off: Optional[List[Tuple[float, float]]] = [] if offsets is not None else None
     i = 0
     while i < len(parts):
         if i + 1 < len(parts) and strip_diacritics(parts[i]).strip() == _VOCATIVE_YA:
             merged.append(parts[i] + parts[i + 1])
+            if merged_off is not None:
+                merged_off.append((offsets[i][0], offsets[i + 1][1]))
             i += 2
         else:
             merged.append(parts[i])
+            if merged_off is not None:
+                merged_off.append(offsets[i])
             i += 1
-    return merged
+    return merged, merged_off
 
 
 def _normalize_text(text: str) -> str:
@@ -163,6 +210,7 @@ class AcousticResult:
     diac_scores: List[float]   # scored-diacritic accuracy of the winning match
     best_words: List[str]      # raw decoded word that best-matched each expected word ("" if none)
     n_decoded: int             # number of words the model decoded from the audio
+    offsets: List[Optional[Tuple[float, float]]]  # (start_sec, end_sec) per expected word vs the decoded segment; None if unmatched/unavailable
 
 
 # Minimum blended similarity for a decoded token to count as a real match during alignment.
@@ -174,12 +222,14 @@ _MATCH_FLOOR = 0.4
 def _align_decoded_to_expected(
     decoded_parts: List[str],
     all_expected: List[Tuple[str, str]],
-) -> Tuple[List[float], List[float], List[float], List[str]]:
+    decoded_offsets: Optional[List[Tuple[float, float]]] = None,
+) -> Tuple[List[float], List[float], List[float], List[str], List[Optional[Tuple[float, float]]]]:
     """Monotonically align decoded tokens to expected words (Needleman-Wunsch / weighted LCS).
 
-    Returns four lists parallel to all_expected: (blended score, char score, diacritic score,
-    best-matching decoded token). An expected word the alignment leaves unmatched -- or whose
-    best aligned token scores below _MATCH_FLOOR -- gets score 0.0 and best_word "".
+    Returns five lists parallel to all_expected: (blended score, char score, diacritic score,
+    best-matching decoded token, that token's (start_sec, end_sec) offset or None). An expected
+    word the alignment leaves unmatched -- or whose best aligned token scores below _MATCH_FLOOR
+    -- gets score 0.0, best_word "" and offset None.
 
     Unlike a greedy forward pointer, this global alignment can't leapfrog to a distant duplicate
     word or stick on a low-scoring token, so words repeated within the reference (common in Quran
@@ -220,6 +270,7 @@ def _align_decoded_to_expected(
     char_scores = [0.0] * m
     diac_scores = [0.0] * m
     best_words = [""] * m
+    offsets: List[Optional[Tuple[float, float]]] = [None] * m
 
     i, j = m, n
     while i > 0 and j > 0:
@@ -230,6 +281,8 @@ def _align_decoded_to_expected(
             char_scores[i - 1] = cs
             diac_scores[i - 1] = ds
             best_words[i - 1] = decoded_parts[j - 1]
+            if decoded_offsets is not None and j - 1 < len(decoded_offsets):
+                offsets[i - 1] = decoded_offsets[j - 1]
             i -= 1
             j -= 1
         elif move == "up":
@@ -237,7 +290,7 @@ def _align_decoded_to_expected(
         else:  # "left"
             j -= 1
 
-    return scores, char_scores, diac_scores, best_words
+    return scores, char_scores, diac_scores, best_words, offsets
 
 
 def get_acoustic_scores(
@@ -259,19 +312,24 @@ def get_acoustic_scores(
     dropped), parallel to expected_words.
     """
     if not expected_words:
-        return AcousticResult([], [], [], [], 0)
+        return AcousticResult([], [], [], [], 0, [])
 
-    decoded_text = _decode_audio(audio)
-    decoded_parts = _merge_vocative(decoded_text.split())
+    decoded_text, decoded_offsets = _decode_audio(audio)
+    raw_parts = decoded_text.split()
+    if decoded_offsets and len(decoded_offsets) == len(raw_parts):
+        decoded_parts, decoded_offsets = _merge_vocative_with_offsets(raw_parts, decoded_offsets)
+    else:
+        decoded_parts = _merge_vocative(raw_parts)
+        decoded_offsets = None
     n_decoded = len(decoded_parts)
 
     if not decoded_parts:
         n = len(expected_words)
-        return AcousticResult([0.5] * n, [0.5] * n, [0.5] * n, [""] * n, 0)
+        return AcousticResult([0.5] * n, [0.5] * n, [0.5] * n, [""] * n, 0, [None] * n)
 
     all_expected = previous_words + expected_words
-    scores, char_scores, diac_scores, best_words = _align_decoded_to_expected(
-        decoded_parts, all_expected
+    scores, char_scores, diac_scores, best_words, offsets = _align_decoded_to_expected(
+        decoded_parts, all_expected, decoded_offsets
     )
 
     for (_, uthmani), score, cs, ds, best_word in zip(
@@ -284,5 +342,5 @@ def get_acoustic_scores(
 
     k = len(previous_words)
     return AcousticResult(
-        scores[k:], char_scores[k:], diac_scores[k:], best_words[k:], n_decoded
+        scores[k:], char_scores[k:], diac_scores[k:], best_words[k:], n_decoded, offsets[k:]
     )

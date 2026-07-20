@@ -3,7 +3,8 @@ import type { Chapter } from "../types";
 import { useSessionStore, type SessionMode } from "../stores/session";
 import { socket, apiUrl } from "../lib/socket";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
-import { Mic, MicOff, SkipForward, Eye, EyeOff, Settings2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Mic, MicOff, SkipForward, Eye, EyeOff, Settings2, Headphones } from "lucide-react";
 import { cn } from "../lib/cn";
 import {
     Select,
@@ -24,32 +25,8 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
-
-const SURAH_NAMES: Record<number, string> = {
-    1: "الفاتحة", 2: "البقرة", 3: "آل عمران", 4: "النساء", 5: "المائدة",
-    6: "الأنعام", 7: "الأعراف", 8: "الأنفال", 9: "التوبة", 10: "يونس",
-    11: "هود", 12: "يوسف", 13: "الرعد", 14: "إبراهيم", 15: "الحجر",
-    16: "النحل", 17: "الإسراء", 18: "الكهف", 19: "مريم", 20: "طه",
-    21: "الأنبياء", 22: "الحج", 23: "المؤمنون", 24: "النور", 25: "الفرقان",
-    26: "الشعراء", 27: "النمل", 28: "القصص", 29: "العنكبوت", 30: "الروم",
-    31: "لقمان", 32: "السجدة", 33: "الأحزاب", 34: "سبأ", 35: "فاطر",
-    36: "يس", 37: "الصافات", 38: "ص", 39: "الزمر", 40: "غافر",
-    41: "فصلت", 42: "الشورى", 43: "الزخرف", 44: "الدخان", 45: "الجاثية",
-    46: "الأحقاف", 47: "محمد", 48: "الفتح", 49: "الحجرات", 50: "ق",
-    51: "الذاريات", 52: "الطور", 53: "النجم", 54: "القمر", 55: "الرحمن",
-    56: "الواقعة", 57: "الحديد", 58: "المجادلة", 59: "الحشر", 60: "الممتحنة",
-    61: "الصف", 62: "الجمعة", 63: "المنافقون", 64: "التغابن", 65: "الطلاق",
-    66: "التحريم", 67: "الملك", 68: "القلم", 69: "الحاقة", 70: "المعارج",
-    71: "نوح", 72: "الجن", 73: "المزمل", 74: "المدثر", 75: "القيامة",
-    76: "الإنسان", 77: "المرسلات", 78: "النبأ", 79: "النازعات", 80: "عبس",
-    81: "التكوير", 82: "الانفطار", 83: "المطففين", 84: "الانشقاق", 85: "البروج",
-    86: "الطارق", 87: "الأعلى", 88: "الغاشية", 89: "الفجر", 90: "البلد",
-    91: "الشمس", 92: "الليل", 93: "الضحى", 94: "الشرح", 95: "التين",
-    96: "العلق", 97: "القدر", 98: "البينة", 99: "الزلزلة", 100: "العاديات",
-    101: "القارعة", 102: "التكاثر", 103: "العصر", 104: "الهمزة", 105: "الفيل",
-    106: "قريش", 107: "الماعون", 108: "الكوثر", 109: "الكافرون", 110: "النصر",
-    111: "المسد", 112: "الإخلاص", 113: "الفلق", 114: "الناس",
-};
+import { Switch } from "@/components/ui/switch";
+import { SURAH_NAMES } from "../lib/surahNames";
 
 function getUrlParams() {
     const params = new URLSearchParams(window.location.search);
@@ -81,7 +58,7 @@ export function SessionSetup() {
     const [endVerseCount, setEndVerseCount] = useState(7);
     const initialLoadDone = useRef(false);
 
-    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords, scoreThreshold, setScoreThreshold, sessionMode, setSessionMode } = useSessionStore();
+    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords, scoreThreshold, setScoreThreshold, sessionMode, setSessionMode, record, setRecord, lastSessionId } = useSessionStore();
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
     const isSessionActive = isRecording;
     const canSkip = isRecording && words.length > 0 && currentWordIndex < words.length;
@@ -96,6 +73,7 @@ export function SessionSetup() {
     const [thresholdModalOpen, setThresholdModalOpen] = useState(false);
     const [pendingThreshold, setPendingThreshold] = useState(scoreThreshold);
     const [pendingMode, setPendingMode] = useState<SessionMode>(sessionMode);
+    const [pendingRecord, setPendingRecord] = useState(record);
 
     const toggleRecording = () => {
         if (isRecording) {
@@ -106,10 +84,11 @@ export function SessionSetup() {
         // Ask the user to set the mode and pass/fail threshold before the session begins.
         setPendingThreshold(scoreThreshold);
         setPendingMode(sessionMode);
+        setPendingRecord(record);
         setThresholdModalOpen(true);
     };
 
-    const startSessionWithThreshold = (threshold: number, mode: SessionMode) => {
+    const startSessionWithThreshold = (threshold: number, mode: SessionMode, record: boolean) => {
         const payload = {
             start_chapter_number: startChapter,
             start_verse_number: startVerse,
@@ -117,6 +96,7 @@ export function SessionSetup() {
             end_verse_number: endVerse,
             score_threshold: threshold,
             mode,
+            record,
         };
         if (socket.connected) {
             socket.emit("start_session", payload);
@@ -133,7 +113,8 @@ export function SessionSetup() {
     const confirmStart = () => {
         setScoreThreshold(pendingThreshold);
         setSessionMode(pendingMode);
-        startSessionWithThreshold(pendingThreshold, pendingMode);
+        setRecord(pendingRecord);
+        startSessionWithThreshold(pendingThreshold, pendingMode, pendingRecord);
         setThresholdModalOpen(false);
     };
 
@@ -313,6 +294,24 @@ export function SessionSetup() {
                             </TooltipContent>
                         </Tooltip>
                     )}
+                    {/* Only shown once a recorded session exists — there is nothing to play
+                        back when the session ran with record off. */}
+                    {lastSessionId && !isRecording && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Link
+                                    to={`/sessions/${lastSessionId}`}
+                                    aria-label="مراجعة الجلسة المسجّلة"
+                                    className="flex h-11 w-11 items-center justify-center rounded-full border border-gold/40 bg-gold/10 text-gold transition-all hover:bg-gold/20"
+                                >
+                                    <Headphones className="h-5 w-5" />
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="font-[var(--font-arabic)]" dir="rtl">
+                                مراجعة الجلسة المسجّلة
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
                 </div>
 
                 <div className="flex w-full items-center gap-2 flex-row-reverse sm:w-auto sm:justify-end sm:gap-3">
@@ -456,6 +455,26 @@ export function SessionSetup() {
                         <div className="flex justify-between text-xs text-text-muted" dir="ltr">
                             <span>0.0 · متساهل</span>
                             <span>صارم · 1.0</span>
+                        </div>
+                    </div>
+
+                    <div className="mt-5 space-y-3 border-t border-border/50 pt-5 pb-1">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <Label htmlFor="record-session" className="text-sm font-semibold text-text-primary">
+                                    حفظ تسجيل الجلسة
+                                </Label>
+                                <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                                    حفظ الصوت وبيانات الجلسة على الخادم لمراجعتها لاحقًا.
+                                </p>
+                            </div>
+                            <Switch
+                                id="record-session"
+                                dir="ltr"
+                                className="mt-0.5 shrink-0"
+                                checked={pendingRecord}
+                                onCheckedChange={setPendingRecord}
+                            />
                         </div>
                     </div>
                     </div>
