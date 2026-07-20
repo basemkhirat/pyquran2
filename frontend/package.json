@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "check:playback": "node --experimental-strip-types --conditions development scripts/check-audio-playback.mts"
+    "check:playback": "esbuild scripts/check-audio-playback.mts --bundle --platform=node --format=esm --jsx=automatic --packages=external --outfile=node_modules/.cache/check-playback.mjs --log-level=warning && node --conditions development node_modules/.cache/check-playback.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

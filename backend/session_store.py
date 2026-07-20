@@ -5,8 +5,9 @@ Each recitation session gets its own folder identified by a UUID, containing:
 - recording.wav — the full session audio (mono, 16-bit PCM, 16kHz)
 - info.json — session metadata (id, type/mode, narration_id, score_threshold, and the
   recited verse range as start/end chapter+verse numbers) plus a `words` array with one
-  entry per confirmed *spoken* word (correct or incorrect), each carrying
-  start_time/end_time as integer milliseconds relative to the start of recording.wav.
+  entry per confirmed *spoken* word (correct or incorrect), each carrying the reference
+  text (word_text), what the recognizer heard (detected_text), and start_time/end_time as
+  integer milliseconds relative to the start of recording.wav.
 
 The JSON file is rewritten on every word addition for real-time persistence.
 """
@@ -136,6 +137,7 @@ class SessionStore:
         score: float,
         start_time: float,
         end_time: float,
+        detected_text: str = "",
     ) -> None:
         """Append a spoken-word timeline entry and persist to disk.
 
@@ -147,6 +149,8 @@ class SessionStore:
             "verse_number": verse_number,
             "word_number": word_number,
             "word_text": word_text,
+            # What the recognizer heard, as opposed to word_text which is the reference.
+            "detected_text": detected_text,
             "status": status,
             "score": round(score, 3),
             "start_time": round(start_time * 1000),

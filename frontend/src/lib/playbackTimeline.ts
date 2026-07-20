@@ -17,6 +17,8 @@ export interface Attempt {
     /** Index into SessionPlayback.words; -1 when the entry matched no display word. */
     displayIndex: number;
     status: "correct" | "incorrect";
+    /** What the recognizer heard; "" for sessions recorded before it was stored. */
+    detectedText: string;
     score: number;
     startMs: number;
     endMs: number;
@@ -94,6 +96,7 @@ export function buildTimelineIndex(session: SessionPlayback): TimelineIndex {
         attempts.push({
             displayIndex,
             status: e.status,
+            detectedText: (e.detected_text ?? "").trim(),
             score: e.score,
             startMs,
             endMs,
@@ -110,7 +113,7 @@ export function buildTimelineIndex(session: SessionPlayback): TimelineIndex {
             status: e.status,
             total_score: e.score,
             expected_text: e.word_text,
-            detected_text: "",
+            detected_text: e.detected_text ?? "",
         });
 
         if (displayIndex >= 0) {

@@ -8,6 +8,7 @@ import { buildTimelineIndex, nextAttemptAfter, prevAttemptBefore } from "../lib/
 import { PlaybackHeader } from "../components/playback/PlaybackHeader";
 import { PlaybackVerses } from "../components/playback/PlaybackVerses";
 import { PlaybackAudioBar } from "../components/playback/PlaybackAudioBar";
+import { PlaybackDetectedToast } from "../components/playback/PlaybackDetectedToast";
 
 type LoadState =
     | { status: "loading" }
@@ -194,6 +195,10 @@ export function SessionPlaybackPage() {
         <div className="min-h-[100dvh] pb-40">
             <PlaybackHeader session={state.session} />
             <PlaybackVerses session={state.session} index={index} playback={playback} />
+
+            {state.session.has_recording && (
+                <PlaybackDetectedToast index={index} playback={playback} />
+            )}
 
             {state.session.has_recording ? (
                 <PlaybackAudioBar

@@ -43,7 +43,7 @@ class TestSessionStore:
         store = SessionStore(session_id="sess-2", mode="word_by_word", score_threshold=0.5)
         store.add_timeline_word(
             chapter_number=1, verse_number=2, word_number=3,
-            word_text="ٱلْحَمْدُ", status="correct", score=0.87654,
+            word_text="ٱلْحَمْدُ", detected_text="الحمد", status="correct", score=0.87654,
             start_time=1.23456, end_time=1.98765,  # seconds in
         )
         info = _read_info(store)
@@ -56,6 +56,7 @@ class TestSessionStore:
             "verse_number": 2,
             "word_number": 3,
             "word_text": "ٱلْحَمْدُ",
+            "detected_text": "الحمد",
             "status": "correct",
             "score": 0.877,        # score rounded to 3 decimals
             "start_time": 1235,    # seconds -> integer milliseconds

@@ -1,8 +1,12 @@
 /**
- * Regression check for useAudioPlayback: the <audio> element mounts LATER than the hook,
- * because SessionPlaybackPage renders a spinner until the session has loaded. A plain
- * RefObject silently fails there — the listener effect runs once with a null ref and never
- * re-runs — so playback advances with a frozen UI. This asserts the callback ref works.
+ * Playback checks that need a DOM.
+ *
+ * 1. useAudioPlayback: the <audio> element mounts LATER than the hook, because
+ *    SessionPlaybackPage renders a spinner until the session has loaded. A plain RefObject
+ *    silently fails there — the listener effect runs once with a null ref and never re-runs
+ *    — so playback advances with a frozen UI. This asserts the callback ref works.
+ * 2. PlaybackDetectedToast: the subtitle window is derived from playback position rather
+ *    than accumulated, so it has to be correct when seeking backwards too.
  *
  *   yarn check:playback
  *
@@ -96,6 +100,84 @@ await act(async () => {
     audio.dispatchEvent(new dom.window.Event("pause"));
 });
 check("pause clears isPlaying", api!.isPlaying, false);
+
+// ---------------------------------------------------------------------------------------
+// PlaybackDetectedToast: the "what the recognizer heard" subtitle.
+// ---------------------------------------------------------------------------------------
+console.log("\nPlaybackDetectedToast:");
+
+const { buildTimelineIndex } = await import("../src/lib/playbackTimeline.ts");
+const { PlaybackDetectedToast } = await import("../src/components/playback/PlaybackDetectedToast.tsx");
+
+const entry = (word: number, detected: string, start: number, status = "correct") => ({
+    display_index: word - 1,
+    chapter_number: 1, verse_number: 1, word_number: word,
+    word_text: `ref${word}`, detected_text: detected, status,
+    score: 1, start_time: start, end_time: start + 400,
+});
+
+// Three words in quick succession, then a long silence, then a misheard word.
+const session = {
+    id: "s", mode: "word_by_word", narration_id: 1, score_threshold: 0.5,
+    range: { start_chapter: 1, start_verse: 1, end_chapter: 1, end_verse: 1 },
+    range_inferred: false, duration_ms: 60000, has_recording: true,
+    words: [], stats: {} as never,
+    timeline: [
+        entry(1, "بسم", 1000),
+        entry(2, "الله", 2000),
+        entry(3, "الرحمن", 3000),
+        entry(4, "الرحيب", 50000, "incorrect"),
+    ],
+} as never;
+
+const toastIndex = buildTimelineIndex(session);
+const subscribers = new Set<(ms: number) => void>();
+const stubPlayback = {
+    subscribe: (fn: (ms: number) => void) => {
+        subscribers.add(fn);
+        fn(0);
+        return () => subscribers.delete(fn);
+    },
+} as never;
+
+const toastHost = document.createElement("div");
+document.body.appendChild(toastHost);
+const toastRoot = createRoot(toastHost);
+
+await act(async () => {
+    toastRoot.render(
+        React.createElement(PlaybackDetectedToast, { index: toastIndex, playback: stubPlayback })
+    );
+});
+
+const publish = async (ms: number) => {
+    await act(async () => {
+        for (const fn of subscribers) fn(ms);
+    });
+};
+// Words are separate spans separated by a CSS gap, not by whitespace, so join them here.
+const toastText = () =>
+    [...toastHost.querySelectorAll("span")].map((s) => s.textContent ?? "").join(" ").trim();
+
+await publish(500);
+check("hidden before the first word", toastText(), "");
+
+await publish(1200);
+check("shows the first detected word", toastText(), "بسم");
+
+await publish(3200);
+check("accumulates a rolling line", toastText(), "بسم الله الرحمن");
+
+// Deep in the 47-second silence the line clears, like the live toast fading after a pause.
+await publish(30000);
+check("clears during a long silence", toastText(), "");
+
+await publish(50200);
+check("shows the misheard word after the gap", toastText(), "الرحيب");
+
+// Seeking backwards must recompute the window, not append to it.
+await publish(2200);
+check("recomputes when seeking backwards", toastText(), "بسم الله");
 
 console.log(failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} FAILURES`);
 process.exit(failures === 0 ? 0 : 1);

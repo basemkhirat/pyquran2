@@ -150,6 +150,8 @@ def _normalize_timeline(session_id: str, raw: List[Any]) -> List[Dict[str, Any]]
             "verse_number": verse,
             "word_number": word,
             "word_text": entry.get("word_text", ""),
+            # Absent in sessions recorded before this field existed.
+            "detected_text": entry.get("detected_text", ""),
             "status": entry.get("status", "incorrect"),
             "score": entry.get("score", 0.0),
             "start_time": entry.get("start_time", 0),

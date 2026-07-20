@@ -79,7 +79,7 @@ FastAPI + python-socketio ASGI app. The Socket.IO server wraps FastAPI and is ex
 - `config.py` — All configuration via env vars with defaults; used everywhere as `from backend.config import config`
 - `quran_data.py` — Loads `assets/narrations/hafs.json`; provides chapter/verse/word lookups
 - `session_reader.py` — Reads recorded sessions back for playback (`GET /api/sessions/{id}`). Merges the stored timeline with `quran_data.get_words_range` so each attempt carries a `display_index` into the word list — resolving the `surah/ayah/word_index` vs `chapter_number/verse_number/word_number` naming split server-side. Also infers the verse range for sessions recorded before those fields existed, and computes WAV duration from the file rather than trusting a possibly-unfinalized RIFF header
-- `session_store.py` — Persists per-session info to `data/sessions/{uuid}/info.json` (session metadata — id, type/mode, narration_id, score_threshold, and the recited range as `start_chapter_number`/`start_verse_number`/`end_chapter_number`/`end_verse_number` — plus a `words` array, each word with `start_time`/`end_time` in ms relative to `recording.wav`) plus the full-session audio `recording.wav`; driven by a background writer task in `main.py`
+- `session_store.py` — Persists per-session info to `data/sessions/{uuid}/info.json` (session metadata — id, type/mode, narration_id, score_threshold, and the recited range as `start_chapter_number`/`start_verse_number`/`end_chapter_number`/`end_verse_number` — plus a `words` array, each word with the reference text (`word_text`), what the recognizer heard (`detected_text`), and `start_time`/`end_time` in ms relative to `recording.wav`) plus the full-session audio `recording.wav`; driven by a background writer task in `main.py`
 
 ### Frontend (`frontend/src/`)
 
@@ -103,7 +103,7 @@ React 19 + TypeScript + Zustand + Socket.IO client, with `react-router-dom` rout
 No SQL database. All persistence is file-based:
 - **Quran text**: `assets/narrations/hafs.json` — reference text with emlaei/uthmani variants
 - **Whisper model**: `models/whisper-quran-v1/` — Hugging Face checkpoint (local)
-- **Sessions**: `data/sessions/{uuid}/` — `info.json` (session metadata + a `words` array; each confirmed spoken word with WAV-relative start/end times in ms) + `recording.wav` (one WAV per session). Location is `SESSIONS_DIR`; on Modal it is a mounted Volume, since the container filesystem is ephemeral. Note the `words` array is **sparse** (skipped words are never written) and **not unique** (a word retried in `word_by_word` mode is recorded once per attempt)
+- **Sessions**: `data/sessions/{uuid}/` — `info.json` (session metadata + a `words` array; each confirmed spoken word with its reference text, the recognizer's `detected_text`, and WAV-relative start/end times in ms) + `recording.wav` (one WAV per session). Location is `SESSIONS_DIR`; on Modal it is a mounted Volume, since the container filesystem is ephemeral. Note the `words` array is **sparse** (skipped words are never written) and **not unique** (a word retried in `word_by_word` mode is recorded once per attempt)
 
 ### REST Endpoints
 

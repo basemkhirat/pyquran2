@@ -936,6 +936,8 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
                     "verse_number": word["ayah"],
                     "word_number": word["word_index"],
                     "word_text": word["uthmani_text"],
+                    # What the recognizer actually heard, so playback can show it back.
+                    "detected_text": payload["detected_text"],
                     "status": status,
                     "score": scores["total_score"],
                     "start_time": w_start,

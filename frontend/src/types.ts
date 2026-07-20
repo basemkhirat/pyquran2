@@ -39,7 +39,10 @@ export interface SessionTimelineEntry {
     chapter_number: number;
     verse_number: number;
     word_number: number;
+    /** The reference text for this word. */
     word_text: string;
+    /** What the recognizer heard. Empty for sessions recorded before this was stored. */
+    detected_text: string;
     /** "skipped" is never persisted — a skipped word has no audio to record. */
     status: "correct" | "incorrect";
     score: number;

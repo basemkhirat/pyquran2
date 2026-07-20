@@ -28,11 +28,12 @@ def _write_wav(directory, seconds=1.0):
     return path
 
 
-def _entry(chapter, verse, word, status="correct", score=1.0, start=0, end=500):
+def _entry(chapter, verse, word, status="correct", score=1.0, start=0, end=500,
+           detected="heard"):
     return {
         "chapter_number": chapter, "verse_number": verse, "word_number": word,
-        "word_text": f"w{word}", "status": status, "score": score,
-        "start_time": start, "end_time": end,
+        "word_text": f"w{word}", "detected_text": detected, "status": status,
+        "score": score, "start_time": start, "end_time": end,
     }
 
 
@@ -145,6 +146,20 @@ class TestTimelineMerge:
         })
         starts = [e["start_time"] for e in session_reader.build_playback("unsorted")["timeline"]]
         assert starts == sorted(starts)
+
+    def test_detected_text_passes_through(self, sessions_base):
+        _write_session(sessions_base, "detected", {
+            "id": "detected",
+            "words": [_entry(1, 1, 1, detected="بسم")],
+        })
+        assert session_reader.build_playback("detected")["timeline"][0]["detected_text"] == "بسم"
+
+    def test_detected_text_defaults_for_legacy_entries(self, sessions_base):
+        # Sessions recorded before this field existed have no detected_text at all.
+        legacy = _entry(1, 1, 1)
+        del legacy["detected_text"]
+        _write_session(sessions_base, "nodetected", {"id": "nodetected", "words": [legacy]})
+        assert session_reader.build_playback("nodetected")["timeline"][0]["detected_text"] == ""
 
     def test_malformed_entry_is_skipped(self, sessions_base):
         _write_session(sessions_base, "malformed", {
