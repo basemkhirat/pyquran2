@@ -58,7 +58,7 @@ export function SessionSetup() {
     const [endVerseCount, setEndVerseCount] = useState(7);
     const initialLoadDone = useRef(false);
 
-    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords, scoreThreshold, setScoreThreshold, sessionMode, setSessionMode, record, setRecord, lastSessionId } = useSessionStore();
+    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords, scoreThreshold, setScoreThreshold, sessionMode, setSessionMode, record, setRecord, lastSession } = useSessionStore();
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
     const isSessionActive = isRecording;
     const canSkip = isRecording && words.length > 0 && currentWordIndex < words.length;
@@ -294,13 +294,15 @@ export function SessionSetup() {
                             </TooltipContent>
                         </Tooltip>
                     )}
-                    {/* Only shown once a recorded session exists — there is nothing to play
-                        back when the session ran with record off. */}
-                    {lastSessionId && !isRecording && (
+                    {/* Only shown once `session_ended` has arrived: the session ran with
+                        record on AND the server has finished writing the audio. Linking any
+                        earlier would open playback on a file whose duration and seeking are
+                        still broken. Nothing to show at all when record was off. */}
+                    {lastSession && !isRecording && (
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Link
-                                    to={`/sessions/${lastSessionId}`}
+                                    to={`/sessions/${lastSession.id}`}
                                     aria-label="مراجعة الجلسة المسجّلة"
                                     className="flex h-11 w-11 items-center justify-center rounded-full border border-gold/40 bg-gold/10 text-gold transition-all hover:bg-gold/20"
                                 >

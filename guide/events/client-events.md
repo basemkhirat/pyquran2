@@ -100,7 +100,7 @@ This affects only the word pass/fail cutoff; it does not change verse detection.
 
 #### `record` (optional)
 
-Controls whether the server persists this session to disk — `info.json` (session metadata, including the recited verse range you passed here, plus each spoken word with its `start_time`/`end_time` in ms) and `recording.wav` (the full-session audio), under `data/sessions/{id}/`.
+Controls whether the server persists this session to disk — `info.json` (session metadata, including the recited verse range you passed here and the recording `duration`, plus each spoken word with its `start_time`/`end_time` in ms) and `recording.wav` (the full-session audio), under `data/sessions/{id}/`. When enabled you also receive [`session_ended`](/events/server-events#session-ended) at the end, carrying all of it plus the audio URL.
 
 - **`true`** → the session is recorded and stored.
 - **`false`** → nothing is written to disk; the session is scored in memory only.
@@ -227,11 +227,13 @@ The server:
 2. Processes any pending speech segment
 3. May emit final [`word_result`](/events/server-events#word-result) event(s)
 4. Emits [`session_stopped`](/events/server-events#session-stopped)
+5. For a recorded session (`record: true`), closes the audio file and then emits [`session_ended`](/events/server-events#session-ended) with the recording URL and per-word results
 
 ### Notes
 
 - Stop your audio capture after emitting this event
 - The session cannot be resumed; start a new session to continue
+- You don't have to send `stop_session` for the session to end — it also ends on its own once every word in the range is processed, and `session_stopped` / `session_ended` follow the same way
 
 
 ## 4. skip_word {#skip-word}

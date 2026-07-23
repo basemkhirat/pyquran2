@@ -5,7 +5,7 @@ import os
 import secrets
 import time
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import numpy as np
 import socketio
@@ -119,6 +119,94 @@ async def _store_writer_loop(store: SessionStore, queue: asyncio.Queue):
         await asyncio.to_thread(session_store.commit)
 
 
+def _origin_from_environ(environ) -> str:
+    """Public origin of the handshake request, used to build absolute URLs.
+
+    Prefers the proxy headers so a deployment behind Modal/nginx advertises the URL the
+    client can actually reach, not the internal one. Returns "" when the headers give us
+    nothing usable, in which case callers fall back to a relative path.
+    """
+    scope = environ.get("asgi.scope") or {}
+    headers: Dict[str, str] = {}
+    for key, value in scope.get("headers", []):
+        headers[key.decode("latin-1").lower()] = value.decode("latin-1")
+
+    host = headers.get("x-forwarded-host") or headers.get("host")
+    if not host:
+        return ""
+    # X-Forwarded-* may carry a comma-separated proxy chain; the first hop is the original.
+    host = host.split(",")[0].strip()
+    if not host:
+        return ""
+    proto = headers.get("x-forwarded-proto") or scope.get("scheme") or "http"
+    proto = proto.split(",")[0].strip() or "http"
+    # The handshake scope's scheme is ws/wss for a websocket transport; map it to http/https
+    # so the recording URL is a plain HTTP(S) URL a client can GET the WAV from.
+    proto = {"ws": "http", "wss": "https"}.get(proto, proto)
+    return f"{proto}://{host}"
+
+
+def _absolute_url(session: Dict[str, Any], path: str) -> str:
+    """Absolute URL for an API path: PUBLIC_BASE_URL when set, else the handshake origin."""
+    base = (config.public_base_url or session.get("origin") or "").rstrip("/")
+    return f"{base}{path}" if base else path
+
+
+async def _finalize_store(session: Dict[str, Any]) -> Optional[SessionStore]:
+    """Close the session store and await the writer, so the WAV header is finalized.
+
+    Returns the store that was closed, or None when the session was not being recorded or
+    was already finalized — safe to call more than once.
+    """
+    queue = session.get("store_queue")
+    task = session.get("store_task")
+    store = session.get("store")
+    session["store"] = None
+    session["store_queue"] = None
+    session["store_task"] = None
+    if queue is None or task is None:
+        return None
+    queue.put_nowait(("close",))
+    await task
+    return store
+
+
+async def _end_session(sid: str, session: Dict[str, Any]) -> None:
+    """End a session exactly once: emit session_stopped, finalize, then session_ended.
+
+    session_stopped goes out first so the client's UI signal is never delayed by the disk
+    flush. session_ended follows only for a recorded session, and only after the store is
+    closed — the WAV header must be finalized before its URL is advertised, otherwise the
+    client reads stale RIFF lengths (Infinity duration, broken seeking).
+    """
+    if session.get("ended"):
+        return
+    session["ended"] = True
+
+    # _do_process_speech calls this from inside the streaming task itself; cancelling that
+    # task here would raise CancelledError at the next await and abort finalization. The
+    # loop exits on its own next tick via its current_index guard.
+    task = session.get("streaming_task")
+    if task is not None and task is not asyncio.current_task():
+        task.cancel()
+    session["streaming_task"] = None
+
+    await sio.emit("session_stopped", {}, room=sid)
+
+    store = await _finalize_store(session)
+    if store is None:
+        return
+
+    session_id = store.session_id
+    # The payload is info.json itself (including the recorded `duration`) plus the absolute
+    # audio URL, so a client gets the whole session in one event with no follow-up request.
+    info = session_reader.load_info(session_id) or {"id": session_id}
+    await sio.emit("session_ended", {
+        **info,
+        "url": _absolute_url(session, f"/api/sessions/{session_id}/recording.wav"),
+    }, room=sid)
+
+
 @app.on_event("startup")
 async def startup():
     if config.enable_text_score:
@@ -176,7 +264,10 @@ def api_session(session_id: str):
     return payload
 
 
+# Both paths serve the same file. The `.wav` form is what session_ended advertises (some
+# players key off the extension); the bare path is kept so existing callers keep working.
 @app.get("/api/sessions/{session_id}/recording")
+@app.get("/api/sessions/{session_id}/recording.wav")
 def api_session_recording(session_id: str):
     """The session's WAV. FileResponse handles Range/206, which <audio> needs to seek."""
     path = session_reader.recording_path(session_id)
@@ -231,6 +322,8 @@ async def connect(sid, environ, auth):
         "record": False,  # set authoritatively in start_session
         "total_samples": 0,  # session sample clock == frames written to recording.wav
         "timeline_cursor_sec": None,  # fallback per-word timing cursor (seconds into the WAV)
+        "ended": False,  # guards session_stopped/session_ended to one emit per session
+        "origin": _origin_from_environ(environ),  # for absolute URLs in session_ended
     }
 
 
@@ -241,11 +334,9 @@ async def disconnect(sid):
     if session:
         if session.get("streaming_task"):
             session["streaming_task"].cancel()
-        queue = session.get("store_queue")
-        task = session.get("store_task")
-        if queue is not None and task is not None:
-            queue.put_nowait(("close",))
-            await task
+        # The client is gone, so nothing can be emitted — just finalize the WAV header.
+        session["ended"] = True
+        await _finalize_store(session)
 
 
 @sio.event
@@ -321,12 +412,9 @@ async def start_session(sid, data):
     if session.get("streaming_task"):
         session["streaming_task"].cancel()
         session["streaming_task"] = None
-    if session.get("store_task"):
-        session.get("store_queue").put_nowait(_store_done)
-        await session["store_task"]
-        session["store_task"] = None
-        session["store_queue"] = None
-        session["store"] = None
+    # Finalize a previous recording, in case start_session is sent twice on one connection.
+    await _finalize_store(session)
+    session["ended"] = False
 
     # Session id is always generated; the optional store persists data only when `record`
     session_id = str(uuid.uuid4())
@@ -376,7 +464,7 @@ async def audio_chunk(sid, data):
 
     idx = session["current_index"]
     if idx >= len(session["words"]):
-        await sio.emit("session_stopped", {}, room=sid)
+        await _end_session(sid, session)
         return
 
     vad = session["vad"]
@@ -424,7 +512,7 @@ async def skip_word(sid, _data=None):
     session["last_interim_index"] = None
 
     if session["current_index"] >= len(session["words"]):
-        await sio.emit("session_stopped", {}, room=sid)
+        await _end_session(sid, session)
 
 
 @sio.event
@@ -444,17 +532,7 @@ async def stop_session(sid, _data=None):
     if segment is not None and len(segment) > config.audio_sample_rate * 0.3:
         await _process_speech(sid, segment, is_final=True, captured_total=captured_total)
 
-    # Signal store writer to close and wait for it (so WAV is finalized)
-    queue = session.get("store_queue")
-    task = session.get("store_task")
-    if queue is not None and task is not None:
-        queue.put_nowait(("close",))
-        await task
-        session["store_task"] = None
-        session["store_queue"] = None
-        session["store"] = None
-
-    await sio.emit("session_stopped", {}, room=sid)
+    await _end_session(sid, session)
 
 
 # ===================== Streaming Transcription Loop =====================
@@ -632,7 +710,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     words = session["words"]
     score_threshold = session.get("score_threshold", config.score_threshold)
     if idx >= len(words):
-        await sio.emit("session_stopped", {}, room=sid)
+        await _end_session(sid, session)
         return
 
     # Check minimum audio duration (0.5 seconds)
@@ -935,11 +1013,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
                     "chapter_number": word["surah"],
                     "verse_number": word["ayah"],
                     "word_number": word["word_index"],
-                    "word_text": word["uthmani_text"],
+                    "expected_text": word["uthmani_text"],
                     # What the recognizer actually heard, so playback can show it back.
                     "detected_text": payload["detected_text"],
                     "status": status,
-                    "score": scores["total_score"],
+                    "total_score": scores["total_score"],
                     "start_time": w_start,
                     "end_time": w_end,
                 }))
@@ -954,8 +1032,5 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     session["timeline_cursor_sec"] = cursor_sec
 
     if idx >= len(words):
-        # Cancel streaming task if running
-        if session.get("streaming_task"):
-            session["streaming_task"].cancel()
-            session["streaming_task"] = None
-        await sio.emit("session_stopped", {}, room=sid)
+        # _end_session cancels the streaming task safely — this runs inside that very task.
+        await _end_session(sid, session)

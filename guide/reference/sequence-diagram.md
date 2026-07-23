@@ -30,6 +30,11 @@ sequenceDiagram
     Server-->>App: session_stopped
 
     Note over App: Stop audio capture
+
+    opt record: true
+        Note over Server: Close + finalize recording.wav
+        Server-->>App: session_ended({id, type, duration, url, words, ...})
+    end
 ```
 
 ## Session with Skip

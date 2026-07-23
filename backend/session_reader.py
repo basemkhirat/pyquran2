@@ -149,11 +149,15 @@ def _normalize_timeline(session_id: str, raw: List[Any]) -> List[Dict[str, Any]]
             "chapter_number": chapter,
             "verse_number": verse,
             "word_number": word,
-            "word_text": entry.get("word_text", ""),
+            # Stored as expected_text; older sessions used word_text. Kept as word_text in
+            # the playback payload, which the frontend playback types already expect.
+            "word_text": entry.get("expected_text", entry.get("word_text", "")),
             # Absent in sessions recorded before this field existed.
             "detected_text": entry.get("detected_text", ""),
             "status": entry.get("status", "incorrect"),
-            "score": entry.get("score", 0.0),
+            # Stored as total_score; older sessions used score. Kept as score in the playback
+            # payload, which the frontend playback types already expect.
+            "score": entry.get("total_score", entry.get("score", 0.0)),
             "start_time": entry.get("start_time", 0),
             "end_time": entry.get("end_time", 0),
         })

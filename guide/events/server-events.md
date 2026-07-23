@@ -325,11 +325,113 @@ socket.on("session_stopped") {
 ### Notes
 
 - Always stop audio recording when you receive this event
+- Emitted **exactly once** per session, whichever way it ends (all words processed, the last word skipped, or your `stop_session`)
+- Sent immediately, before the recording is flushed to disk, so it is never delayed by file I/O. For a recorded session, [`session_ended`](#session-ended) follows with the audio and results
 - You may start a new session by emitting `start_session` again
 
 ---
 
-## 6. session_error {#session-error}
+## 6. session_ended {#session-ended}
+
+Delivers the recorded session: the audio URL plus the full per-word results, inline. Only sent for sessions started with `record: true`.
+
+### When Received
+
+- After [`session_stopped`](#session-stopped), once the server has finished writing and **closed** the recording.
+- **Only** when the session was persisted. Check `record` on [`session_started`](#session-started) to know whether to expect it.
+
+### Payload
+
+```typescript
+{
+  id: string;                   // Session id (the same one from session_started)
+  type: "word_by_word" | "continuous";
+  narration_id: number;
+  score_threshold: number;
+  duration: number;             // Length of the recording, in milliseconds
+  start_chapter_number: number | null;  // the recited range
+  start_verse_number: number | null;
+  end_chapter_number: number | null;
+  end_verse_number: number | null;
+  url: string;                  // Absolute URL of the session audio (WAV)
+  words: Array<{
+    chapter_number: number;
+    verse_number: number;
+    word_number: number;
+    expected_text: string;      // the reference word
+    detected_text: string;      // what the recognizer heard
+    status: "correct" | "incorrect";
+    total_score: number;        // 0–1
+    start_time: number;         // ms from the start of the recording
+    end_time: number;           // ms from the start of the recording
+  }>;
+}
+```
+
+### Example Handler
+
+::: code-group
+
+```javascript [JavaScript]
+socket.on("session_ended", (data) => {
+  const { url, duration, words } = data;
+  console.log(`Recording ready (${duration} ms), ${words.length} words`);
+
+  audioPlayer.src = url;
+  words.forEach((w) => {
+    // Each entry maps onto a span of the audio
+    console.log(`${w.expected_text}: ${w.status} @ ${w.start_time}–${w.end_time} ms`);
+  });
+});
+```
+
+```swift [Swift]
+socket.on("session_ended") { data, ack in
+    guard let dict = data.first as? [String: Any],
+          let urlString = dict["url"] as? String,
+          let url = URL(string: urlString) else {
+        return
+    }
+
+    let duration = dict["duration"] as? Int ?? 0
+    let words = dict["words"] as? [[String: Any]] ?? []
+    print("Recording ready: \(url) — \(duration) ms, \(words.count) words")
+
+    DispatchQueue.main.async {
+        self.playRecording(url: url, words: words)
+    }
+}
+```
+
+```kotlin [Kotlin]
+socket.on("session_ended") { args ->
+    val data = args.firstOrNull() as? JSONObject ?: return@on
+    val url = data.getString("url")
+    val duration = data.optLong("duration")
+    val words = data.getJSONArray("words")
+
+    println("Recording ready: $url — $duration ms, ${words.length()} words")
+
+    runOnUiThread {
+        playRecording(url, words)
+    }
+}
+```
+
+:::
+
+### Notes
+
+- **Wait for this event before downloading `url`.** The WAV's length fields are only completed when the server closes the file; fetching it earlier yields a clip whose duration reads as infinite and that cannot be seeked.
+- `duration`, `start_time` and `end_time` are all integer **milliseconds**, so they map straight onto a player's position for word-by-word playback highlighting.
+- `duration` covers the whole recording, including any audio captured after the last scored word.
+- `words` is **sparse** — skipped words are never written — and **not unique**: in `word_by_word` mode a word the user retried appears once per attempt, in the order they were spoken. Use the timings to line each attempt up with the audio.
+- `url` supports HTTP Range requests, so a player can seek and stream without downloading the whole file first.
+- If you sent `record: false` (or omitted it and the server default is off), this event never arrives — `session_stopped` is the end of the session.
+
+---
+
+## 7. session_error {#session-error}
 
 Indicates an error occurred during the session.
 
@@ -411,6 +513,7 @@ socket.on("session_error") { args ->
 | `verse_detected` | chapter_number, verse_number, word_number | Find word index, set current position |
 | `verse_detection_failed` | `{}` | Optional: show "try again" message |
 | `session_stopped` | `{}` | Stop recording |
+| `session_ended` | Session info + `duration`, `url`, `words` | Recorded sessions only — save/play the audio, show per-word results |
 | `session_error` | `{ reason }` | Stop recording, show error |
 
 ## Complete Event Listener Setup
@@ -438,6 +541,12 @@ function setupSocketListeners(socket) {
 
   socket.on("session_stopped", () => {
     stopAudioRecording();
+  });
+
+  // Recorded sessions only (record: true) — arrives after session_stopped,
+  // once the audio file is closed and safe to download.
+  socket.on("session_ended", (data) => {
+    showRecording(data.url, data.words);
   });
 
   socket.on("session_error", (data) => {

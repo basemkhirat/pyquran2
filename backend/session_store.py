@@ -3,11 +3,13 @@ Persist per-session info + word timeline to data/sessions/{uuid}/info.json.
 
 Each recitation session gets its own folder identified by a UUID, containing:
 - recording.wav — the full session audio (mono, 16-bit PCM, 16kHz)
-- info.json — session metadata (id, type/mode, narration_id, score_threshold, and the
-  recited verse range as start/end chapter+verse numbers) plus a `words` array with one
-  entry per confirmed *spoken* word (correct or incorrect), each carrying the reference
-  text (word_text), what the recognizer heard (detected_text), and start_time/end_time as
-  integer milliseconds relative to the start of recording.wav.
+- info.json — session metadata (id, type/mode, narration_id, score_threshold, the recorded
+  `duration`, and the recited verse range as start/end chapter+verse numbers) plus a
+  `words` array with one entry per confirmed *spoken* word (correct or incorrect), each
+  carrying the reference text (expected_text), what the recognizer heard (detected_text),
+  and start_time/end_time as integer milliseconds relative to the start of recording.wav.
+
+All times (`duration`, `start_time`, `end_time`) are integer milliseconds.
 
 The JSON file is rewritten on every word addition for real-time persistence.
 """
@@ -99,11 +101,18 @@ class SessionStore:
         self.recording_file = os.path.join(self.session_dir, "recording.wav")
         self._entries: list[dict] = []
         self._wav_file = None
+        self._frames_written = 0
 
         os.makedirs(self.session_dir, exist_ok=True)
         self._flush()
 
     # ------------------------------------------------------------------
+
+    @property
+    def duration(self) -> int:
+        """Length of recording.wav written so far, in integer milliseconds."""
+        rate = config.audio_sample_rate or 1
+        return round(self._frames_written / rate * 1000)
 
     def append_audio(self, pcm_data: bytes) -> None:
         """Append PCM16 raw audio data to the session's WAV file."""
@@ -114,15 +123,21 @@ class SessionStore:
             self._wav_file.setframerate(config.audio_sample_rate)
 
         self._wav_file.writeframes(pcm_data)
+        # Mono 16-bit, so two bytes per frame. Counted here rather than read back from the
+        # WAV header, which is only correct once the file is closed.
+        self._frames_written += len(pcm_data) // 2
         # Flush the underlying file to disk so it updates in real-time
         if hasattr(self._wav_file, "_file"):
             self._wav_file._file.flush()
 
     def close_audio(self) -> None:
-        """Close the WAV file, finalizing its header."""
+        """Close the WAV file, finalizing its header, and persist the final duration."""
         if self._wav_file:
             self._wav_file.close()
             self._wav_file = None
+            # The previous _flush() ran on the last word; any audio after it (including the
+            # trailing silence) is only counted now, so rewrite info.json with the real duration.
+            self._flush()
 
     # ------------------------------------------------------------------
 
@@ -132,9 +147,9 @@ class SessionStore:
         chapter_number: int,
         verse_number: int,
         word_number: int,
-        word_text: str,
+        expected_text: str,
         status: str,
-        score: float,
+        total_score: float,
         start_time: float,
         end_time: float,
         detected_text: str = "",
@@ -148,11 +163,11 @@ class SessionStore:
             "chapter_number": chapter_number,
             "verse_number": verse_number,
             "word_number": word_number,
-            "word_text": word_text,
-            # What the recognizer heard, as opposed to word_text which is the reference.
+            "expected_text": expected_text,
+            # What the recognizer heard, as opposed to expected_text which is the reference.
             "detected_text": detected_text,
             "status": status,
-            "score": round(score, 3),
+            "total_score": round(total_score, 3),
             "start_time": round(start_time * 1000),
             "end_time": round(end_time * 1000),
         })
@@ -167,6 +182,7 @@ class SessionStore:
             "type": self.mode,
             "narration_id": self.narration_id,
             "score_threshold": self.score_threshold,
+            "duration": self.duration,
             "start_chapter_number": self.start_chapter_number,
             "start_verse_number": self.start_verse_number,
             "end_chapter_number": self.end_chapter_number,

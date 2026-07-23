@@ -74,3 +74,46 @@ export interface SessionPlayback {
     timeline: SessionTimelineEntry[];
     stats: SessionStats;
 }
+
+// --- Recorded session handoff (`session_ended` socket event) -----------------------------
+
+/** One spoken word in a finished recording, as stored in the session's info.json. */
+export interface SessionInfoWord {
+    chapter_number: number;
+    verse_number: number;
+    word_number: number;
+    /** The reference text for this word. */
+    expected_text: string;
+    /** What the recognizer heard. */
+    detected_text: string;
+    /** "skipped" is never persisted — a skipped word has no audio to record. */
+    status: "correct" | "incorrect";
+    total_score: number;
+    /** Milliseconds relative to the start of the recording. */
+    start_time: number;
+    end_time: number;
+}
+
+/**
+ * Payload of the `session_ended` event: the session's info.json flattened, plus the audio
+ * URL. Emitted once per *recorded* session, and only after the server has closed the WAV.
+ *
+ * Receiving it is the signal that `url` is safe to fetch: before the file is closed its
+ * RIFF length fields are still placeholders, so the audio reports an infinite duration and
+ * cannot be seeked. Sessions started with `record: false` never emit it.
+ */
+export interface SessionEnded {
+    id: string;
+    type: "word_by_word" | "continuous";
+    narration_id: number;
+    score_threshold: number | null;
+    /** Length of the recording, in milliseconds. */
+    duration: number;
+    start_chapter_number: number | null;
+    start_verse_number: number | null;
+    end_chapter_number: number | null;
+    end_verse_number: number | null;
+    /** Absolute URL of the session audio (WAV). Supports range requests. */
+    url: string;
+    words: SessionInfoWord[];
+}

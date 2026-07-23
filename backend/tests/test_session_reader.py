@@ -32,8 +32,8 @@ def _entry(chapter, verse, word, status="correct", score=1.0, start=0, end=500,
            detected="heard"):
     return {
         "chapter_number": chapter, "verse_number": verse, "word_number": word,
-        "word_text": f"w{word}", "detected_text": detected, "status": status,
-        "score": score, "start_time": start, "end_time": end,
+        "expected_text": f"w{word}", "detected_text": detected, "status": status,
+        "total_score": score, "start_time": start, "end_time": end,
     }
 
 

@@ -4,9 +4,10 @@ import { VerseDisplay } from "./components/VerseDisplay";
 import { DetectedWordToast } from "./components/DetectedWordToast";
 import { useSessionStore } from "./stores/session";
 import { socket } from "./lib/socket";
+import type { SessionEnded } from "./types";
 
 export default function App() {
-  const { sessionStatus, addWordResult, words, setCurrentWordIndex, setLastSessionId } = useSessionStore();
+  const { sessionStatus, addWordResult, words, setCurrentWordIndex, setLastSession } = useSessionStore();
 
   // Socket event listeners
   useEffect(() => {
@@ -54,13 +55,25 @@ export default function App() {
       // Detection failed — system keeps listening for next utterance
     };
 
-    // Remember the id only when the backend actually persisted the session; there is
-    // nothing to play back otherwise.
-    const onSessionStarted = (data: { id?: string; record?: boolean }) => {
-      setLastSessionId(data?.record && data.id ? data.id : null);
+    // A new session invalidates any previous recording link.
+    const onSessionStarted = () => {
+      setLastSession(null);
+    };
+
+    // Recorded sessions only (record: true), and only after the server has closed the WAV.
+    // Waiting for this — rather than linking to the id from session_started — is what keeps
+    // the UI from offering playback of a file that is still being written.
+    const onSessionEnded = (data: SessionEnded) => {
+      console.log(
+        "session_ended — id:", data.id,
+        "| duration:", data.duration, "ms",
+        "| words:", data.words?.length ?? 0
+      );
+      setLastSession(data);
     };
 
     socket.on("session_started", onSessionStarted);
+    socket.on("session_ended", onSessionEnded);
     socket.on("word_result", onWordResult);
     socket.on("session_stopped", onSessionComplete);
     socket.on("timeout", onTimeout);
@@ -70,6 +83,7 @@ export default function App() {
 
     return () => {
       socket.off("session_started", onSessionStarted);
+      socket.off("session_ended", onSessionEnded);
       socket.off("word_result", onWordResult);
       socket.off("session_stopped", onSessionComplete);
       socket.off("timeout", onTimeout);
@@ -77,7 +91,7 @@ export default function App() {
       socket.off("verse_detected", onVerseDetected);
       socket.off("verse_detection_failed", onVerseDetectionFailed);
     };
-  }, [words, addWordResult, setCurrentWordIndex, setLastSessionId]);
+  }, [words, addWordResult, setCurrentWordIndex, setLastSession]);
 
   return (
     <div className="min-h-screen pb-40 sm:pb-24">

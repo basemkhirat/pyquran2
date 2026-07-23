@@ -112,6 +112,9 @@ class Config:
     # Where recorded sessions live ({dir}/{uuid}/info.json + recording.wav). Configurable so
     # deployments can point it at durable storage (e.g. a Modal Volume mounted at /data).
     sessions_dir: str = os.getenv("SESSIONS_DIR", "./data/sessions")
+    # Public origin used to build absolute URLs in socket payloads (e.g. https://api.example.com).
+    # When unset, the origin is derived from the client's handshake headers instead.
+    public_base_url: str = os.getenv("PUBLIC_BASE_URL", "")
 
     def __post_init__(self) -> None:
         """Resolve relative paths so they work when cwd is not project root (e.g. Modal)."""

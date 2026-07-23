@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Word, WordResult } from "../types";
+import type { SessionEnded, Word, WordResult } from "../types";
 
 export type SessionStatus = "idle" | "recording" | "processing" | "complete";
 
@@ -28,8 +28,10 @@ interface SessionState {
     scoreThreshold: number;
     sessionMode: SessionMode;
     record: boolean;
-    /** Id of the most recent *recorded* session, so the UI can link to its playback page. */
-    lastSessionId: string | null;
+    /** The most recent *finished* recording, from the `session_ended` event, so the UI can
+     *  link to its playback page. Set only once the server has closed the WAV — linking on
+     *  the id from `session_started` would offer playback of a file still being written. */
+    lastSession: SessionEnded | null;
 
     setSelectedRange: (range: SelectedRange) => void;
     setSessionActive: (active: boolean) => void;
@@ -37,7 +39,7 @@ interface SessionState {
     setScoreThreshold: (value: number) => void;
     setSessionMode: (mode: SessionMode) => void;
     setRecord: (value: boolean) => void;
-    setLastSessionId: (id: string | null) => void;
+    setLastSession: (session: SessionEnded | null) => void;
     setWords: (words: Word[]) => void;
     setCurrentWordIndex: (index: number) => void;
     addWordResult: (index: number, result: WordResult) => void;
@@ -61,7 +63,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     sessionMode: "word_by_word",
     // Whether the backend persists this session's audio + results; off by default.
     record: false,
-    lastSessionId: null,
+    lastSession: null,
 
     setSelectedRange: (range) => set({ selectedRange: range }),
     setSessionActive: (active) => set({ isSessionActive: active }),
@@ -69,7 +71,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     setScoreThreshold: (value) => set({ scoreThreshold: Math.min(1, Math.max(0, value)) }),
     setSessionMode: (mode) => set({ sessionMode: mode }),
     setRecord: (value) => set({ record: value }),
-    setLastSessionId: (id) => set({ lastSessionId: id }),
+    setLastSession: (session) => set({ lastSession: session }),
     setWords: (words) => set({ words, currentWordIndex: 0, wordResults: {} }),
     setCurrentWordIndex: (index) => set({ currentWordIndex: index }),
     addWordResult: (index, result) =>
@@ -99,7 +101,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             wordResults: {},
             sessionStatus: "idle",
             isSessionActive: false,
-            lastSessionId: null,
+            lastSession: null,
         }),
 
     getCorrectCount: () => {

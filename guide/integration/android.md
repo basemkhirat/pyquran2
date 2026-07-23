@@ -247,6 +247,10 @@ interface RecitationSessionListener {
     fun onWordResult(result: WordResult)
     fun onSessionStopped()
     fun onSessionError(reason: String)
+
+    /** Recorded sessions only (`record: true`) — see the `session_ended` event.
+     *  Default no-op, so it is optional to implement. */
+    fun onRecordingReady(recordingUrl: String, durationMs: Long, words: JSONArray) {}
 }
 
 class RecitationSession(context: Context) {
@@ -307,6 +311,17 @@ class RecitationSession(context: Context) {
             isSessionActive = false
             audioRecorder.stopRecording()
             listener?.onSessionStopped()
+        }
+
+        // Recorded sessions only. Arrives after session_stopped, once the server has
+        // closed the WAV — don't fetch the recording before this.
+        socket.on("session_ended") { args ->
+            val data = args.firstOrNull() as? JSONObject ?: return@on
+            listener?.onRecordingReady(
+                recordingUrl = data.getString("url"),
+                durationMs = data.optLong("duration"),
+                words = data.getJSONArray("words")
+            )
         }
         
         socket.on("session_error") { args ->

@@ -239,6 +239,15 @@ protocol RecitationSessionDelegate: AnyObject {
     func sessionDidReceiveWordResult(_ result: WordResult)
     func sessionDidStop()
     func sessionDidError(_ reason: String)
+    /// Recorded sessions only (`record: true`) — see the `session_ended` event.
+    /// `durationMs` and each word's start/end times are milliseconds.
+    func sessionDidFinishRecording(url: URL, durationMs: Int, words: [[String: Any]])
+}
+
+// Default no-op, so implementing it is optional: sessions started without
+// `record: true` never receive `session_ended`.
+extension RecitationSessionDelegate {
+    func sessionDidFinishRecording(url: URL, durationMs: Int, words: [[String: Any]]) {}
 }
 
 class RecitationSession {
@@ -301,6 +310,19 @@ class RecitationSession {
             self?.isSessionActive = false
             self?.audioRecorder.stopRecording()
             self?.delegate?.sessionDidStop()
+        }
+
+        // Recorded sessions only. Arrives after session_stopped, once the server has
+        // closed the WAV — don't fetch the recording before this.
+        socket.on("session_ended") { [weak self] data, _ in
+            guard let dict = data.first as? [String: Any],
+                  let urlString = dict["url"] as? String,
+                  let url = URL(string: urlString) else {
+                return
+            }
+            let durationMs = dict["duration"] as? Int ?? 0
+            let words = dict["words"] as? [[String: Any]] ?? []
+            self?.delegate?.sessionDidFinishRecording(url: url, durationMs: durationMs, words: words)
         }
         
         socket.on("session_error") { [weak self] data, _ in

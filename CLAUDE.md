@@ -79,7 +79,7 @@ FastAPI + python-socketio ASGI app. The Socket.IO server wraps FastAPI and is ex
 - `config.py` — All configuration via env vars with defaults; used everywhere as `from backend.config import config`
 - `quran_data.py` — Loads `assets/narrations/hafs.json`; provides chapter/verse/word lookups
 - `session_reader.py` — Reads recorded sessions back for playback (`GET /api/sessions/{id}`). Merges the stored timeline with `quran_data.get_words_range` so each attempt carries a `display_index` into the word list — resolving the `surah/ayah/word_index` vs `chapter_number/verse_number/word_number` naming split server-side. Also infers the verse range for sessions recorded before those fields existed, and computes WAV duration from the file rather than trusting a possibly-unfinalized RIFF header
-- `session_store.py` — Persists per-session info to `data/sessions/{uuid}/info.json` (session metadata — id, type/mode, narration_id, score_threshold, and the recited range as `start_chapter_number`/`start_verse_number`/`end_chapter_number`/`end_verse_number` — plus a `words` array, each word with the reference text (`word_text`), what the recognizer heard (`detected_text`), and `start_time`/`end_time` in ms relative to `recording.wav`) plus the full-session audio `recording.wav`; driven by a background writer task in `main.py`
+- `session_store.py` — Persists per-session info to `data/sessions/{uuid}/info.json` (session metadata — id, type/mode, narration_id, score_threshold, the recorded `duration` in ms, and the recited range as `start_chapter_number`/`start_verse_number`/`end_chapter_number`/`end_verse_number` — plus a `words` array, each word with the reference text (`expected_text`), what the recognizer heard (`detected_text`), and `start_time`/`end_time` in ms relative to `recording.wav`) plus the full-session audio `recording.wav`; driven by a background writer task in `main.py`
 
 ### Frontend (`frontend/src/`)
 
@@ -103,14 +103,14 @@ React 19 + TypeScript + Zustand + Socket.IO client, with `react-router-dom` rout
 No SQL database. All persistence is file-based:
 - **Quran text**: `assets/narrations/hafs.json` — reference text with emlaei/uthmani variants
 - **Whisper model**: `models/whisper-quran-v1/` — Hugging Face checkpoint (local)
-- **Sessions**: `data/sessions/{uuid}/` — `info.json` (session metadata + a `words` array; each confirmed spoken word with its reference text, the recognizer's `detected_text`, and WAV-relative start/end times in ms) + `recording.wav` (one WAV per session). Location is `SESSIONS_DIR`; on Modal it is a mounted Volume, since the container filesystem is ephemeral. Note the `words` array is **sparse** (skipped words are never written) and **not unique** (a word retried in `word_by_word` mode is recorded once per attempt)
+- **Sessions**: `data/sessions/{uuid}/` — `info.json` (session metadata including the recording `duration`, plus a `words` array; each confirmed spoken word with its reference text, the recognizer's `detected_text`, and WAV-relative start/end times — all times in ms) + `recording.wav` (one WAV per session). Location is `SESSIONS_DIR`; on Modal it is a mounted Volume, since the container filesystem is ephemeral. Note the `words` array is **sparse** (skipped words are never written) and **not unique** (a word retried in `word_by_word` mode is recorded once per attempt)
 
 ### REST Endpoints
 
 `GET /api/chapters`, `GET /api/words`, `GET /api/verse-count`, `GET /api/auth-config`, `POST /api/login`, plus session playback:
 
 - `GET /api/sessions/{id}` — merged playback payload: metadata, the verse range as display words, and the timeline with each attempt's `display_index`, status, score and ms offsets
-- `GET /api/sessions/{id}/recording` — the session WAV via `FileResponse`, which supports Range/206 so `<audio>` can seek
+- `GET /api/sessions/{id}/recording` (also `…/recording.wav` — same file; the `.wav` form is what `session_ended` advertises) — the session WAV via `FileResponse`, which supports Range/206 so `<audio>` can seek
 
 Both return 404 for unknown, malformed or unreadable ids alike, so the id space cannot be probed. Like every other REST endpoint, they are unauthenticated.
 
@@ -122,7 +122,11 @@ Client → Server: `start_session`, `audio_chunk` (binary PCM16), `skip_word`, `
 
 `session_started` echoes back `{id, record}` so clients can confirm the resolved recording decision. The session `id` is always generated, even when nothing is persisted.
 
-Server → Client: `session_started`, `word_result`, `session_stopped`, `session_error`, `timeout`, `verse_detected`, `verse_detection_failed`
+Server → Client: `session_started`, `word_result`, `session_stopped`, `session_ended`, `session_error`, `timeout`, `verse_detected`, `verse_detection_failed`
+
+Ending a session goes through `_end_session` in `main.py`, which is idempotent — `session_stopped` is emitted **exactly once** per session whichever path ends it (words exhausted, last word skipped, explicit `stop_session`). It goes out *before* the recording is flushed, so the client's UI signal is never delayed by disk I/O.
+
+`session_ended` follows only for a recorded session (`record=true`), and only after the store is closed and awaited. The WAV's RIFF length fields are only finalized by `SessionStore.close_audio()`, so advertising the URL any earlier hands the client a file whose duration reads as `Infinity` and whose seeking is broken. Payload: the raw `info.json` contents flattened onto the event (`id`, `type`, `narration_id`, `score_threshold`, `duration`, the verse range, and `words`) plus `url` — the absolute recording URL (`PUBLIC_BASE_URL` when set, otherwise derived from the client's handshake headers, preferring `X-Forwarded-*`). `duration` is written by `SessionStore.close_audio()`, which re-flushes `info.json` so the value covers audio recorded after the last word.
 
 Authentication: optional `SOCKET_AUTH_API_KEY` env var; frontend sends it as `auth.api_key` on handshake.
 
@@ -143,6 +147,7 @@ Copy `.env.example` to `.env` in the project root. Key vars:
 | `APP_PASSWORD` | Optional password gate for the frontend, validated server-side via `POST /api/login` (empty = disabled) |
 | `SAVE_SESSION_DATA` | Fallback for `start_session`'s `record` field when the client omits it; persists session JSON/WAV to disk (default: `false`) |
 | `SESSIONS_DIR` | Where recorded sessions are stored (default: `./data/sessions`; `/data/sessions` on Modal) |
+| `PUBLIC_BASE_URL` | Public origin for absolute URLs in socket payloads (e.g. `session_ended`'s `url`). Empty = derive it from the client's handshake headers |
 
 Frontend: `frontend/.env` with `VITE_BACKEND_URL` and `VITE_SOCKET_API_KEY`.
 
