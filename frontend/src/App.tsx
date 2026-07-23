@@ -60,16 +60,18 @@ export default function App() {
       setLastSession(null);
     };
 
-    // Recorded sessions only (record: true), and only after the server has closed the WAV.
-    // Waiting for this — rather than linking to the id from session_started — is what keeps
-    // the UI from offering playback of a file that is still being written.
+    // Fires for every session once the server has wrapped it up. `url` is null when the
+    // session wasn't recorded (record: false) — there's nothing to play back then, so only
+    // a recorded session enables the playback link. Waiting for this event (rather than the
+    // id from session_started) is what keeps us from linking to a still-being-written file.
     const onSessionEnded = (data: SessionEnded) => {
       console.log(
         "session_ended — id:", data.id,
         "| duration:", data.duration, "ms",
-        "| words:", data.words?.length ?? 0
+        "| words:", data.words?.length ?? 0,
+        "| recorded:", data.url != null
       );
-      setLastSession(data);
+      setLastSession(data.url ? data : null);
     };
 
     socket.on("session_started", onSessionStarted);

@@ -171,13 +171,37 @@ async def _finalize_store(session: Dict[str, Any]) -> Optional[SessionStore]:
     return store
 
 
+def _session_info(session: Dict[str, Any]) -> Dict[str, Any]:
+    """The session's info.json payload, built from in-memory state.
+
+    Works whether or not the session was recorded — a non-recorded session has no info.json
+    on disk, but the same fields (metadata, duration, the spoken words) are tracked in the
+    session dict. duration is derived from the sample clock, so it matches the WAV length
+    when recorded. Mirrors what SessionStore writes, minus the recording itself.
+    """
+    rate = config.audio_sample_rate or 1
+    return {
+        "id": session.get("id"),
+        "type": session.get("mode", "word_by_word"),
+        "narration_id": 1,
+        "score_threshold": session.get("score_threshold"),
+        "duration": round(session.get("total_samples", 0) / rate * 1000),
+        "start_chapter_number": session.get("start_chapter"),
+        "start_verse_number": session.get("start_verse"),
+        "end_chapter_number": session.get("end_chapter"),
+        "end_verse_number": session.get("end_verse"),
+        "words": session.get("result_words", []),
+    }
+
+
 async def _end_session(sid: str, session: Dict[str, Any]) -> None:
     """End a session exactly once: emit session_stopped, finalize, then session_ended.
 
     session_stopped goes out first so the client's UI signal is never delayed by the disk
-    flush. session_ended follows only for a recorded session, and only after the store is
-    closed — the WAV header must be finalized before its URL is advertised, otherwise the
-    client reads stale RIFF lengths (Infinity duration, broken seeking).
+    flush. session_ended always follows (built from in-memory session state), but only after
+    the store is closed — the WAV header must be finalized before its URL is advertised, or
+    the client reads stale RIFF lengths (Infinity duration, broken seeking). For a session
+    that was not recorded, the payload is the same shape with `url` set to null.
     """
     if session.get("ended"):
         return
@@ -193,18 +217,13 @@ async def _end_session(sid: str, session: Dict[str, Any]) -> None:
 
     await sio.emit("session_stopped", {}, room=sid)
 
+    # Recorded or not, hand the client the whole session (info.json props + words) in one
+    # event, so no follow-up request is needed. `url` points at the WAV only when recorded.
     store = await _finalize_store(session)
-    if store is None:
-        return
-
-    session_id = store.session_id
-    # The payload is info.json itself (including the recorded `duration`) plus the absolute
-    # audio URL, so a client gets the whole session in one event with no follow-up request.
-    info = session_reader.load_info(session_id) or {"id": session_id}
-    await sio.emit("session_ended", {
-        **info,
-        "url": _absolute_url(session, f"/api/sessions/{session_id}/recording.wav"),
-    }, room=sid)
+    url = None
+    if store is not None and session.get("id"):
+        url = _absolute_url(session, f"/api/sessions/{session['id']}/recording.wav")
+    await sio.emit("session_ended", {**_session_info(session), "url": url}, room=sid)
 
 
 @app.on_event("startup")
@@ -324,6 +343,8 @@ async def connect(sid, environ, auth):
         "timeline_cursor_sec": None,  # fallback per-word timing cursor (seconds into the WAV)
         "ended": False,  # guards session_stopped/session_ended to one emit per session
         "origin": _origin_from_environ(environ),  # for absolute URLs in session_ended
+        "id": None,  # generated in start_session; kept here so session_ended has it
+        "result_words": [],  # confirmed spoken words (info.json shape), for session_ended
     }
 
 
@@ -361,6 +382,7 @@ async def start_session(sid, data):
     session["vad"].reset()
     session["total_samples"] = 0
     session["timeline_cursor_sec"] = None
+    session["result_words"] = []
     session["streaming_start_idx"] = 0
     session["last_interim_index"] = None
     session["start_chapter"] = start_chapter
@@ -418,6 +440,7 @@ async def start_session(sid, data):
 
     # Session id is always generated; the optional store persists data only when `record`
     session_id = str(uuid.uuid4())
+    session["id"] = session_id
     session["store"] = None
     session["store_queue"] = None
     session["store_task"] = None
@@ -455,12 +478,14 @@ async def audio_chunk(sid, data):
     if not session or not session["words"]:
         return
 
-    # Append to session recording in background (non-blocking) and advance the session
-    # sample clock in lockstep, so total_samples == frames written to recording.wav.
+    # Advance the session sample clock for every chunk — it drives per-word timing and the
+    # session duration, both of which session_ended reports whether or not we record. When
+    # recording it stays in lockstep with the WAV (fed the same chunks), so
+    # total_samples == frames written to recording.wav.
+    session["total_samples"] = session.get("total_samples", 0) + len(data) // 2
     queue = session.get("store_queue")
     if queue is not None:
         queue.put_nowait(("audio", data))
-        session["total_samples"] = session.get("total_samples", 0) + len(data) // 2
 
     idx = session["current_index"]
     if idx >= len(session["words"]):
@@ -987,40 +1012,51 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             # Confirmed word: advance index
             await sio.emit("word_result", payload, room=sid)
 
-            # Persist confirmed spoken word (correct/incorrect) with its time span in
-            # recording.wav. Primary timing from wav2vec2 CTC offsets; proportional
-            # fallback (split the segment span by text length) when no offset is available.
+            # Time the confirmed word against the session audio: primary from wav2vec2 CTC
+            # offsets, fallback a proportional split of the segment span. Done for every
+            # session (recorded or not) so session_ended can carry the word timeline either way.
+            ac_off = (
+                acoustic_offsets[words_processed]
+                if config.enable_acoustic_score and words_processed < len(acoustic_offsets)
+                else None
+            )
+            if ac_off is not None:
+                w_start = seg_start_sec + ac_off[0]
+                w_end = seg_start_sec + ac_off[1]
+            else:
+                remaining_chars = sum(len(w) for w in transcribed_words[i:]) or 1
+                frac = (len(t_word) or 1) / remaining_chars
+                w_start = cursor_sec
+                w_end = cursor_sec + (seg_end_sec - cursor_sec) * frac
+            # Keep entries monotonic and within the segment.
+            w_start = min(max(w_start, cursor_sec), seg_end_sec)
+            w_end = min(max(w_end, w_start), seg_end_sec)
+            cursor_sec = w_end
+
+            word_record = {
+                "chapter_number": word["surah"],
+                "verse_number": word["ayah"],
+                "word_number": word["word_index"],
+                "expected_text": word["uthmani_text"],
+                # What the recognizer actually heard, so playback can show it back.
+                "detected_text": payload["detected_text"],
+                "status": status,
+                "total_score": scores["total_score"],
+                "start_time": w_start,
+                "end_time": w_end,
+            }
+            # In-memory timeline for session_ended, in info.json shape (ms + rounded score).
+            # Matches what SessionStore writes to disk, so the event agrees with the recording.
+            session["result_words"].append({
+                **word_record,
+                "total_score": round(scores["total_score"], 3),
+                "start_time": round(w_start * 1000),
+                "end_time": round(w_end * 1000),
+            })
+            # Persist to disk only when recording (SessionStore converts seconds -> ms).
             queue = session.get("store_queue")
             if queue is not None:
-                ac_off = (
-                    acoustic_offsets[words_processed]
-                    if config.enable_acoustic_score and words_processed < len(acoustic_offsets)
-                    else None
-                )
-                if ac_off is not None:
-                    w_start = seg_start_sec + ac_off[0]
-                    w_end = seg_start_sec + ac_off[1]
-                else:
-                    remaining_chars = sum(len(w) for w in transcribed_words[i:]) or 1
-                    frac = (len(t_word) or 1) / remaining_chars
-                    w_start = cursor_sec
-                    w_end = cursor_sec + (seg_end_sec - cursor_sec) * frac
-                # Keep entries monotonic and within the segment.
-                w_start = min(max(w_start, cursor_sec), seg_end_sec)
-                w_end = min(max(w_end, w_start), seg_end_sec)
-                cursor_sec = w_end
-                queue.put_nowait(("word", {
-                    "chapter_number": word["surah"],
-                    "verse_number": word["ayah"],
-                    "word_number": word["word_index"],
-                    "expected_text": word["uthmani_text"],
-                    # What the recognizer actually heard, so playback can show it back.
-                    "detected_text": payload["detected_text"],
-                    "status": status,
-                    "total_score": scores["total_score"],
-                    "start_time": w_start,
-                    "end_time": w_end,
-                }))
+                queue.put_nowait(("word", word_record))
 
             if scorer.should_advance(status, session.get("mode", "word_by_word")):
                 idx += 1

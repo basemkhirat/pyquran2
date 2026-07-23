@@ -227,7 +227,7 @@ The server:
 2. Processes any pending speech segment
 3. May emit final [`word_result`](/events/server-events#word-result) event(s)
 4. Emits [`session_stopped`](/events/server-events#session-stopped)
-5. For a recorded session (`record: true`), closes the audio file and then emits [`session_ended`](/events/server-events#session-ended) with the recording URL and per-word results
+5. Emits [`session_ended`](/events/server-events#session-ended) with the session info and per-word results; for a recorded session (`record: true`) it first closes the audio file and includes its `url` (otherwise `url` is `null`)
 
 ### Notes
 

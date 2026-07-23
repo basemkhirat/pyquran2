@@ -317,6 +317,9 @@ class RecitationSession(context: Context) {
         // closed the WAV — don't fetch the recording before this.
         socket.on("session_ended") { args ->
             val data = args.firstOrNull() as? JSONObject ?: return@on
+            // Every session emits this; url is null when it wasn't recorded (nothing to
+            // play back), so only fire the recording callback when a url is present.
+            if (data.isNull("url")) return@on
             listener?.onRecordingReady(
                 recordingUrl = data.getString("url"),
                 durationMs = data.optLong("duration"),

@@ -31,10 +31,8 @@ sequenceDiagram
 
     Note over App: Stop audio capture
 
-    opt record: true
-        Note over Server: Close + finalize recording.wav
-        Server-->>App: session_ended({id, type, duration, url, words, ...})
-    end
+    Note over Server: If recorded, close + finalize recording.wav
+    Server-->>App: session_ended({id, type, duration, url, words, ...})
 ```
 
 ## Session with Skip

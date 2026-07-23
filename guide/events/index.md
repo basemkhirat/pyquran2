@@ -26,7 +26,7 @@ Events your app receives from the server:
 | [`verse_detection_failed`](/events/server-events#verse-detection-failed) | Start verse not recognized | Empty object |
 | [`word_result`](/events/server-events#word-result) | Recognition result for a word | Word details and status |
 | [`session_stopped`](/events/server-events#session-stopped) | Session has ended | Empty object |
-| [`session_ended`](/events/server-events#session-ended) | Recording is ready (recorded sessions only) | Session info + duration, url, words |
+| [`session_ended`](/events/server-events#session-ended) | Session finished (every session; `url` null if not recorded) | Session info + duration, url, words |
 | [`session_error`](/events/server-events#session-error) | An error occurred | Error reason |
 
 ## Typical Flow
@@ -49,9 +49,7 @@ sequenceDiagram
 
     App->>Server: stop_session
     Server-->>App: session_stopped
-    opt record: true
-        Server-->>App: session_ended (url + duration + results)
-    end
+    Server-->>App: session_ended (results; url when recorded, else null)
 ```
 
 ## Event Handling Pattern
@@ -63,7 +61,7 @@ sequenceDiagram
 socket.on("session_started", () => { /* start streaming */ });
 socket.on("word_result", (data) => { /* update UI */ });
 socket.on("session_stopped", () => { /* cleanup */ });
-socket.on("session_ended", (data) => { /* recorded only: audio URL + results */ });
+socket.on("session_ended", (data) => { /* every session; data.url is null if not recorded */ });
 socket.on("session_error", (data) => { /* show error */ });
 
 // Emit events
@@ -86,7 +84,7 @@ socket.emit("skip_word");
 socket.on("session_started") { data, ack in /* start streaming */ }
 socket.on("word_result") { data, ack in /* update UI */ }
 socket.on("session_stopped") { data, ack in /* cleanup */ }
-socket.on("session_ended") { data, ack in /* recorded only: audio URL + results */ }
+socket.on("session_ended") { data, ack in /* every session; url null if not recorded */ }
 socket.on("session_error") { data, ack in /* show error */ }
 
 // Emit events
@@ -109,7 +107,7 @@ socket.emit("skip_word")
 socket.on("session_started") { /* start streaming */ }
 socket.on("word_result") { args -> /* update UI */ }
 socket.on("session_stopped") { /* cleanup */ }
-socket.on("session_ended") { args -> /* recorded only: audio URL + results */ }
+socket.on("session_ended") { args -> /* every session; url null if not recorded */ }
 socket.on("session_error") { args -> /* show error */ }
 
 // Emit events

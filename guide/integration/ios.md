@@ -315,6 +315,8 @@ class RecitationSession {
         // Recorded sessions only. Arrives after session_stopped, once the server has
         // closed the WAV — don't fetch the recording before this.
         socket.on("session_ended") { [weak self] data, _ in
+            // Every session emits this; url is null when it wasn't recorded — the guard then
+            // skips the recording callback (nothing to play back).
             guard let dict = data.first as? [String: Any],
                   let urlString = dict["url"] as? String,
                   let url = URL(string: urlString) else {

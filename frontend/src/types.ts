@@ -113,7 +113,8 @@ export interface SessionEnded {
     start_verse_number: number | null;
     end_chapter_number: number | null;
     end_verse_number: number | null;
-    /** Absolute URL of the session audio (WAV). Supports range requests. */
-    url: string;
+    /** Absolute URL of the session audio (WAV), or null when the session wasn't recorded
+     *  (record: false). Supports range requests. */
+    url: string | null;
     words: SessionInfoWord[];
 }
