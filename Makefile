@@ -4,9 +4,18 @@
 backend:
 	venv/bin/uvicorn backend.main:socket_app --reload --host 0.0.0.0 --port 8000
 
-# Create venv and install backend deps (python3 required). Run once before 'make backend'.
+# Create venv and install backend deps. Run once before 'make backend'.
+# Needs Python 3.10+: torch >= 2.9 publishes no wheels for 3.9, and pip's failure
+# there is a wall of resolver output that never names the version as the cause.
+# Override the interpreter if 'python3' is older: make setup-backend PYTHON=python3.12
+PYTHON ?= python3
+
 setup-backend:
-	python3 -m venv venv
+	@$(PYTHON) -c 'import sys; sys.exit(sys.version_info < (3, 10))' || { \
+		echo "Error: $(PYTHON) is $$($(PYTHON) -V 2>&1); this project needs Python 3.10+."; \
+		echo "  brew install python@3.12 && make setup-backend PYTHON=python3.12"; \
+		exit 1; }
+	$(PYTHON) -m venv venv
 	venv/bin/pip install -r requirements.txt
 
 # Start the Vite dev server (run from project root; install deps with: cd frontend && npm install)
