@@ -2,7 +2,7 @@
 
 # Start the FastAPI + Socket.IO backend. Run 'make setup-backend' once if venv doesn't exist.
 backend:
-	venv/bin/uvicorn backend.main:socket_app --reload --host 0.0.0.0 --port 8000
+	venv/bin/uvicorn backend.main:socket_app --reload --host 0.0.0.0 --port 8001
 
 # Create venv and install backend deps. Run once before 'make backend'.
 # Needs Python 3.10+: torch >= 2.9 publishes no wheels for 3.9, and pip's failure
