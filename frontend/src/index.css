@@ -110,13 +110,54 @@ body {
   animation: mic-pulse 1.5s infinite;
 }
 
+/* Auth gate — indeterminate progress sweep while the model loads */
+@keyframes auth-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.auth-progress {
+  animation: auth-progress 1.4s ease-in-out infinite;
+}
+
+/* Auth gate — nudge on a rejected password */
+@keyframes auth-shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.auth-shake {
+  animation: auth-shake 0.35s ease-in-out;
+}
+
 /* Respect reduced-motion for the looping attention animations above */
 @media (prefers-reduced-motion: reduce) {
   .word-active,
   .word-interim,
-  .mic-recording {
+  .mic-recording,
+  .auth-progress,
+  .auth-shake {
     animation: none;
   }
+  .auth-progress { width: 100%; }
   .word-active { box-shadow: 0 0 0 2px rgba(212, 168, 83, 0.6); }
   .word-interim { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35); }
 }
