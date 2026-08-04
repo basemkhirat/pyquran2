@@ -12,12 +12,13 @@ export interface WordChipProps {
     dimUnrecited: boolean;
     /** Extra marker beside the score, e.g. the attempt counter on the playback page. */
     badge?: React.ReactNode;
-    /** Pinned for the error sidebar. Opt-in: playback wraps the chip in its own seek button,
-     *  so chip-level selection is only wired up by callers that own the click.
+    /** Pins the word for the error sidebar. Opt-in: playback wraps the chip in its own seek
+     *  button, so chip-level selection is only wired up by callers that own the click.
      *  `onSelect` takes the index so callers can pass one stable function for every chip —
-     *  an inline closure per word would break the memo above. */
+     *  an inline closure per word would break the memo above.
+     *  Selection is not styled on the chip: the sidebar is the indication that a word is
+     *  pinned. */
     index?: number;
-    isSelected?: boolean;
     onSelect?: (index: number) => void;
 }
 
@@ -56,7 +57,6 @@ export const WordChip = memo(function WordChip({
     dimUnrecited,
     badge,
     index,
-    isSelected = false,
     onSelect,
 }: WordChipProps) {
     // Only graded words carry error detail worth inspecting, so only those are selectable.
@@ -83,9 +83,6 @@ export const WordChip = memo(function WordChip({
             className={cn(
                 "relative inline-flex flex-col items-center rounded-xl px-2 py-1.5 transition-all duration-300 sm:px-3 sm:py-2",
                 selectable && "cursor-pointer",
-                // Pinned-selection ring: emerald + static, so it reads apart from the gold
-                // active pulse and the white interim pulse.
-                isSelected && "ring-2 ring-primary/80 ring-offset-2 ring-offset-transparent",
                 dimUnrecited && "opacity-0",
                 !dimUnrecited && !isPast && !isActive && !isInterim && !result && "opacity-40",
                 isActive && !result && !dimUnrecited && "word-active bg-gold/10 border border-gold/40 opacity-100",

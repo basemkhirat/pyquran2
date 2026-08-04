@@ -174,11 +174,10 @@ export function PlaybackVerses({
                                     <WordChip
                                         word={word}
                                         result={result}
-                                        isActive={state.isActive && !isSelected}
+                                        isActive={state.isActive}
                                         isPast={false}
                                         isInterim={false}
                                         dimUnrecited={false}
-                                        isSelected={isSelected}
                                         badge={
                                             state.attemptCount > 1 ? (
                                                 <span

@@ -21,7 +21,6 @@ export function VerseDisplay() {
         wordResults,
         hideUnrecitedWords,
         isSessionActive,
-        selectedWordIndex,
         setSelectedWordIndex,
     } = useSessionStore();
     const activeVerseRef = useRef<HTMLDivElement>(null);
@@ -94,9 +93,6 @@ export function VerseDisplay() {
                             const isInterim = result?.is_interim === true;
                             const notRecitedYet = globalIdx >= currentWordIndex; // current + future
                             const dimUnrecited = hideUnrecitedWords && notRecitedYet && !isInterim;
-                            // Ring only when explicitly pinned, so follow-latest mode doesn't
-                            // trail a moving outline behind the active word.
-                            const isSelected = selectedWordIndex === globalIdx;
 
                             return (
                                 <WordChip
@@ -108,7 +104,6 @@ export function VerseDisplay() {
                                     isInterim={isInterim}
                                     dimUnrecited={dimUnrecited}
                                     index={globalIdx}
-                                    isSelected={isSelected}
                                     onSelect={setSelectedWordIndex}
                                 />
                             );
