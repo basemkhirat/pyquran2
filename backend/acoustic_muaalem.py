@@ -363,7 +363,12 @@ def _attribute_errors(
                 continue
             per_word[i].append(err)
             penalties[i][err.error_type] = penalties[i].get(err.error_type, 0) + ov
-            if err.speech_error_type == "delete":
+            # Only a delete that decoded *nothing* counts as reference characters that produced
+            # no audio, which is what `deleted` means to _is_unrecited. explain_error also
+            # reports a shortened run as a delete carrying a prediction (`ييَ` heard as `يَ`);
+            # that is imprecise recitation, and counting it as silence made spoken words look
+            # unrecited.
+            if err.speech_error_type == "delete" and not err.predicted_ph:
                 deleted[i] += ov
     return per_word, penalties, deleted
 
@@ -384,12 +389,23 @@ def _is_unrecited(errs: Sequence[WordError], deleted: int, span_len: int) -> boo
     so every word not yet reached comes back deleted. Scoring those as 0.0 would paint the
     rest of the verse red on every streaming tick.
 
-    Two conditions, and the first does most of the work: a word the reciter actually attempted
-    picks up a `replace` or `insert` (the model decoded *something* for it), so an all-`delete`
-    word is one no audio was aligned to. The coverage floor then rules out a word that was
-    spoken with a phoneme or two dropped. Callers map True to best_word="" -- the same signal
-    wav2vec2 gives for an unmatched word, which main.py's `last_matched` uses to stop
-    processing at the end of what was actually said.
+    Two conditions: a word the reciter actually attempted picks up a `replace` or `insert` (the
+    model decoded *something* for it), so an all-`delete` word is one no audio was aligned to.
+    The coverage floor then rules out a word that was spoken with a phoneme or two dropped.
+    Callers map True to best_word="" -- the same signal wav2vec2 gives for an unmatched word,
+    which main.py's `last_matched` uses to stop processing at the end of what was actually said.
+
+    `deleted` counts only the deletes that decoded nothing (see _attribute_errors), and that is
+    what makes the coverage floor trustworthy. explain_error also reports a *shortened* run as a
+    delete carrying a prediction -- `ييَ` heard as `يَ` -- which is imprecise recitation, not
+    silence; 40 such errors across the recorded sessions sit on words averaging 0.86. Counting
+    them as silence threw away sound alignments: إِيَّاكَ decoded as `يَااكَ` aligned correctly
+    with two errors and should have scored 0.72, but its coverage read 5/8 instead of 2/8, so the
+    word was called unrecited and handed to the prefix-only rescue, which returned 0.125.
+
+    Note this stays a *proportional* test rather than "any decoded delete means attempted": a
+    word the reciter never reached can still pick up one incidental predicted delete among many
+    empty ones (ٱلْمُسْتَقِيمَ did, 11 of 14 characters deleted), and must stay unrecited.
     """
     if not errs or span_len <= 0:
         return False
@@ -553,7 +569,24 @@ def _score_current_locally(
     raw = _explain(uthmani_text, ref.phonemes, predicted, ref.mappings)
     converted = [_to_word_error(e) for e in raw]
     error_spans = [tuple(e.uthmani_pos) for e in raw]
-    per_word, penalties, deleted = _attribute_errors(converted, error_spans, spans)
+
+    # Inserts are meaningless here and are dropped. `predicted` covers the whole utterance, but
+    # this reference stops at the current word, so everything the reciter went on to say has no
+    # span to align to and comes back as an insert. Position cannot tell those apart from a real
+    # added phoneme: explain_error anchors the overflow to the last mapped reference character,
+    # not past the span (reciting إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ put 12 inserts at
+    # uthmani_pos 0 and 6 of an 8-character إِيَّاكَ and sank it to 0.125). Deletes and replaces
+    # still carry the whole signal this rescue needs — whether the current word was spoken, and
+    # how far off it was. The global path keeps full insert accounting; it has the reference
+    # context to attribute them correctly.
+    kept = [
+        (err, es)
+        for err, es in zip(converted, error_spans)
+        if es[0] != es[1]
+    ]
+    per_word, penalties, deleted = _attribute_errors(
+        [e for e, _ in kept], [s for _, s in kept], spans
+    )
 
     span = spans[current_index]
     span_len = span[1] - span[0]

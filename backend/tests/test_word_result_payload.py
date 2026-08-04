@@ -372,3 +372,56 @@ class TestContinuousCascadeIsBounded:
         _run(session, stub_scores, _only_a_distant_word_matched())
         bound = config.continuous_max_unanchored_words
         assert all(e["word_number"] <= bound for e in session["result_words"])
+
+
+def _pause_before_an_unspoken_word():
+    """Two words recited, then the reciter paused — the next word was never spoken.
+
+    A distant false match still extends the aligner's reach, but the resync guard trims it away,
+    so at the unmatched word there is no later anchor left to justify burning it.
+    """
+    scores = [0.9, 0.9, 0.0, 0.0, 0.0, 0.5]
+    return AcousticResult(
+        scores=list(scores),
+        char_scores=list(scores),
+        diac_scores=list(scores),
+        best_words=["كلمه0", "كلمه1", "", "", "", "كلمه5"],
+        n_decoded=3,
+        offsets=[None] * 6,
+    )
+
+
+class TestUnspokenWordSurvivesAPause:
+    """A final pass with no later anchor must leave the word pending, not confirm it at 0%.
+
+    A final pass that aligned more reference words than its last interim used to count as
+    evidence of a spoken substitution and burn the word anyway. It never was: this branch is
+    only reached for a word that did NOT align, so it contributed nothing to that count.
+
+    In session 185e6594 the reciter paused 1.3s after سَاهُونَ. سَاهُونَ merely finished decoding
+    between the last interim and the final (4 -> 6 aligned), which burned ٱلَّذِينَ before it was
+    spoken. It was then recited in the next segment against a cursor already one word ahead, so
+    ٱلَّذِينَ هُمْ يُرَاءُونَ scored 0.0 / 0.438 / 0.591 instead of 0.972 / 1.000 / 0.955.
+    """
+
+    @pytest.mark.parametrize("model", ["wav2vec2", "muaalem"])
+    def test_the_cursor_stays_on_the_unspoken_word(self, model, stub_scores, emitted):
+        session = _session(model, words=LONG_WORDS)
+        _run(session, stub_scores, _pause_before_an_unspoken_word())
+        assert session["current_index"] == 2
+
+    @pytest.mark.parametrize("model", ["wav2vec2", "muaalem"])
+    def test_it_is_not_written_to_the_timeline(self, model, stub_scores, emitted):
+        """Recording it would claim the reciter reached and failed a word they never said."""
+        session = _session(model, words=LONG_WORDS)
+        _run(session, stub_scores, _pause_before_an_unspoken_word())
+        assert [e["word_number"] for e in session["result_words"]] == [1, 2]
+
+    @pytest.mark.parametrize("model", ["wav2vec2", "muaalem"])
+    def test_it_is_reported_as_still_listening(self, model, stub_scores, emitted):
+        """Interim, so the UI shows a pending chip and the next utterance can still score it."""
+        session = _session(model, words=LONG_WORDS)
+        _run(session, stub_scores, _pause_before_an_unspoken_word())
+        pending = _word_results(emitted)[-1]
+        assert pending["word_number"] == 3
+        assert pending["is_interim"] is True

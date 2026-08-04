@@ -79,7 +79,6 @@ def _session(vad, **overrides):
         "timeline_cursor_sec": 1.5,
         "last_interim_index": 2,
         "last_interim_acoustic": {"score": 0.4},
-        "last_interim_n_decoded": 3,
         "phase": "reciting",
     }
     session.update(overrides)
@@ -135,7 +134,6 @@ def test_utterance_end_still_clears_per_utterance_state(monkeypatch):
     assert session["timeline_cursor_sec"] is None
     assert session["last_interim_index"] is None
     assert session["last_interim_acoustic"] is None
-    assert session["last_interim_n_decoded"] is None
     assert session["streaming_start_idx"] == 4
 
 

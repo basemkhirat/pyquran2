@@ -1,6 +1,10 @@
-"""Small pure regressions for continuous streaming state in backend.main."""
+"""Small pure regressions for continuous streaming state in backend.main.
 
-from backend.main import _new_final_decode_budget, _restore_cached_acoustic_interim
+The decision to burn an unmatched word is covered end-to-end in test_word_result_payload.py
+(TestUnspokenWordSurvivesAPause); should_skip_forward itself is covered in test_scorer.py.
+"""
+
+from backend.main import _restore_cached_acoustic_interim
 
 
 def _session(index=7):
@@ -61,22 +65,3 @@ def test_cache_from_another_word_is_not_reused():
 
     assert restored is False
     assert decoded == [""]
-
-
-def test_one_new_final_decode_confirms_one_unmatched_substitution():
-    session = {"last_interim_n_decoded": 6}
-    assert _new_final_decode_budget(session, final_decoded=7, max_unanchored=2) == 1
-
-
-def test_unchanged_final_decode_does_not_turn_silence_into_a_miss():
-    session = {"last_interim_n_decoded": 6}
-    assert _new_final_decode_budget(session, final_decoded=6, max_unanchored=2) == 0
-
-
-def test_final_decode_evidence_is_capped_by_resync_limit():
-    session = {"last_interim_n_decoded": 3}
-    assert _new_final_decode_budget(session, final_decoded=20, max_unanchored=2) == 2
-
-
-def test_no_interim_baseline_means_no_substitution_evidence():
-    assert _new_final_decode_budget({}, final_decoded=1, max_unanchored=2) == 0

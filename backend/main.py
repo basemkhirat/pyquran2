@@ -101,22 +101,6 @@ def _restore_cached_acoustic_interim(
     return True
 
 
-def _new_final_decode_budget(
-    session: dict, final_decoded: int, max_unanchored: int
-) -> int:
-    """Extra final acoustic units that can confirm unmatched substitutions.
-
-    If the final pass decodes more units than the last interim pass, the extra audio was not
-    silence even when Muaalem cannot align it to the expected word (for example, reciting
-    ``يشعرون`` where ``يعلمون`` is expected). Cap the evidence so an unstable alignment cannot
-    revive the distant-anchor cascade guarded elsewhere.
-    """
-    interim_decoded = session.get("last_interim_n_decoded")
-    if interim_decoded is None:
-        return 0
-    return min(max(0, final_decoded - interim_decoded), max(0, max_unanchored))
-
-
 # --- FastAPI App ---
 app = FastAPI(title="Quran Voice Recognition API")
 app.add_middleware(
@@ -429,7 +413,6 @@ async def connect(sid, environ, auth):
         "streaming_task": None,
         "last_interim_index": None,  # word index of the last interim result
         "last_interim_acoustic": None,  # last matched acoustic fields for final-pass fallback
-        "last_interim_n_decoded": None,  # utterance decode count for final substitution evidence
         "mode": "word_by_word",  # set authoritatively in start_session
         "model": config.acoustic_backend,  # acoustic backend; set authoritatively in start_session
         "record": False,  # set authoritatively in start_session
@@ -480,7 +463,6 @@ async def start_session(sid, data):
     session["streaming_start_idx"] = 0
     session["last_interim_index"] = None
     session["last_interim_acoustic"] = None
-    session["last_interim_n_decoded"] = None
     session["start_chapter"] = start_chapter
     session["start_verse"] = start_verse
     session["end_chapter"] = end_chapter
@@ -651,7 +633,6 @@ async def skip_word(sid, _data=None):
     session["streaming_start_idx"] = session["current_index"]
     session["last_interim_index"] = None
     session["last_interim_acoustic"] = None
-    session["last_interim_n_decoded"] = None
 
     if session["current_index"] >= len(session["words"]):
         await _end_session(sid, session)
@@ -697,7 +678,6 @@ def _finish_utterance(sid: str, session: Dict[str, Any]) -> None:
     session["timeline_cursor_sec"] = None
     session["last_interim_index"] = None
     session["last_interim_acoustic"] = None
-    session["last_interim_n_decoded"] = None
     session["streaming_task"] = None
     session["streaming_start_idx"] = session["current_index"]
 
@@ -1000,22 +980,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             display_arabic(current_word["uthmani_text"]),
         )
 
-    final_unmatched_budget = 0
-    if uses_muaalem and session.get("mode", "word_by_word") == "continuous":
-        if is_final:
-            final_unmatched_budget = _new_final_decode_budget(
-                session,
-                n_decoded_words,
-                config.continuous_max_unanchored_words,
-            )
-            if final_unmatched_budget:
-                logger.info(
-                    "  Muaalem final pass decoded %d new unit(s); using them as substitution evidence",
-                    final_unmatched_budget,
-                )
-        else:
-            session["last_interim_n_decoded"] = n_decoded_words
-
     # When text scoring is disabled, use expected words as transcribed words for acoustic scoring.
     # Bound the span by the alignment itself: process expected words up to and including the last
     # one that got a decoded-token match (acoustic_decoded_full is parallel to the current chunk,
@@ -1189,25 +1153,25 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             # moved past this word without a matching decode. Mark it incorrect (a flagged 0% miss)
             # and advance so scoring keeps up with what they actually recited. A merely-weak later
             # match on an interim decode is treated as the decode still catching up (see helper).
+            #
+            # A later match is the ONLY evidence accepted here. A final pass that aligned more
+            # reference words than its last interim used to count as "evidence of a spoken
+            # substitution", but that was unsound: this branch only runs for a word that did not
+            # align, so it contributed nothing to that count — every extra alignment came from
+            # some *other* word and says nothing about this one. It fired on an ordinary pause:
+            # سَاهُونَ merely finished decoding between the last interim and the final (4 -> 6
+            # aligned words), which burned the following ٱلَّذِينَ before the reciter had spoken
+            # it and shifted every word after it by one (session 185e6594).
             has_later_anchor = scorer.should_skip_forward(
                 session.get("mode", "word_by_word"),
                 acoustic_scores[words_processed + 1:],
                 score_threshold,
                 is_final,
             )
-            # A final pass that decoded more acoustic units than its last interim pass has
-            # direct evidence of additional speech. If it cannot align that unit to the current
-            # expected word, confirm a substitution instead of leaving a permanent interim chip.
-            has_final_substitution = (
-                is_final and not has_later_anchor and final_unmatched_budget > 0
-            )
-            if has_later_anchor or has_final_substitution:
+            if has_later_anchor:
                 logger.info(
-                    "  No acoustic match for '%s' — %s; marking incorrect and advancing",
+                    "  No acoustic match for '%s' — reciter moved on; marking incorrect and advancing",
                     display_arabic(word["uthmani_text"]),
-                    "final pass decoded a spoken substitution"
-                    if has_final_substitution
-                    else "reciter moved on",
                 )
                 missed_payload = {
                     "chapter_number": word["surah"],
@@ -1247,12 +1211,6 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
                 _commit_word(missed_record)
                 idx += 1
                 words_processed += 1
-                if has_final_substitution:
-                    final_unmatched_budget -= 1
-                    # The new final unit ended at this unmatched substitution. Do not inspect
-                    # farther reference words after its evidence has been consumed.
-                    if final_unmatched_budget == 0:
-                        break
                 continue
             # (b) word_by_word mode, or nothing ahead matched (a genuine pause/silence, or the
             # decode still catching up). Stay on the word, but still emit a word_result so the

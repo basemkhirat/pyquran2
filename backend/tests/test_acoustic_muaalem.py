@@ -148,6 +148,44 @@ class TestIsUnrecited:
     def test_clean_word_is_not_unrecited(self):
         assert am._is_unrecited([], deleted=0, span_len=5) is False
 
+    def test_a_shortened_run_does_not_count_toward_the_coverage_floor(self):
+        """The real إِيَّاكَ shape: decoded as يَااكَ, two errors, both nominally deletes.
+
+        Measured spans are 2 chars for delete ءِ->'' and 3 for delete ييَ->'يَ'. Only the first
+        decoded nothing, so coverage is 2/8 — under the floor. Counting both (5/8) called a
+        correctly-aligned word unrecited and sent it to the rescue, which returned 0.125.
+        """
+        errs = [
+            _err(speech="delete", expected_ph="ءِ", predicted_ph=""),
+            _err("tashkeel", speech="delete", expected_ph="ييَ", predicted_ph="يَ"),
+        ]
+        assert am._is_unrecited(errs, deleted=2, span_len=8) is False
+
+    def test_one_decoded_delete_does_not_rescue_a_word_never_reached(self):
+        """ٱلْمُسْتَقِيمَ, measured while the reciter was still on 1:5:1.
+
+        It picked up one incidental `delete مُ->م` among six empty deletes. The rule stays
+        proportional so that single decoded delete cannot make an unreached word look attempted.
+        """
+        errs = [_err(speech="delete", expected_ph=x) for x in ("ل", "س", "تَ", "قِ", "ۦۦ", "مَ")]
+        errs.append(_err(speech="delete", expected_ph="مُ", predicted_ph="م"))
+        assert am._is_unrecited(errs, deleted=9, span_len=14) is True
+
+
+class TestDeletedCoverage:
+    def test_a_delete_that_decoded_nothing_counts(self):
+        _pw, _pen, deleted = am._attribute_errors(
+            [_err(speech="delete", expected_ph="ءِ")], [(0, 2)], [(0, 8)]
+        )
+        assert deleted[0] == 2
+
+    def test_a_delete_that_decoded_something_does_not(self):
+        # A shortened run is imprecise recitation, not reference characters that made no sound.
+        _pw, _pen, deleted = am._attribute_errors(
+            [_err(speech="delete", expected_ph="ييَ", predicted_ph="يَ")], [(2, 5)], [(0, 8)]
+        )
+        assert deleted[0] == 0
+
 
 class TestGhunnahDuration:
     """A shortened ghunnah is a duration matter, so it is moved onto the tajweed axis.
@@ -354,6 +392,48 @@ class TestScoreIntegration:
         assert res.best_words[0] == self.WORDS[0]
         assert res.scores[0] == 0.25
         assert res.errors[0][0].speech_error_type == "replace"
+
+    def test_local_rescue_ignores_the_rest_of_the_utterance(self, monkeypatch):
+        """The trailing decode must not be charged to the word being rescued.
+
+        The local reference stops at the current word, so every phoneme the reciter went on to
+        recite comes back as a zero-width insert. explain_error anchors those to the last mapped
+        reference character rather than past the span, so position cannot tell them from a real
+        added phoneme — reciting إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ put 12 of them inside
+        an 8-character إِيَّاكَ and scored it 0.125.
+        """
+        monkeypatch.setattr(config, "muaalem_context_pad_words", 0)
+        monkeypatch.setattr(config, "muaalem_weight_tajweed", 0.0)
+        monkeypatch.setattr(am, "_qt_verse_words", lambda s, a: tuple(self.WORDS))
+        monkeypatch.setattr(am, "_phonetize", lambda text: _FakeRef())
+        monkeypatch.setattr(am, "_run_muaalem", lambda w, r, sampling_rate: [_FakeOut()])
+
+        class _Raw:
+            def __init__(self, err, span):
+                self.err = err
+                self.uthmani_pos = span
+
+        global_raw = [_Raw(_err(speech="delete"), (0, 5))]
+        # One real replace on the current word, then the next words' phonemes as zero-width
+        # inserts anchored inside its span — the shape explain_error actually produces.
+        local_raw = [_Raw(_err(speech="replace", predicted_ph="wrong"), (0, 5))] + [
+            _Raw(_err(speech="insert", predicted_ph=ph), (3, 3))
+            for ph in ("نَ", "ع", "بُ", "دُ", "وَ", "ي")
+        ]
+        full_text = " ".join(self.WORDS)
+        monkeypatch.setattr(
+            am,
+            "_explain",
+            lambda text, *args: global_raw if text == full_text else local_raw,
+        )
+        monkeypatch.setattr(am, "_to_word_error", lambda r: r.err)
+
+        res = am.MuaalemBackend().score(AUDIO, [], self.EXPECTED, word_meta=self.META)
+
+        # Same score as with no trailing inserts at all: they cost nothing.
+        assert res.scores[0] == 0.25
+        # And they are not reported back as errors on this word.
+        assert [e.speech_error_type for e in res.errors[0]] == ["replace"]
 
     def test_previous_words_are_sliced_off(self, monkeypatch):
         res = self._score(monkeypatch, [], previous=2)
