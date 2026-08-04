@@ -1,21 +1,31 @@
-"""Optional acoustic score via wav2vec2 Quran ASR. Use when config.enable_acoustic_score is True.
+"""Optional acoustic score. Use when config.enable_acoustic_score is True.
 
-Optimizations over baseline:
-- Audio normalization to [-1, 1] before inference
-- Greedy CTC decoding (argmax over the model logits)
-- Best-match word alignment instead of positional alignment
-- Diacritics-aware comparison (the Quran wav2vec2 model outputs tashkeel): the decoded
-  text is scored as a weighted blend of base-letter accuracy (WEIGHT_CHAR) and scored-
-  diacritic accuracy (WEIGHT_DIACRITIC), mirroring the Whisper text scorer.
+Two backends produce the same `AcousticResult` contract. Each session picks one at
+start_session time (falling back to config.acoustic_backend); both can be resident at once:
+
+- "wav2vec2" (default, implemented here) -- greedy CTC decoding to Arabic text, then
+  best-match word alignment. Scored as a weighted blend of base-letter accuracy
+  (WEIGHT_CHAR) and scored-diacritic accuracy (WEIGHT_DIACRITIC), mirroring the Whisper
+  text scorer. Optimizations over baseline: audio normalized to [-1, 1] before inference;
+  diacritics-aware comparison (the Quran wav2vec2 model outputs tashkeel); word offsets
+  recovered from the CTC frames so recorded sessions get real per-word timings.
+- "muaalem" (backend/acoustic_muaalem.py) -- decodes Quran Phonetic Script and derives
+  scores from classified tajweed/tashkeel/normal errors. Produces no word offsets.
+
+Callers go through the module-level facade (load_model / get_acoustic_scores /
+detection_probe / detection_reference), passing the session's model name, and never touch a
+backend directly.
 """
 import logging
 import re
-from dataclasses import dataclass
-from typing import List, Optional, Tuple
+import threading
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from backend.config import config, normalize_sukoon
+from backend.config import ACOUSTIC_BACKENDS, config, normalize_sukoon
 from backend.scorer import compute_char_score, compute_diacritic_score, compute_text_score, strip_diacritics
 from backend.terminal_arabic import display_arabic
 
@@ -47,11 +57,6 @@ def _get_model():
         _model.eval()
         _model.to("cuda" if torch.cuda.is_available() else "cpu")
     return _model, _processor
-
-
-def load_model():
-    """Load the wav2vec2 model (call at server startup to avoid first-request latency)."""
-    _get_model()
 
 
 def _normalize_audio(audio: np.ndarray) -> np.ndarray:
@@ -203,6 +208,43 @@ def _acoustic_score_best(
 
 
 @dataclass
+class TajweedRule:
+    """A tajweed rule the reference expects at some position (name_ar/name_en are localized)."""
+    name_ar: str
+    name_en: str
+    golden_len: Optional[int] = None
+    correctness_type: Optional[str] = None   # "match" | "count"
+
+
+@dataclass
+class WordError:
+    """One pronunciation error attributed to a single expected word.
+
+    Only the muaalem backend produces these; wav2vec2 leaves them empty. Kept as our own
+    type rather than the library's so the attribution logic stays testable without the model.
+    """
+    error_type: str                          # "tajweed" | "tashkeel" | "normal"
+    speech_error_type: str                   # "insert" | "delete" | "replace"
+    expected_ph: str = ""
+    predicted_ph: str = ""
+    expected_len: Optional[int] = None       # for madd length errors
+    predicted_len: Optional[int] = None
+    rules: List[TajweedRule] = field(default_factory=list)
+
+
+@dataclass
+class RecitedUnit:
+    """What the reciter actually produced, in Quran Phonetic Script, for one recitation unit.
+
+    A unit is usually one word, but adjacent words that merge phonetically (idgham, hamzat
+    wasl) share a single unit, so `words` may hold more than one. muaalem only.
+    """
+    ph: str                                  # phonemes the reciter produced for this unit
+    expected_ph: str                         # phonemes the reference expects for this unit
+    words: List[str] = field(default_factory=list)  # uthmani words in the unit (>1 == merged)
+
+
+@dataclass
 class AcousticResult:
     """Per-word acoustic scores for a decoded chunk (all lists parallel to expected words)."""
     scores: List[float]        # blended: WEIGHT_CHAR * char + WEIGHT_DIACRITIC * diacritic
@@ -211,6 +253,10 @@ class AcousticResult:
     best_words: List[str]      # raw decoded word that best-matched each expected word ("" if none)
     n_decoded: int             # number of words the model decoded from the audio
     offsets: List[Optional[Tuple[float, float]]]  # (start_sec, end_sec) per expected word vs the decoded segment; None if unmatched/unavailable
+    # muaalem only; empty for wav2vec2.
+    tajweed_scores: List[float] = field(default_factory=list)
+    errors: List[List[WordError]] = field(default_factory=list)
+    recited: List[Optional[RecitedUnit]] = field(default_factory=list)
 
 
 # Minimum blended similarity for a decoded token to count as a real match during alignment.
@@ -293,7 +339,7 @@ def _align_decoded_to_expected(
     return scores, char_scores, diac_scores, best_words, offsets
 
 
-def get_acoustic_scores(
+def _wav2vec2_scores(
     audio: np.ndarray,
     previous_words: List[Tuple[str, str]],
     expected_words: List[Tuple[str, str]],
@@ -344,3 +390,189 @@ def get_acoustic_scores(
     return AcousticResult(
         scores[k:], char_scores[k:], diac_scores[k:], best_words[k:], n_decoded, offsets[k:]
     )
+
+
+def _normalize_for_verse_match(text: str) -> str:
+    """Normalize for verse comparison: strip tashkeel then out-of-vocab chars."""
+    return _normalize_text(strip_diacritics(text))
+
+
+class AcousticBackend(ABC):
+    """A model that scores recited audio against expected words.
+
+    `detection_probe` / `detection_reference` exist so verse_detection.py stays
+    backend-agnostic: the backend owns *what space the comparison happens in* (Arabic
+    letters vs Quran Phonetic Script) and how the reference window is sized, while
+    verse_detection keeps the threshold / tie / commit policy.
+    """
+
+    #: Name this backend is selected by (matches a member of config.ACOUSTIC_BACKENDS).
+    name: str = ""
+
+    def load(self) -> None:
+        """Load weights ahead of the first request. Default: nothing to do."""
+
+    @abstractmethod
+    def score(
+        self,
+        audio: np.ndarray,
+        previous_words: List[Tuple[str, str]],
+        expected_words: List[Tuple[str, str]],
+        word_meta: Optional[List[Dict[str, Any]]] = None,
+    ) -> AcousticResult:
+        """Score `expected_words` against `audio`. See get_acoustic_scores for the contract."""
+
+    @abstractmethod
+    def detection_probe(self, audio: np.ndarray, words: List[Dict[str, Any]]) -> str:
+        """Decode `audio` into a normalized string to match candidate verses against.
+
+        `words` is the session's full word list. wav2vec2 ignores it; muaalem needs it to
+        build the reference its model call requires (which does not bias what it decodes).
+        """
+
+    @abstractmethod
+    def detection_reference(
+        self, words: List[Dict[str, Any]], start: int, probe: str
+    ) -> str:
+        """Normalized reference starting at `words[start]`, sized to compare against `probe`."""
+
+    @property
+    def verse_detection_threshold(self) -> float:
+        """Cutoff for verse detection in this backend's comparison space."""
+        return config.verse_detection_threshold
+
+    @property
+    def score_threshold(self) -> float:
+        """Default pass/fail cutoff when the client does not send score_threshold."""
+        return config.score_threshold
+
+
+class Wav2Vec2Backend(AcousticBackend):
+    """Greedy CTC over Arabic text (the original, default scorer)."""
+
+    name = "wav2vec2"
+
+    def load(self) -> None:
+        _get_model()
+
+    def score(self, audio, previous_words, expected_words, word_meta=None) -> AcousticResult:
+        return _wav2vec2_scores(audio, previous_words, expected_words)
+
+    def detection_probe(self, audio: np.ndarray, words=None) -> str:
+        # _decode_audio also returns per-word CTC offsets, which verse detection has no use for.
+        text, _offsets = _decode_audio(audio)
+        return _normalize_for_verse_match(text)
+
+    def detection_reference(self, words, start, probe) -> str:
+        # Window by word count: as many reference words as the model decoded, so a longer
+        # utterance running into the next verse contributes trailing distinguishing words.
+        n = len(probe.split())
+        window = words[start : start + n]
+        return _normalize_for_verse_match(" ".join(w["emlaey_text"] for w in window))
+
+
+# Backends are cached per name, so two sessions on different models can run concurrently
+# without either reloading weights. The lock matters because loading happens inside
+# asyncio.to_thread: without it, two sessions selecting the same cold backend would both
+# enter from_pretrained and pay for (and hold) two copies of the weights.
+_backends: Dict[str, AcousticBackend] = {}
+_backend_lock = threading.Lock()
+
+
+def resolve_backend_name(raw: Any) -> str:
+    """Validate a client-supplied model name, falling back to the configured default.
+
+    Never trust the wire value as a model id -- it selects one of a fixed set of backends,
+    each of which sources its own checkpoint from config.
+    """
+    if isinstance(raw, str) and raw.strip() in ACOUSTIC_BACKENDS:
+        return raw.strip()
+    return config.acoustic_backend
+
+
+def get_backend(name: Optional[str] = None) -> AcousticBackend:
+    """The backend called `name` (default: config.acoustic_backend), loading it on first use."""
+    key = resolve_backend_name(name)
+    backend = _backends.get(key)
+    if backend is not None:
+        return backend
+    with _backend_lock:
+        # Re-check: another thread may have constructed it while we waited for the lock.
+        backend = _backends.get(key)
+        if backend is None:
+            if key == "muaalem":
+                # Imported lazily so quran_muaalem is never imported (nor installed) unless
+                # a session actually selects it.
+                from backend.acoustic_muaalem import MuaalemBackend
+
+                backend = MuaalemBackend()
+            else:
+                backend = Wav2Vec2Backend()
+            logger.info("Acoustic backend ready: %s (%s)", key, type(backend).__name__)
+            _backends[key] = backend
+    return backend
+
+
+def _reset_backends() -> None:
+    """Drop every cached backend (tests only -- the registry otherwise leaks across cases)."""
+    with _backend_lock:
+        _backends.clear()
+
+
+def load_model() -> None:
+    """Preload every acoustic backend at server startup.
+
+    Both models are loaded and stay resident, so a session that picks the non-default one
+    doesn't pay a first-request weight download/load. The default goes first and its failure
+    propagates — the server cannot serve without it. A secondary backend that fails to load
+    (optional dependency missing, weights unreachable) is logged and left to load lazily if a
+    session ever selects it, so one broken model never keeps the server down.
+    """
+    default = resolve_backend_name(None)
+    get_backend(default).load()
+    for name in sorted(ACOUSTIC_BACKENDS - {default}):
+        try:
+            get_backend(name).load()
+        except Exception:
+            logger.warning(
+                "Preloading acoustic backend %r failed; it will load on first use instead",
+                name, exc_info=True,
+            )
+
+
+def get_acoustic_scores(
+    audio: np.ndarray,
+    previous_words: List[Tuple[str, str]],
+    expected_words: List[Tuple[str, str]],
+    word_meta: Optional[List[Dict[str, Any]]] = None,
+    model: Optional[str] = None,
+) -> AcousticResult:
+    """Score `expected_words` against `audio` using the session's backend.
+
+    previous_words: (emlaey, uthmani) for already-confirmed words the audio also covers.
+    expected_words: (emlaey, uthmani) for the current chunk.
+    word_meta: the quran_data word dicts for `previous_words + expected_words`, in that
+        order. The muaalem backend needs surah/ayah/word_index to look up reference text
+        and raises without it; wav2vec2 ignores it.
+    model: backend name; falls back to config.acoustic_backend.
+
+    Returns an AcousticResult whose lists are sliced to the current chunk (previous_words
+    dropped), parallel to expected_words.
+    """
+    return get_backend(model).score(audio, previous_words, expected_words, word_meta)
+
+
+def detection_probe(
+    audio: np.ndarray,
+    words: Optional[List[Dict[str, Any]]] = None,
+    model: Optional[str] = None,
+) -> str:
+    """Decode `audio` into a normalized string for verse detection to match against."""
+    return get_backend(model).detection_probe(audio, words)
+
+
+def detection_reference(
+    words: List[Dict[str, Any]], start: int, probe: str, model: Optional[str] = None
+) -> str:
+    """Normalized reference starting at `words[start]`, sized to compare against `probe`."""
+    return get_backend(model).detection_reference(words, start, probe)

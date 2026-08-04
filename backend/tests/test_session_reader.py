@@ -202,3 +202,88 @@ class TestRecording:
             f.seek(4); f.write(struct.pack("<I", 0))   # RIFF chunk size
             f.seek(40); f.write(struct.pack("<I", 0))  # data chunk size
         assert session_reader.wav_duration_ms(path) == 3000
+
+
+class TestMuaalemDetail:
+    """muaalem's per-word error detail must survive the round-trip into playback."""
+
+    _ERROR = {
+        "error_type": "tajweed",
+        "speech_error_type": "replace",
+        "expected_ph": "ۦۦۦۦ",
+        "predicted_ph": "ۦۦ",
+        "expected_len": 4,
+        "predicted_len": 2,
+        "rules": [],
+    }
+
+    def _muaalem_info(self):
+        return {
+            "id": "sess-mu",
+            "type": "continuous",
+            "narration_id": 1,
+            "model": "muaalem",
+            "score_threshold": 0.76,
+            "duration": 1000,
+            "start_chapter_number": 1, "start_verse_number": 1,
+            "end_chapter_number": 1, "end_verse_number": 1,
+            "words": [{
+                "chapter_number": 1, "verse_number": 1, "word_number": 1,
+                "expected_text": "بِسْمِ", "detected_text": "بِسْمِ",
+                "status": "correct", "total_score": 0.95,
+                "start_time": 0, "end_time": 400,
+                "errors": [self._ERROR],
+                "detected_ph": "بِسمِ", "expected_ph": "بِسمِ",
+            }],
+        }
+
+    def test_model_is_surfaced(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("backend.session_store.BASE_DIR", str(tmp_path))
+        _write_session(tmp_path, "sess-mu", self._muaalem_info())
+        assert session_reader.build_playback("sess-mu")["model"] == "muaalem"
+
+    def test_error_detail_reaches_the_timeline(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("backend.session_store.BASE_DIR", str(tmp_path))
+        _write_session(tmp_path, "sess-mu", self._muaalem_info())
+        entry = session_reader.build_playback("sess-mu")["timeline"][0]
+        assert entry["errors"] == [self._ERROR]
+        assert entry["detected_ph"] == "بِسمِ"
+        assert entry["expected_ph"] == "بِسمِ"
+
+    def test_renamed_fields_still_apply_alongside_the_extras(self, tmp_path, monkeypatch):
+        # expected_text -> word_text and total_score -> score must still happen.
+        monkeypatch.setattr("backend.session_store.BASE_DIR", str(tmp_path))
+        _write_session(tmp_path, "sess-mu", self._muaalem_info())
+        entry = session_reader.build_playback("sess-mu")["timeline"][0]
+        assert entry["word_text"] == "بِسْمِ"
+        assert entry["score"] == 0.95
+
+
+class TestPreMuaalemSessions:
+    """Sessions recorded before any of this existed must still open unchanged."""
+
+    def _legacy_info(self):
+        return {
+            "id": "legacy", "type": "word_by_word", "narration_id": 1,
+            "score_threshold": 0.5, "duration": 1000,
+            "start_chapter_number": 1, "start_verse_number": 1,
+            "end_chapter_number": 1, "end_verse_number": 1,
+            "words": [{
+                "chapter_number": 1, "verse_number": 1, "word_number": 1,
+                "expected_text": "بِسْمِ", "status": "correct", "total_score": 0.9,
+                "start_time": 0, "end_time": 400,
+            }],
+        }
+
+    def test_model_defaults_to_wav2vec2(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("backend.session_store.BASE_DIR", str(tmp_path))
+        _write_session(tmp_path, "legacy", self._legacy_info())
+        assert session_reader.build_playback("legacy")["model"] == "wav2vec2"
+
+    def test_no_muaalem_keys_are_invented(self, tmp_path, monkeypatch):
+        # The frontend types mark these optional; absent must stay absent, not become null.
+        monkeypatch.setattr("backend.session_store.BASE_DIR", str(tmp_path))
+        _write_session(tmp_path, "legacy", self._legacy_info())
+        entry = session_reader.build_playback("legacy")["timeline"][0]
+        for key in ("errors", "detected_ph", "expected_ph"):
+            assert key not in entry

@@ -27,6 +27,7 @@ class TestSessionStore:
             "id": "sess-1",
             "type": "continuous",
             "narration_id": 1,
+            "model": "wav2vec2",
             "score_threshold": 0.6,
             "duration": 0,
             "start_chapter_number": 2,
@@ -66,6 +67,48 @@ class TestSessionStore:
         # start_time / end_time are integer milliseconds, not float seconds
         assert isinstance(info["words"][0]["start_time"], int)
         assert isinstance(info["words"][0]["end_time"], int)
+
+    def test_muaalem_detail_is_stored_flat(self, tmp_path, monkeypatch):
+        """The muaalem extras persist as `errors` plus two phoneme strings, nothing nested."""
+        monkeypatch.setattr("backend.session_store.BASE_DIR", str(tmp_path))
+        store = SessionStore(session_id="sess-mu")
+        store.add_timeline_word(
+            chapter_number=1, verse_number=1, word_number=0,
+            expected_text="ٱللَّهِ", status="correct", total_score=1.0,
+            start_time=0.0, end_time=0.5,
+            errors=[{"error_type": "tajweed"}],
+            detected_ph="للَاهِ", expected_ph="للَااهِ",
+        )
+        word = _read_info(store)["words"][0]
+        assert word["errors"] == [{"error_type": "tajweed"}]
+        assert word["detected_ph"] == "للَاهِ"
+        assert word["expected_ph"] == "للَااهِ"
+        assert "recited" not in word and "tajweed_score" not in word
+
+    def test_a_clean_muaalem_word_keeps_an_empty_errors_list(self, tmp_path, monkeypatch):
+        """[] means "muaalem found nothing wrong"; a missing key means "not measured"."""
+        monkeypatch.setattr("backend.session_store.BASE_DIR", str(tmp_path))
+        store = SessionStore(session_id="sess-mu-clean")
+        store.add_timeline_word(
+            chapter_number=1, verse_number=1, word_number=0,
+            expected_text="ٱللَّهِ", status="correct", total_score=1.0,
+            start_time=0.0, end_time=0.5,
+            errors=[], detected_ph="للَااهِ", expected_ph="للَااهِ",
+        )
+        assert _read_info(store)["words"][0]["errors"] == []
+
+    def test_wav2vec2_entries_carry_no_phoneme_keys(self, tmp_path, monkeypatch):
+        """Absent must stay absent, not become null — the playback types mark them optional."""
+        monkeypatch.setattr("backend.session_store.BASE_DIR", str(tmp_path))
+        store = SessionStore(session_id="sess-w2v")
+        store.add_timeline_word(
+            chapter_number=1, verse_number=1, word_number=0,
+            expected_text="w", status="correct", total_score=1.0,
+            start_time=0.0, end_time=0.5,
+        )
+        word = _read_info(store)["words"][0]
+        for key in ("errors", "detected_ph", "expected_ph"):
+            assert key not in word
 
     def test_verse_range_persists_across_rewrites(self, tmp_path, monkeypatch):
         monkeypatch.setattr("backend.session_store.BASE_DIR", str(tmp_path))

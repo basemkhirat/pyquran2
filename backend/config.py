@@ -69,6 +69,13 @@ def _resolve_path(path: str) -> str:
     return path
 
 
+# Acoustic scoring backends. "wav2vec2" decodes Arabic text and scores it by character/diacritic
+# accuracy; "muaalem" decodes Quran Phonetic Script and derives scores from classified
+# tajweed/tashkeel/normal pronunciation errors. Chosen per session via start_session's `model`
+# field; ACOUSTIC_BACKEND below only supplies the default when the client omits it.
+ACOUSTIC_BACKENDS = frozenset({"wav2vec2", "muaalem"})
+
+
 @dataclass
 class Config:
     hf_model_path: str = os.getenv("HF_MODEL_PATH", "./models/whisper-quran-v1")
@@ -82,6 +89,50 @@ class Config:
     wav2vec2_quran_asr_model: str = os.getenv(
         "WAV2VEC2_QURAN_ASR_MODEL", "HamzaSidhu786/wav2vec2-base-word-by-word-quran-asr"
     )
+    # Default acoustic model for sessions that don't pick one: "wav2vec2" (CTC over Arabic
+    # text) or "muaalem" (obadx/muaalem-model-v3_2 -- phonemes + tajweed/sifat error detection).
+    # A client overrides it per session with start_session's `model` field.
+    acoustic_backend: str = os.getenv("ACOUSTIC_BACKEND", "wav2vec2")
+    # Hugging Face id for the Muaalem model (not path-resolved; hub id only).
+    muaalem_model: str = os.getenv("MUAALEM_MODEL", "obadx/muaalem-model-v3_2")
+    # Empty -> auto ("cuda" when available, else "cpu"). Muaalem is impractically slow on CPU.
+    muaalem_device: str = os.getenv("MUAALEM_DEVICE", "")
+    # Empty -> bfloat16 on cuda, float32 on cpu (CPU bf16 kernels are slow/incomplete).
+    muaalem_dtype: str = os.getenv("MUAALEM_DTYPE", "")
+    # How much a word's tajweed accuracy pulls its total score. 0 (default) surfaces tajweed
+    # errors in the UI without letting them fail a word -- the wav2vec2 backend cannot detect
+    # tajweed at all, so gating on it would drop pass rates for unchanged recitation.
+    muaalem_weight_tajweed: float = float(os.getenv("MUAALEM_WEIGHT_TAJWEED", "0.0"))
+    # Muaalem's score distribution is more bimodal than wav2vec2's smooth CER blend, so it
+    # gets its own cutoff instead of reusing the wav2vec2-calibrated SCORE_THRESHOLD.
+    muaalem_score_threshold: float = float(os.getenv("MUAALEM_SCORE_THRESHOLD", "0.76"))
+    # In acoustic-only continuous mode, do not let one distant false match drag the cursor
+    # across an arbitrary run of low-confidence words. This many consecutive misses may be
+    # bridged while looking for a nearby confident resynchronization anchor.
+    muaalem_continuous_max_unanchored_words: int = int(
+        os.getenv("MUAALEM_CONTINUOUS_MAX_UNANCHORED_WORDS", "2")
+    )
+    # Extra words phonetized past the scored chunk. quran_phonetizer applies waqf (pause)
+    # rules at the end of whatever text it is given; these padding words absorb that artifact
+    # and are discarded, so the last scored word is not judged against a pause it never made.
+    muaalem_context_pad_words: int = int(os.getenv("MUAALEM_CONTEXT_PAD_WORDS", "5"))
+    # Verse detection cutoff for the Muaalem backend. VERSE_DETECTION_THRESHOLD is calibrated
+    # for Arabic-letter CER; phoneme strings are longer and finer-grained, so they need re-tuning.
+    muaalem_verse_detection_threshold: float = float(
+        os.getenv("MUAALEM_VERSE_DETECTION_THRESHOLD", "0.6")
+    )
+
+    # --- Moshaf (recitation) attributes, passed to quran_transcript.quran_phonetizer ---
+    # These describe the recitation style the reference is phonetized for; they change what
+    # counts as correct, so they must match how the reciter actually recites.
+    moshaf_rewaya: str = os.getenv("MOSHAF_REWAYA", "hafs")
+    moshaf_madd_monfasel_len: int = int(os.getenv("MOSHAF_MADD_MONFASEL_LEN", "2"))
+    moshaf_madd_mottasel_len: int = int(os.getenv("MOSHAF_MADD_MOTTASEL_LEN", "4"))
+    moshaf_madd_mottasel_waqf: int = int(os.getenv("MOSHAF_MADD_MOTTASEL_WAQF", "4"))
+    # Must be 4 or 6. quran_transcript derives madd_alleen_len from this, and a 2-count leen
+    # madd raises KeyError deep inside its phonetizer (8/6236 verses and ~3% of word slices,
+    # all madd-al-leen words). See _validate_acoustic_backend. The upstream docs example uses 2.
+    moshaf_madd_aared_len: int = int(os.getenv("MOSHAF_MADD_AARED_LEN", "4"))
     score_threshold: float = float(os.getenv("SCORE_THRESHOLD", "0.5"))
     pass_on_any_score: bool = os.getenv("PASS_ON_ANY_SCORE", "false").lower() in ("1", "true", "yes")
     max_edits_for_correction: int = int(os.getenv("MAX_EDITS_FOR_CORRECTION", "2"))
@@ -121,6 +172,31 @@ class Config:
         self.hf_model_path = _resolve_path(self.hf_model_path)
         self.hafs_json_path = _resolve_path(self.hafs_json_path)
         self.sessions_dir = _resolve_path(self.sessions_dir)
+        self._validate_acoustic_backend()
+
+    def _validate_acoustic_backend(self) -> None:
+        """Fail fast on acoustic settings that would otherwise surface as opaque library errors.
+
+        The moshaf checks are unconditional: any session may select the muaalem backend
+        regardless of which one ACOUSTIC_BACKEND makes the default, so a bad moshaf setting
+        must fail at startup rather than mid-recitation.
+        """
+        if self.acoustic_backend not in ACOUSTIC_BACKENDS:
+            raise ValueError(
+                f"ACOUSTIC_BACKEND={self.acoustic_backend!r} is not one of {sorted(ACOUSTIC_BACKENDS)}"
+            )
+        # quran_transcript derives madd_alleen_len from madd_aared_len, and only has phoneme
+        # tags for a 4- or 6-count leen madd; 2 raises `KeyError: <letter>` from deep inside
+        # quran_phonetizer on any madd-al-leen word (e.g. عَيْنَيْنِ, قُرَيْشٍ, ٱلصَّيْفِ).
+        if self.moshaf_madd_aared_len not in (4, 6):
+            raise ValueError(
+                f"MOSHAF_MADD_AARED_LEN={self.moshaf_madd_aared_len} is unsupported; use 4 or 6. "
+                "quran_transcript cannot phonetize a leen madd shorter than 4."
+            )
+        if self.muaalem_continuous_max_unanchored_words < 0:
+            raise ValueError(
+                "MUAALEM_CONTINUOUS_MAX_UNANCHORED_WORDS must be zero or greater."
+            )
 
 
 config = Config()

@@ -15,7 +15,15 @@ interface VerseGroup {
 }
 
 export function VerseDisplay() {
-    const { words, currentWordIndex, wordResults, hideUnrecitedWords, isSessionActive } = useSessionStore();
+    const {
+        words,
+        currentWordIndex,
+        wordResults,
+        hideUnrecitedWords,
+        isSessionActive,
+        selectedWordIndex,
+        setSelectedWordIndex,
+    } = useSessionStore();
     const activeVerseRef = useRef<HTMLDivElement>(null);
 
     // Group words by (surah, ayah) to support cross-chapter ranges. Memoized so the O(n)
@@ -86,6 +94,9 @@ export function VerseDisplay() {
                             const isInterim = result?.is_interim === true;
                             const notRecitedYet = globalIdx >= currentWordIndex; // current + future
                             const dimUnrecited = hideUnrecitedWords && notRecitedYet && !isInterim;
+                            // Ring only when explicitly pinned, so follow-latest mode doesn't
+                            // trail a moving outline behind the active word.
+                            const isSelected = selectedWordIndex === globalIdx;
 
                             return (
                                 <WordChip
@@ -96,6 +107,9 @@ export function VerseDisplay() {
                                     isPast={isPast}
                                     isInterim={isInterim}
                                     dimUnrecited={dimUnrecited}
+                                    index={globalIdx}
+                                    isSelected={isSelected}
+                                    onSelect={setSelectedWordIndex}
                                 />
                             );
                         })}

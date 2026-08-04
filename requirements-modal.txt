@@ -3,7 +3,7 @@ fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 python-socketio>=5.11.0
 python-dotenv>=1.0.0
-numpy>=1.26.0
+numpy>=2.2.6
 jiwer>=3.0.0
 pyarabic>=0.6.15
 arabic-reshaper>=3.0.0
@@ -12,3 +12,10 @@ torch>=2.9.0
 torchaudio>=2.9.0
 silero-vad>=5.1
 transformers>=4.40.0
+
+# Selected per session via start_session's `model` field (or ACOUSTIC_BACKEND as the default).
+# Pulls quran-transcript (the phonetizer + error explainer). Both are pinned: quran-transcript's
+# phonetizer output defines what "correct" means, and an upgrade would silently move every
+# score. See backend/acoustic_muaalem.py.
+quran-muaalem==0.1.0
+quran-transcript==0.5.2

@@ -54,6 +54,7 @@ def _session(recorded=True, **overrides):
     session = {
         "id": "sess-1",
         "mode": "word_by_word",
+        "model": "wav2vec2",
         "score_threshold": 0.5,
         "start_chapter": 1, "start_verse": 1, "end_chapter": 1, "end_verse": 7,
         "total_samples": config.audio_sample_rate,  # 1s of audio -> duration 1000 ms
@@ -149,6 +150,9 @@ class TestEndSession:
         assert payload["id"] == "sess-1"
         assert payload["type"] == "word_by_word"
         assert payload["narration_id"] == 1
+        # Which acoustic backend scored the session, so a client can interpret the per-word
+        # tajweed/tashkeel detail (or its absence) in `words`.
+        assert payload["model"] == "wav2vec2"
         assert payload["score_threshold"] == 0.5
         assert payload["duration"] == 1000
         assert payload["start_chapter_number"] == 1
@@ -292,3 +296,21 @@ class TestAbsoluteUrl:
     def test_degrades_to_relative_path(self, monkeypatch):
         monkeypatch.setattr(config, "public_base_url", "")
         assert main._absolute_url({}, "/api/x") == "/api/x"
+
+
+class TestSessionModel:
+    """The acoustic model is per-session state, echoed on the events a client sees."""
+
+    def test_model_is_reported_for_a_muaalem_session(self, emitted):
+        async def scenario():
+            session = _session(recorded=False, model="muaalem")
+            await main._end_session("sid", session)
+
+        asyncio.run(scenario())
+        assert dict(emitted)["session_ended"]["model"] == "muaalem"
+
+    def test_missing_model_falls_back_to_the_configured_default(self):
+        """Sessions built before the field existed must still produce a valid payload."""
+        session = _session(recorded=False)
+        del session["model"]
+        assert main._session_info(session)["model"] == config.acoustic_backend

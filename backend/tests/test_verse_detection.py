@@ -67,7 +67,12 @@ RAHMAN_WORDS = (
 
 
 def _patch_decode(monkeypatch, text):
-    monkeypatch.setattr("backend.verse_detection._decode_audio", lambda _: (text, []))
+    """Stub the model at its real seam.
+
+    Detection now goes through the acoustic_scorer facade, so patching _decode_audio there
+    exercises the live Wav2Vec2Backend probe/reference path rather than bypassing it.
+    """
+    monkeypatch.setattr("backend.acoustic_scorer._decode_audio", lambda _: (text, []))
 
 
 AUDIO = np.zeros(16000, dtype=np.float32)

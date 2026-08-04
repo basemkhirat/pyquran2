@@ -7,6 +7,9 @@
  *    — so playback advances with a frozen UI. This asserts the callback ref works.
  * 2. PlaybackDetectedToast: the subtitle window is derived from playback position rather
  *    than accumulated, so it has to be correct when seeking backwards too.
+ * 3. panelTargetAt: the muaalem error panel follows the playhead. Position is published
+ *    outside React state, so the panel's subject is derived from the attempt cursor rather
+ *    than held in state — these pin down that derivation.
  *
  *   yarn check:playback
  *
@@ -178,6 +181,73 @@ check("shows the misheard word after the gap", toastText(), "الرحيب");
 // Seeking backwards must recompute the window, not append to it.
 await publish(2200);
 check("recomputes when seeking backwards", toastText(), "بسم الله");
+
+// --- 3. panelTargetAt: which word the muaalem error panel describes ---------------------
+
+const { buildTimelineIndex: buildIdx, cursorAt: cursor, panelTargetAt } = await import(
+    "../src/lib/playbackTimeline.ts"
+);
+
+// Two words; the second is retried, so it has two attempts with different detail.
+const panelIndex = buildIdx({
+    words: [
+        { surah: 1, ayah: 1, word_index: 1, emlaey_text: "", uthmani_text: "بِسْمِ" },
+        { surah: 1, ayah: 1, word_index: 2, emlaey_text: "", uthmani_text: "ٱللَّهِ" },
+    ],
+    timeline: [
+        { display_index: 0, chapter_number: 1, verse_number: 1, word_number: 1,
+          word_text: "بِسْمِ", detected_text: "بِسْمِ", status: "correct", score: 1,
+          start_time: 0, end_time: 500 },
+        // info.json stores the muaalem detail flat: `errors`, plus the unit's two phoneme
+        // strings. There is no stored error_type — the panel derives it from `errors`.
+        { display_index: 1, chapter_number: 1, verse_number: 1, word_number: 2,
+          word_text: "ٱللَّهِ", detected_text: "الله", status: "incorrect", score: 0.4,
+          start_time: 1000, end_time: 1500,
+          errors: [{ error_type: "normal", speech_error_type: "replace",
+                     expected_ph: "للَااهِ", predicted_ph: "لاه" }],
+          detected_ph: "لاه", expected_ph: "للَااهِ" },
+        { display_index: 1, chapter_number: 1, verse_number: 1, word_number: 2,
+          word_text: "ٱللَّهِ", detected_text: "ٱللَّهِ", status: "correct", score: 1,
+          start_time: 2000, end_time: 2500,
+          errors: [{ error_type: "tashkeel", speech_error_type: "delete",
+                     expected_ph: "هِ", predicted_ph: "ه" }],
+          detected_ph: "للَااه", expected_ph: "للَااهِ" },
+    ],
+    duration_ms: 3000,
+} as never);
+
+const targetAt = (ms: number, pinned: number | null = null) =>
+    panelTargetAt(panelIndex, pinned, cursor(panelIndex, ms));
+
+// cursorAt returns -1 only before the first attempt starts; here it starts at 0ms, so the
+// "nothing yet" state is asserted against the cursor value the page holds before playing.
+check("nothing to describe before playback starts", panelTargetAt(panelIndex, null, -1).displayIndex, -1);
+check("nothing to describe has no attempt", panelTargetAt(panelIndex, null, -1).attempt, -1);
+check("follows the first word from its very start", targetAt(0).displayIndex, 0);
+check("follows the first word once it starts", targetAt(250).displayIndex, 0);
+// The panel keeps describing a word through the silence after it, rather than blanking.
+check("holds the last word through the following silence", targetAt(800).displayIndex, 0);
+check("advances to the next word", targetAt(1200).displayIndex, 1);
+
+// A retried word must show the try you are actually hearing, not always its first attempt.
+check("first attempt of a retried word", targetAt(1200).attempt, 1);
+check("second attempt of a retried word", targetAt(2200).attempt, 2);
+check("error detail follows the attempt",
+    panelIndex.results[targetAt(2200).attempt].errors?.[0].error_type, "tashkeel");
+// The stored phonemes are reassembled into the unit the panel renders.
+check("recited phonemes are rebuilt from the stored fields",
+    panelIndex.results[targetAt(2200).attempt].recited?.ph, "للَااه");
+
+// Each attempt gets its own key so the panel's tabs reopen on that attempt's error type.
+check("key changes between attempts of one word", targetAt(1200).key === targetAt(2200).key, false);
+
+// Pinning overrides following, and stays put as playback runs past it.
+check("a pin overrides the playhead", targetAt(2200, 0).displayIndex, 0);
+check("a pin resolves to the word's first attempt", targetAt(2200, 0).attempt, 0);
+check("a pin keeps a stable key", targetAt(2200, 0).key, targetAt(250, 0).key);
+
+// Seeking backwards must re-derive, exactly like the toast above.
+check("re-derives when seeking backwards", targetAt(250).displayIndex, 0);
 
 console.log(failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} FAILURES`);
 process.exit(failures === 0 ? 0 : 1);

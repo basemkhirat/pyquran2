@@ -145,7 +145,7 @@ def _normalize_timeline(session_id: str, raw: List[Any]) -> List[Dict[str, Any]]
         except (KeyError, TypeError, ValueError):
             logger.warning(f"Skipping malformed timeline entry in session {session_id}")
             continue
-        entries.append({
+        normalized = {
             "chapter_number": chapter,
             "verse_number": verse,
             "word_number": word,
@@ -160,7 +160,13 @@ def _normalize_timeline(session_id: str, raw: List[Any]) -> List[Dict[str, Any]]
             "score": entry.get("total_score", entry.get("score", 0.0)),
             "start_time": entry.get("start_time", 0),
             "end_time": entry.get("end_time", 0),
-        })
+        }
+        # muaalem pronunciation detail. Only present for sessions scored by that backend, so
+        # it is passed through rather than defaulted — the frontend types mark it optional.
+        for key in ("errors", "detected_ph", "expected_ph"):
+            if key in entry:
+                normalized[key] = entry[key]
+        entries.append(normalized)
     entries.sort(key=lambda e: (e["start_time"], e["end_time"]))
     return entries
 
@@ -255,6 +261,8 @@ def build_playback(session_id: str) -> Optional[Dict[str, Any]]:
         # info.json calls it `type`; expose it as `mode` so the frontend reuses SessionMode.
         "mode": info.get("type", "word_by_word"),
         "narration_id": info.get("narration_id", 1),
+        # Sessions recorded before per-session model selection were all scored by wav2vec2.
+        "model": info.get("model", "wav2vec2"),
         "score_threshold": info.get("score_threshold"),
         "range": verse_range,
         "range_inferred": inferred,

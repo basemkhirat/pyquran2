@@ -114,6 +114,15 @@ export function buildTimelineIndex(session: SessionPlayback): TimelineIndex {
             total_score: e.score,
             expected_text: e.word_text,
             detected_text: e.detected_text ?? "",
+            // muaalem detail, absent for wav2vec2 sessions. Built here (once) rather than
+            // merged per render, so the memo identity above still holds. A stored entry keeps
+            // the phonemes flat, so the panel's recited unit is reassembled from them — its
+            // `words` is always this one word, since the merge grouping isn't persisted.
+            errors: e.errors,
+            recited:
+                e.detected_ph !== undefined || e.expected_ph !== undefined
+                    ? { ph: e.detected_ph ?? "", expected_ph: e.expected_ph ?? "", words: [e.word_text] }
+                    : undefined,
         });
 
         if (displayIndex >= 0) {
@@ -133,6 +142,43 @@ export function buildTimelineIndex(session: SessionPlayback): TimelineIndex {
  */
 export function cursorAt(index: TimelineIndex, timeMs: number): number {
     return upperBound(index.startsMs, timeMs) - 1;
+}
+
+/** Which word the playback error panel describes, and how it was chosen. */
+export interface PanelTarget {
+    /** Remounts the panel's tabs when the described word changes. */
+    key: number | string;
+    /** Index into SessionPlayback.words, or -1 when there is nothing to describe. */
+    displayIndex: number;
+    /** Index into `attempts`/`results`, or -1. */
+    attempt: number;
+}
+
+const NO_PANEL_TARGET: PanelTarget = { key: -1, displayIndex: -1, attempt: -1 };
+
+/**
+ * Resolve the error panel's subject: a pinned word wins, otherwise follow what is playing.
+ *
+ * Following resolves to the *attempt* rather than the word's first one, so a word retried
+ * several times shows the try you are actually hearing. `playingAttempt` is the cursor from
+ * `cursorAt`, and is deliberately not cleared when the attempt ends — the panel keeps
+ * describing the last word through the silence that follows it rather than blanking out.
+ */
+export function panelTargetAt(
+    index: TimelineIndex,
+    pinnedWord: number | null,
+    playingAttempt: number
+): PanelTarget {
+    if (pinnedWord != null) {
+        const attempt = index.byWord.get(pinnedWord)?.[0] ?? -1;
+        return { key: `pin-${pinnedWord}`, displayIndex: pinnedWord, attempt };
+    }
+    if (playingAttempt < 0 || playingAttempt >= index.attempts.length) return NO_PANEL_TARGET;
+    return {
+        key: playingAttempt,
+        displayIndex: index.attempts[playingAttempt].displayIndex,
+        attempt: playingAttempt,
+    };
 }
 
 /** True when `timeMs` falls after the cursor's attempt ended — i.e. in silence. */

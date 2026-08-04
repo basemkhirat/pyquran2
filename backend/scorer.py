@@ -130,6 +130,43 @@ def should_skip_forward(
     return is_final and any(s > 0.0 for s in later_scores)
 
 
+def bounded_continuous_span(
+    scores: List[float], threshold: float, max_unanchored: int, is_final: bool
+) -> int:
+    """Number of leading acoustic results safe to process in continuous mode.
+
+    A Muaalem alignment can occasionally jump to a similar word far ahead in the 20-word
+    reference window. Treating that distant pass as proof that every intervening word was
+    attempted makes the cursor cascade across words the reciter has not reached.
+
+    Permit at most ``max_unanchored`` consecutive sub-threshold words while searching for a
+    nearby confident anchor. During an interim streaming pass, expose only the first trailing
+    unanchored word (as the caller's interim result) so repeated ticks cannot commit a false
+    miss. A final pass may commit the bounded trailing misses because no more audio is coming.
+    """
+    max_unanchored = max(0, max_unanchored)
+    weak_run = 0
+    safe_limit = len(scores)
+    last_confident_end = 0
+
+    for i, score in enumerate(scores):
+        if score >= threshold:
+            weak_run = 0
+            last_confident_end = i + 1
+        else:
+            weak_run += 1
+            if weak_run > max_unanchored:
+                safe_limit = i
+                break
+
+    if is_final:
+        return min(safe_limit, last_confident_end + max_unanchored)
+
+    # main.py marks the last item of every streaming batch interim. Keeping one weak word
+    # after the last anchor lets the UI show feedback without advancing the server cursor.
+    return min(safe_limit, last_confident_end + 1)
+
+
 def score_word_best(
     emlaey: str, uthmani: str, transcribed: str, max_edits: int
 ) -> Dict[str, Any]:

@@ -31,3 +31,9 @@ export function verseLabel(surah: number, ayah: number): string {
     const name = SURAH_NAMES[surah];
     return name ? `${name} ${ayah}` : `${surah}:${ayah}`;
 }
+
+/** "الفاتحة - آية 2" — falls back to the bare number for an unknown surah. */
+export function verseHeading(surah: number, ayah: number): string {
+    const name = SURAH_NAMES[surah];
+    return name ? `${name} - آية ${ayah}` : `${surah}:${ayah}`;
+}

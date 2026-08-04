@@ -38,6 +38,13 @@ export function PlaybackHeader({ session }: { session: SessionPlayback }) {
                     <span className="rounded-full border border-border/60 bg-surface/70 px-2.5 py-1">
                         {session.mode === "continuous" ? "تلاوة مستمرة" : "كلمة بكلمة"}
                     </span>
+                    {/* Only flagged for muaalem: wav2vec2 is the default and the historical
+                        behaviour, so labelling it would add noise to every old session. */}
+                    {session.model === "muaalem" && (
+                        <span className="rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-gold-light">
+                            معلّم
+                        </span>
+                    )}
                     {session.duration_ms != null && (
                         <span className="tabular-nums" dir="ltr">
                             {formatTime(session.duration_ms)}

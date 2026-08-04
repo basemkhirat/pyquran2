@@ -5,7 +5,8 @@ import os
 import secrets
 import time
 import uuid
-from typing import Dict, Any, Optional
+from dataclasses import asdict
+from typing import Dict, Any, Optional, Tuple
 
 import numpy as np
 import socketio
@@ -15,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from backend.config import config
+from backend.config import ACOUSTIC_BACKENDS, config
 from backend import quran_data, scorer, session_reader, session_store
 from backend.session_store import SessionStore
 from backend.terminal_arabic import display_arabic
@@ -28,6 +29,93 @@ if config.enable_acoustic_score:
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# Worst-first, so a word carrying several errors is labelled by its most serious one.
+_ERROR_TYPE_SEVERITY = ("tajweed", "tashkeel", "normal")
+
+
+def _dominant_error_type(errors) -> str:
+    """The most serious error_type among a word's errors, for a single UI label."""
+    kinds = {e.error_type for e in errors}
+    for kind in _ERROR_TYPE_SEVERITY:
+        if kind in kinds:
+            return kind
+    return "normal"
+
+
+def _default_score_threshold(model: Optional[str] = None) -> float:
+    """Pass/fail cutoff for a session's acoustic backend.
+
+    Muaalem derives scores from discrete pronunciation errors rather than a smooth CER blend,
+    so its distribution is more bimodal and it carries its own cutoff.
+    """
+    if config.enable_acoustic_score:
+        return acoustic_scorer.get_backend(model).score_threshold
+    return config.score_threshold
+
+
+def _uses_muaalem(session: dict) -> bool:
+    """True when this session scores acoustically with muaalem (and nothing else)."""
+    return (
+        config.enable_acoustic_score
+        and not config.enable_text_score
+        and session.get("model") == "muaalem"
+    )
+
+
+def _restore_cached_acoustic_interim(
+    session: dict,
+    idx: int,
+    scores: list,
+    decoded: list,
+    tajweed: list,
+    errors: list,
+    recited: list,
+) -> bool:
+    """Restore a current-word match that only Muaalem's final re-alignment dropped.
+
+    Streaming and final passes decode the same accumulated utterance independently. A short
+    final pass can occasionally align only the already-confirmed prefix, turning the current
+    word from a valid interim match into an unmatched trailing word. Keep the newer final
+    result whenever it has a match; otherwise restore the prior acoustic fields so the normal
+    scoring loop can emit a confirmed replacement for the pulsing interim UI result.
+    """
+    cached = session.get("last_interim_acoustic")
+    if session.get("last_interim_index") != idx or not cached:
+        return False
+    if decoded and decoded[0]:
+        return False
+
+    def replace_first(values: list, value) -> None:
+        if values:
+            values[0] = value
+        else:
+            values.append(value)
+
+    replace_first(scores, cached["score"])
+    replace_first(decoded, cached["decoded"])
+    replace_first(tajweed, cached["tajweed"])
+    replace_first(errors, cached["errors"])
+    replace_first(recited, cached["recited"])
+    return True
+
+
+def _new_final_decode_budget(
+    session: dict, final_decoded: int, max_unanchored: int
+) -> int:
+    """Extra final acoustic units that can confirm unmatched substitutions.
+
+    If the final pass decodes more units than the last interim pass, the extra audio was not
+    silence even when Muaalem cannot align it to the expected word (for example, reciting
+    ``يشعرون`` where ``يعلمون`` is expected). Cap the evidence so an unstable alignment cannot
+    revive the distant-anchor cascade guarded elsewhere.
+    """
+    interim_decoded = session.get("last_interim_n_decoded")
+    if interim_decoded is None:
+        return 0
+    return min(max(0, final_decoded - interim_decoded), max(0, max_unanchored))
+
 
 # --- FastAPI App ---
 app = FastAPI(title="Quran Voice Recognition API")
@@ -184,6 +272,7 @@ def _session_info(session: Dict[str, Any]) -> Dict[str, Any]:
         "id": session.get("id"),
         "type": session.get("mode", "word_by_word"),
         "narration_id": 1,
+        "model": session.get("model", config.acoustic_backend),
         "score_threshold": session.get("score_threshold"),
         "duration": round(session.get("total_samples", 0) / rate * 1000),
         "start_chapter_number": session.get("start_chapter"),
@@ -233,9 +322,11 @@ async def startup():
         await asyncio.to_thread(transcriber.load_model)
         logger.info("Whisper model ready.")
     if config.enable_acoustic_score:
-        logger.info("Preloading wav2vec2 model...")
+        # Every backend, not just the default: a session that picks the other model then
+        # starts scoring immediately instead of downloading weights mid-recitation.
+        logger.info("Preloading acoustic models: %s...", ", ".join(sorted(ACOUSTIC_BACKENDS)))
         await asyncio.to_thread(acoustic_scorer.load_model)
-        logger.info("Wav2vec2 model ready.")
+        logger.info("Acoustic models ready.")
 
 
 # ===================== REST Endpoints =====================
@@ -337,7 +428,10 @@ async def connect(sid, environ, auth):
         "transcribing": False,
         "streaming_task": None,
         "last_interim_index": None,  # word index of the last interim result
+        "last_interim_acoustic": None,  # last matched acoustic fields for final-pass fallback
+        "last_interim_n_decoded": None,  # utterance decode count for final substitution evidence
         "mode": "word_by_word",  # set authoritatively in start_session
+        "model": config.acoustic_backend,  # acoustic backend; set authoritatively in start_session
         "record": False,  # set authoritatively in start_session
         "total_samples": 0,  # session sample clock == frames written to recording.wav
         "timeline_cursor_sec": None,  # fallback per-word timing cursor (seconds into the WAV)
@@ -385,21 +479,38 @@ async def start_session(sid, data):
     session["result_words"] = []
     session["streaming_start_idx"] = 0
     session["last_interim_index"] = None
+    session["last_interim_acoustic"] = None
+    session["last_interim_n_decoded"] = None
     session["start_chapter"] = start_chapter
     session["start_verse"] = start_verse
     session["end_chapter"] = end_chapter
     session["end_verse"] = end_verse
 
+    # Which acoustic model scores this session: "wav2vec2" (default) or "muaalem". The wire
+    # value only selects one of a fixed set of backends -- each sources its own checkpoint
+    # from config -- so an unknown name falls back to ACOUSTIC_BACKEND rather than erroring.
+    raw_model = data.get("model")
+    if config.enable_acoustic_score:
+        model = acoustic_scorer.resolve_backend_name(raw_model)
+    else:
+        # acoustic_scorer isn't even imported when acoustic scoring is off (see the top of
+        # this module), so record the configured name without consulting the registry.
+        model = config.acoustic_backend
+    if raw_model is not None and model != raw_model:
+        logger.warning(f"Invalid model {raw_model!r} for [{sid}]; using {model!r}")
+    session["model"] = model
+
     # Optional per-session pass/fail cutoff (0-1) sent by the client (e.g. mobile app).
-    # When absent or invalid, fall back to the global SCORE_THRESHOLD config.
-    score_threshold = config.score_threshold
+    # When absent or invalid, fall back to the chosen backend's default cutoff.
+    default_threshold = _default_score_threshold(model)
+    score_threshold = default_threshold
     raw_threshold = data.get("score_threshold")
     if raw_threshold is not None:
         try:
             score_threshold = min(1.0, max(0.0, float(raw_threshold)))
         except (TypeError, ValueError):
             logger.warning(
-                f"Invalid score_threshold {raw_threshold!r} for [{sid}]; using default {config.score_threshold}"
+                f"Invalid score_threshold {raw_threshold!r} for [{sid}]; using default {default_threshold}"
             )
     session["score_threshold"] = score_threshold
 
@@ -448,6 +559,7 @@ async def start_session(sid, data):
         store = SessionStore(
             session_id=session_id,
             mode=session["mode"],
+            model=session["model"],
             score_threshold=session["score_threshold"],
             start_chapter_number=start_chapter,
             start_verse_number=start_verse,
@@ -462,12 +574,15 @@ async def start_session(sid, data):
     logger.info(
         f"Session started for {sid}: {start_chapter}:{start_verse} - {end_chapter}:{end_verse}, "
         f"{len(words)} words (phase={session['phase']}, mode={session['mode']}, "
-        f"score_threshold={session['score_threshold']}, "
+        f"model={session['model']}, score_threshold={session['score_threshold']}, "
         f"record={record}, id={session_id})"
     )
     await sio.emit("session_started", {
         "id": session_id,
         "record": record,
+        # Echoed so the client can confirm which backend actually scored the session, the
+        # same way `record` confirms the resolved recording decision.
+        "model": session["model"],
     }, room=sid)
 
 
@@ -535,6 +650,8 @@ async def skip_word(sid, _data=None):
     session["timeline_cursor_sec"] = None
     session["streaming_start_idx"] = session["current_index"]
     session["last_interim_index"] = None
+    session["last_interim_acoustic"] = None
+    session["last_interim_n_decoded"] = None
 
     if session["current_index"] >= len(session["words"]):
         await _end_session(sid, session)
@@ -624,6 +741,8 @@ async def _streaming_transcription_loop(sid: str):
                     session["vad"].reset()
                     session["timeline_cursor_sec"] = None
                     session["last_interim_index"] = None
+                    session["last_interim_acoustic"] = None
+                    session["last_interim_n_decoded"] = None
                     session["streaming_task"] = None
                     session["streaming_start_idx"] = session["current_index"]
                     # End this loop; the next audio_chunk spawns a fresh streaming
@@ -638,6 +757,8 @@ async def _streaming_transcription_loop(sid: str):
                 session["vad"].reset()
                 session["timeline_cursor_sec"] = None
                 session["last_interim_index"] = None
+                session["last_interim_acoustic"] = None
+                session["last_interim_n_decoded"] = None
                 session["streaming_task"] = None
                 session["streaming_start_idx"] = session["current_index"]
                 return
@@ -672,6 +793,7 @@ async def _detect_verse(sid: str, audio: np.ndarray, is_final: bool = False):
             start_chapter=session.get("start_chapter"),
             start_verse=session.get("start_verse"),
             is_final=is_final,
+            model=session.get("model"),
         )
 
         if result.status == "commit":
@@ -733,7 +855,9 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     """Inner transcription logic (called under the transcribing guard)."""
     idx = session["current_index"]
     words = session["words"]
-    score_threshold = session.get("score_threshold", config.score_threshold)
+    model = session.get("model", config.acoustic_backend)
+    score_threshold = session.get("score_threshold", _default_score_threshold(model))
+    uses_muaalem = _uses_muaalem(session)
     if idx >= len(words):
         await _end_session(sid, session)
         return
@@ -775,6 +899,14 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         if config.enable_acoustic_score and remaining > 0
         else []
     )
+    # The word dicts behind previous_expected_chunk + expected_chunk_max, in that order.
+    # The muaalem backend needs surah/ayah/word_index to look up its reference text;
+    # wav2vec2 ignores this.
+    word_meta = (
+        words[start_idx : idx + len(expected_chunk_max)]
+        if expected_chunk_max
+        else []
+    )
 
     # Run transcription based on enabled scoring methods
     logger.info(f"Processing {audio_duration:.2f}s of audio for [{sid}] ({'final' if is_final else 'interim'})...")
@@ -785,21 +917,36 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     acoustic_scores_full: list[float] = []
     acoustic_decoded_full: list[str] = []
     acoustic_offsets_full: list = []
+    # muaalem only; stay empty under wav2vec2 so its payload is unchanged.
+    acoustic_tajweed_full: list[float] = []
+    acoustic_errors_full: list[list] = []
+    acoustic_recited_full: list = []
     n_decoded_words = 0
+
+    def _take(res) -> None:
+        """Spread one AcousticResult across the parallel arrays above."""
+        nonlocal acoustic_scores_full, acoustic_decoded_full, acoustic_offsets_full
+        nonlocal acoustic_tajweed_full, acoustic_errors_full, acoustic_recited_full
+        nonlocal n_decoded_words
+        acoustic_scores_full = res.scores
+        acoustic_decoded_full = res.best_words
+        acoustic_offsets_full = res.offsets
+        acoustic_tajweed_full = res.tajweed_scores
+        acoustic_errors_full = res.errors
+        acoustic_recited_full = res.recited
+        n_decoded_words = res.n_decoded
 
     if config.enable_text_score and config.enable_acoustic_score and expected_chunk_max:
         whisper_task = asyncio.to_thread(transcriber.transcribe, audio)
         wav2vec_task = asyncio.to_thread(
-            acoustic_scorer.get_acoustic_scores, audio, previous_expected_chunk, expected_chunk_max
+            acoustic_scorer.get_acoustic_scores,
+            audio, previous_expected_chunk, expected_chunk_max, word_meta, model,
         )
         text, ac_res = await asyncio.gather(whisper_task, wav2vec_task)
-        acoustic_scores_full = ac_res.scores
-        acoustic_decoded_full = ac_res.best_words
-        acoustic_offsets_full = ac_res.offsets
-        n_decoded_words = ac_res.n_decoded
+        _take(ac_res)
         text = text.strip()
         logger.info("  Whisper transcription: '%s'", display_arabic(text))
-        logger.info("  Whisper + wav2vec (parallel) took %.2fs", time.time() - t0)
+        logger.info("  Whisper + acoustic (parallel) took %.2fs", time.time() - t0)
     elif config.enable_text_score:
         text = await asyncio.to_thread(transcriber.transcribe, audio)
         text = text.strip()
@@ -807,13 +954,52 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         logger.info("  Transcription took %.2fs", time.time() - t0)
     elif config.enable_acoustic_score and expected_chunk_max:
         ac_res = await asyncio.to_thread(
-            acoustic_scorer.get_acoustic_scores, audio, previous_expected_chunk, expected_chunk_max
+            acoustic_scorer.get_acoustic_scores,
+            audio, previous_expected_chunk, expected_chunk_max, word_meta, model,
         )
-        acoustic_scores_full = ac_res.scores
-        acoustic_decoded_full = ac_res.best_words
-        acoustic_offsets_full = ac_res.offsets
-        n_decoded_words = ac_res.n_decoded
-        logger.info("  Wav2vec (acoustic only, %d decoded words) took %.2fs", n_decoded_words, time.time() - t0)
+        _take(ac_res)
+        logger.info(
+            "  %s (acoustic only, %d decoded words) took %.2fs",
+            model, n_decoded_words, time.time() - t0,
+        )
+
+    # The final Muaalem alignment can occasionally retain only the already-confirmed prefix
+    # of the utterance. If it drops the exact current word that had a real interim match, reuse
+    # that match and let the ordinary final scoring path confirm it. A real final current-word
+    # match always wins, and the cache is scoped to this word/utterance by its session index.
+    if (
+        is_final
+        and uses_muaalem
+        and _restore_cached_acoustic_interim(
+            session,
+            idx,
+            acoustic_scores_full,
+            acoustic_decoded_full,
+            acoustic_tajweed_full,
+            acoustic_errors_full,
+            acoustic_recited_full,
+        )
+    ):
+        logger.info(
+            "  Muaalem final pass lost current word '%s'; restoring its interim match",
+            display_arabic(current_word["uthmani_text"]),
+        )
+
+    final_unmatched_budget = 0
+    if uses_muaalem and session.get("mode", "word_by_word") == "continuous":
+        if is_final:
+            final_unmatched_budget = _new_final_decode_budget(
+                session,
+                n_decoded_words,
+                config.muaalem_continuous_max_unanchored_words,
+            )
+            if final_unmatched_budget:
+                logger.info(
+                    "  Muaalem final pass decoded %d new unit(s); using them as substitution evidence",
+                    final_unmatched_budget,
+                )
+        else:
+            session["last_interim_n_decoded"] = n_decoded_words
 
     # When text scoring is disabled, use expected words as transcribed words for acoustic scoring.
     # Bound the span by the alignment itself: process expected words up to and including the last
@@ -835,6 +1021,41 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         return
     else:
         transcribed_words = text.split()
+
+    # Muaalem aligns against a 20-word reference window. After one or two missed words its
+    # phoneme aligner can occasionally latch onto a similar word much farther ahead, making
+    # every intervening reference word look attempted. In continuous mode that would advance
+    # the cursor through the whole false span. Only trust a bounded run of low-confidence
+    # words without a nearby passing score; on interim ticks, leave the trailing weak word
+    # pending so the same accumulated audio cannot advance it again on the next tick.
+    if (
+        uses_muaalem
+        and session.get("mode", "word_by_word") == "continuous"
+        and transcribed_words
+    ):
+        safe_span = scorer.bounded_continuous_span(
+            acoustic_scores_full[: len(transcribed_words)],
+            score_threshold,
+            config.muaalem_continuous_max_unanchored_words,
+            is_final,
+        )
+        if safe_span < len(transcribed_words):
+            logger.info(
+                "  Muaalem continuous resync guard: limiting %d aligned words to %d",
+                len(transcribed_words),
+                safe_span,
+            )
+            transcribed_words = transcribed_words[:safe_span]
+            # Keep every parallel acoustic array behind the same frontier. In particular,
+            # the unmatched-word branch below searches later scores for a resync anchor; if
+            # it could still see the rejected distant match, repeated interim ticks would
+            # advance one false word at a time and recreate the cascade more slowly.
+            acoustic_scores_full = acoustic_scores_full[:safe_span]
+            acoustic_decoded_full = acoustic_decoded_full[:safe_span]
+            acoustic_offsets_full = acoustic_offsets_full[:safe_span]
+            acoustic_tajweed_full = acoustic_tajweed_full[:safe_span]
+            acoustic_errors_full = acoustic_errors_full[:safe_span]
+            acoustic_recited_full = acoustic_recited_full[:safe_span]
 
     # --- Backtrack detection: skip repeated already-correct words (only when text scoring enabled) ---
     lookback = min(idx, len(transcribed_words)) if config.enable_text_score else 0
@@ -871,6 +1092,9 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     acoustic_scores: list[float] = []
     acoustic_decoded: list[str] = []
     acoustic_offsets: list = []
+    acoustic_tajweed: list[float] = []
+    acoustic_errors: list[list] = []
+    acoustic_recited: list = []
     if config.enable_acoustic_score and acoustic_scores_full:
         # Acoustic scores align with EXPECTED chunk, not transcribed chunk.
         # Length of expected_chunk_max was min(remaining, 20).
@@ -878,12 +1102,42 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         acoustic_scores = acoustic_scores_full[:n_words_chunk]
         acoustic_decoded = acoustic_decoded_full[:n_words_chunk]
         acoustic_offsets = acoustic_offsets_full[:n_words_chunk]
+        # muaalem only; stay empty for wav2vec2 so its payload is unchanged.
+        acoustic_tajweed = acoustic_tajweed_full[:n_words_chunk]
+        acoustic_errors = acoustic_errors_full[:n_words_chunk]
+        acoustic_recited = acoustic_recited_full[:n_words_chunk]
 
     streaming = not is_final
     n_transcribed = len(transcribed_words)
 
     # Score each transcribed word against expected sequence
     corrected_parts: list[str] = []
+
+    def _proportional_span(text_len: int, from_word: int, cursor: float) -> Tuple[float, float]:
+        """Char-proportional share of what's left of the segment, for a word with no offsets."""
+        remaining_chars = sum(len(w) for w in transcribed_words[from_word:]) or 1
+        frac = (text_len or 1) / remaining_chars
+        # Monotonic and inside the segment: the cursor only ever moves forward.
+        start = min(cursor, seg_end_sec)
+        end = min(max(cursor + (seg_end_sec - cursor) * frac, start), seg_end_sec)
+        return start, end
+
+    def _commit_word(record: Dict[str, Any]) -> None:
+        """Add a word to the session timeline, and to disk when the session is being recorded.
+
+        `record` holds seconds; the in-memory copy is converted to the info.json shape (ms +
+        rounded score) so `session_ended` and the stored file agree.
+        """
+        session["result_words"].append({
+            **record,
+            "total_score": round(record["total_score"], 3),
+            "start_time": round(record["start_time"] * 1000),
+            "end_time": round(record["end_time"] * 1000),
+        })
+        queue = session.get("store_queue")
+        if queue is not None:
+            queue.put_nowait(("word", record))
+
     words_processed = 0
     for i, t_word in enumerate(transcribed_words):
         if idx >= len(words):
@@ -905,22 +1159,36 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
         # `acoustic_scores` array (from the start of the current chunk) is `words_processed`.
         ac = (acoustic_scores[words_processed] if words_processed < len(acoustic_scores) else None) if config.enable_acoustic_score else None
         ac_decoded = (acoustic_decoded[words_processed] if words_processed < len(acoustic_decoded) else None) if config.enable_acoustic_score else None
+        # muaalem only; None/[] under wav2vec2, which leaves them out of the payload entirely.
+        ac_tajweed = acoustic_tajweed[words_processed] if words_processed < len(acoustic_tajweed) else None
+        ac_word_errors = acoustic_errors[words_processed] if words_processed < len(acoustic_errors) else []
+        ac_recited = acoustic_recited[words_processed] if words_processed < len(acoustic_recited) else None
 
-        # No wav2vec2 token matched this expected word. Two cases:
+        # No acoustic token matched this expected word. Two cases:
         if config.enable_acoustic_score and not config.enable_text_score and not ac_decoded:
             # (a) continuous mode AND a later word was recited confidently (passed) -> the reciter
             # moved past this word without a matching decode. Mark it incorrect (a flagged 0% miss)
             # and advance so scoring keeps up with what they actually recited. A merely-weak later
             # match on an interim decode is treated as the decode still catching up (see helper).
-            if scorer.should_skip_forward(
+            has_later_anchor = scorer.should_skip_forward(
                 session.get("mode", "word_by_word"),
                 acoustic_scores[words_processed + 1:],
                 score_threshold,
                 is_final,
-            ):
+            )
+            # A final pass that decoded more acoustic units than its last interim pass has
+            # direct evidence of additional speech. If it cannot align that unit to the current
+            # expected word, confirm a substitution instead of leaving a permanent interim chip.
+            has_final_substitution = (
+                is_final and not has_later_anchor and final_unmatched_budget > 0
+            )
+            if has_later_anchor or has_final_substitution:
                 logger.info(
-                    "  No wav2vec2 match for '%s' — reciter moved on; marking incorrect and advancing",
+                    "  No acoustic match for '%s' — %s; marking incorrect and advancing",
                     display_arabic(word["uthmani_text"]),
+                    "final pass decoded a spoken substitution"
+                    if has_final_substitution
+                    else "reciter moved on",
                 )
                 missed_payload = {
                     "chapter_number": word["surah"],
@@ -934,10 +1202,38 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
                 if streaming:
                     missed_payload["is_interim"] = False
                 await sio.emit("word_result", missed_payload, room=sid)
-                # Not written to the timeline: the reciter moved on, so this word has no
-                # spoken audio (timeline.json holds only actually-spoken words).
+                # Recorded like any other confirmed word. It usually *was* recited — the aligner
+                # just could not attribute a decode to it, and its phonemes surface as inserts on
+                # the next word — so leaving it out made the session claim it was never read, and
+                # handed its share of the segment to the following word, shifting every highlight
+                # after it by one. It has no offsets, so it takes the same char-proportional slice
+                # the fallback gives any unaligned word.
+                w_start, w_end = _proportional_span(len(word["uthmani_text"]), i, cursor_sec)
+                cursor_sec = w_end
+                missed_record = {
+                    "chapter_number": word["surah"],
+                    "verse_number": word["ayah"],
+                    "word_number": word["word_index"],
+                    "expected_text": word["uthmani_text"],
+                    "detected_text": "",
+                    "status": "incorrect",
+                    "total_score": 0.0,
+                    "start_time": w_start,
+                    "end_time": w_end,
+                }
+                # No decode reached this word, so there is no per-phoneme detail to store. The
+                # key is still written for a muaalem session, where every entry carries it.
+                if uses_muaalem:
+                    missed_record["errors"] = []
+                _commit_word(missed_record)
                 idx += 1
                 words_processed += 1
+                if has_final_substitution:
+                    final_unmatched_budget -= 1
+                    # The new final unit ended at this unmatched substitution. Do not inspect
+                    # farther reference words after its evidence has been consumed.
+                    if final_unmatched_budget == 0:
+                        break
                 continue
             # (b) word_by_word mode, or nothing ahead matched (a genuine pause/silence, or the
             # decode still catching up). Stay on the word, but still emit a word_result so the
@@ -945,7 +1241,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             # so it never advances the index or gets persisted, and is overwritten once the word is
             # actually decoded — the client renders it as a neutral "listening" chip, not a miss.
             logger.info(
-                "  No wav2vec2 match for '%s' (noise/silence) — emitting interim word_result, staying on word",
+                "  No acoustic match for '%s' (noise/silence) — emitting interim word_result, staying on word",
                 display_arabic(word["uthmani_text"]),
             )
             await sio.emit("word_result", {
@@ -998,6 +1294,15 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             # neither a decode nor a text transcription is available for this word.
             "detected_text": ac_decoded or (t_word if config.enable_text_score else ""),
         }
+        # muaalem extras. Absent entirely under wav2vec2, which cannot measure any of them,
+        # so its word_result payload is byte-identical to before this backend existed.
+        if ac_word_errors:
+            payload["errors"] = [asdict(e) for e in ac_word_errors]
+            payload["error_type"] = _dominant_error_type(ac_word_errors)
+        if ac_tajweed is not None:
+            payload["tajweed_score"] = round(ac_tajweed, 3)
+        if ac_recited is not None:
+            payload["recited"] = asdict(ac_recited)
         if streaming:
             payload["is_interim"] = word_is_interim
 
@@ -1007,10 +1312,22 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             # If we had a previous interim at a different word, the previous one
             # was already confirmed (it's no longer the last word)
             session["last_interim_index"] = idx
+            if ac_decoded:
+                session["last_interim_acoustic"] = {
+                    "score": ac,
+                    "decoded": ac_decoded,
+                    "tajweed": ac_tajweed,
+                    "errors": ac_word_errors,
+                    "recited": ac_recited,
+                }
             await sio.emit("word_result", payload, room=sid)
         else:
             # Confirmed word: advance index
             await sio.emit("word_result", payload, room=sid)
+
+            if session.get("last_interim_index") == idx:
+                session["last_interim_index"] = None
+                session["last_interim_acoustic"] = None
 
             # Time the confirmed word against the session audio: primary from wav2vec2 CTC
             # offsets, fallback a proportional split of the segment span. Done for every
@@ -1023,14 +1340,11 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             if ac_off is not None:
                 w_start = seg_start_sec + ac_off[0]
                 w_end = seg_start_sec + ac_off[1]
+                # Keep entries monotonic and within the segment.
+                w_start = min(max(w_start, cursor_sec), seg_end_sec)
+                w_end = min(max(w_end, w_start), seg_end_sec)
             else:
-                remaining_chars = sum(len(w) for w in transcribed_words[i:]) or 1
-                frac = (len(t_word) or 1) / remaining_chars
-                w_start = cursor_sec
-                w_end = cursor_sec + (seg_end_sec - cursor_sec) * frac
-            # Keep entries monotonic and within the segment.
-            w_start = min(max(w_start, cursor_sec), seg_end_sec)
-            w_end = min(max(w_end, w_start), seg_end_sec)
+                w_start, w_end = _proportional_span(len(t_word), i, cursor_sec)
             cursor_sec = w_end
 
             word_record = {
@@ -1045,18 +1359,19 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
                 "start_time": w_start,
                 "end_time": w_end,
             }
-            # In-memory timeline for session_ended, in info.json shape (ms + rounded score).
-            # Matches what SessionStore writes to disk, so the event agrees with the recording.
-            session["result_words"].append({
-                **word_record,
-                "total_score": round(scores["total_score"], 3),
-                "start_time": round(w_start * 1000),
-                "end_time": round(w_end * 1000),
-            })
-            # Persist to disk only when recording (SessionStore converts seconds -> ms).
-            queue = session.get("store_queue")
-            if queue is not None:
-                queue.put_nowait(("word", word_record))
+            # muaalem extras, so a recorded session replays the same error detail the live
+            # view showed. Stored flatter than the live payload: the recited unit is kept as
+            # its two phoneme strings, and the tajweed score / dominant type are dropped since
+            # both are derivable from `errors`. Unlike the live payload, `errors` is written
+            # for every muaalem word — empty when the word was clean, so consumers can read
+            # it unconditionally. wav2vec2 entries stay as they were: it measures no errors
+            # at all, which is not the same claim as an empty list.
+            if uses_muaalem:
+                word_record["errors"] = payload.get("errors", [])
+            if ac_recited is not None:
+                word_record["detected_ph"] = ac_recited.ph
+                word_record["expected_ph"] = ac_recited.expected_ph
+            _commit_word(word_record)
 
             if scorer.should_advance(status, session.get("mode", "word_by_word")):
                 idx += 1

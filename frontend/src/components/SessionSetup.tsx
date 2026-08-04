@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Chapter } from "../types";
+import type { AcousticModel, Chapter } from "../types";
 import { useSessionStore, type SessionMode } from "../stores/session";
 import { socket, apiUrl } from "../lib/socket";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
@@ -58,7 +58,7 @@ export function SessionSetup() {
     const [endVerseCount, setEndVerseCount] = useState(7);
     const initialLoadDone = useRef(false);
 
-    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords, scoreThreshold, setScoreThreshold, sessionMode, setSessionMode, record, setRecord, lastSession } = useSessionStore();
+    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords, scoreThreshold, setScoreThreshold, sessionMode, setSessionMode, model, setModel, record, setRecord, lastSession } = useSessionStore();
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
     const isSessionActive = isRecording;
     const canSkip = isRecording && words.length > 0 && currentWordIndex < words.length;
@@ -73,6 +73,7 @@ export function SessionSetup() {
     const [thresholdModalOpen, setThresholdModalOpen] = useState(false);
     const [pendingThreshold, setPendingThreshold] = useState(scoreThreshold);
     const [pendingMode, setPendingMode] = useState<SessionMode>(sessionMode);
+    const [pendingModel, setPendingModel] = useState<AcousticModel>(model);
     const [pendingRecord, setPendingRecord] = useState(record);
 
     const toggleRecording = () => {
@@ -84,11 +85,17 @@ export function SessionSetup() {
         // Ask the user to set the mode and pass/fail threshold before the session begins.
         setPendingThreshold(scoreThreshold);
         setPendingMode(sessionMode);
+        setPendingModel(model);
         setPendingRecord(record);
         setThresholdModalOpen(true);
     };
 
-    const startSessionWithThreshold = (threshold: number, mode: SessionMode, record: boolean) => {
+    const startSessionWithThreshold = (
+        threshold: number,
+        mode: SessionMode,
+        model: AcousticModel,
+        record: boolean
+    ) => {
         const payload = {
             start_chapter_number: startChapter,
             start_verse_number: startVerse,
@@ -96,6 +103,7 @@ export function SessionSetup() {
             end_verse_number: endVerse,
             score_threshold: threshold,
             mode,
+            model,
             record,
         };
         if (socket.connected) {
@@ -113,8 +121,9 @@ export function SessionSetup() {
     const confirmStart = () => {
         setScoreThreshold(pendingThreshold);
         setSessionMode(pendingMode);
+        setModel(pendingModel);
         setRecord(pendingRecord);
-        startSessionWithThreshold(pendingThreshold, pendingMode, pendingRecord);
+        startSessionWithThreshold(pendingThreshold, pendingMode, pendingModel, pendingRecord);
         setThresholdModalOpen(false);
     };
 
@@ -374,7 +383,7 @@ export function SessionSetup() {
             </div>
 
             <Dialog open={thresholdModalOpen} onOpenChange={setThresholdModalOpen}>
-                <DialogContent dir="rtl" className="overflow-hidden p-0 font-[var(--font-arabic)]">
+                <DialogContent dir="rtl" className="overflow-hidden p-0 font-[var(--font-arabic)] sm:max-w-2xl">
                     <DialogHeader className="space-y-0 border-b border-border/60 bg-gradient-to-b from-surface/60 to-transparent px-6 py-4 text-start">
                         <div className="flex items-center gap-3">
                             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gold/30 bg-gold/10 text-gold">
@@ -389,8 +398,11 @@ export function SessionSetup() {
                         </div>
                     </DialogHeader>
 
-                    <div className="px-6">
-                    <div className="mb-5 space-y-2.5">
+                    <div className="grid grid-cols-1 gap-x-8 gap-y-6 px-6 pb-6 pt-5 sm:grid-cols-2">
+                    {/* Left side (right side visually, in this RTL layout): what to
+                        evaluate — categorical choices picked with button groups. */}
+                    <div className="space-y-6">
+                    <div className="space-y-2.5">
                         <div>
                             <Label className="text-sm font-semibold text-text-primary">نمط الجلسة</Label>
                             <p className="mt-1 text-xs leading-relaxed text-text-muted">
@@ -432,7 +444,54 @@ export function SessionSetup() {
                         </p>
                     </div>
 
-                    <div className="space-y-3 border-t border-border/50 pt-5">
+                    <div className="space-y-2.5 border-t border-border/50 pt-6">
+                        <div>
+                            <Label className="text-sm font-semibold text-text-primary">نموذج التقييم</Label>
+                            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                                يحدّد النموذج الصوتي الذي يقيّم تلاوتك.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setPendingModel("wav2vec2")}
+                                aria-pressed={pendingModel === "wav2vec2"}
+                                className={cn(
+                                    "rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+                                    pendingModel === "wav2vec2"
+                                        ? "border-gold/50 bg-gold/10 text-gold"
+                                        : "border-border bg-surface/80 text-text-secondary hover:bg-surface-hover hover:text-text-primary",
+                                )}
+                            >
+                                القياسي
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPendingModel("muaalem")}
+                                aria-pressed={pendingModel === "muaalem"}
+                                className={cn(
+                                    "rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors",
+                                    pendingModel === "muaalem"
+                                        ? "border-gold/50 bg-gold/10 text-gold"
+                                        : "border-border bg-surface/80 text-text-secondary hover:bg-surface-hover hover:text-text-primary",
+                                )}
+                            >
+                                معلّم (تجويد)
+                            </button>
+                        </div>
+                        <p className="rounded-lg bg-surface/60 px-3 py-2 text-xs leading-relaxed text-text-secondary">
+                            {pendingModel === "wav2vec2"
+                                ? "يقارن الحروف والتشكيل ويعطي درجة لكل كلمة."
+                                : "يحلّل النطق ويكشف أخطاء التجويد والتشكيل مع تفاصيل لكل كلمة."}
+                        </p>
+                    </div>
+                    </div>
+
+                    {/* Right side (left side visually): how strict to be, and whether to
+                        keep the recording — fine-tuning rather than a category pick, so it
+                        gets its own column with a vertical divider on desktop. */}
+                    <div className="space-y-6 border-t border-border/50 pt-6 sm:border-t-0 sm:border-s sm:ps-8 sm:pt-0">
+                    <div className="space-y-3">
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <Label className="text-sm font-semibold text-text-primary">دقة التقييم</Label>
@@ -460,7 +519,7 @@ export function SessionSetup() {
                         </div>
                     </div>
 
-                    <div className="mt-5 space-y-3 border-t border-border/50 pt-5 pb-1">
+                    <div className="space-y-3 border-t border-border/50 pt-6">
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <Label htmlFor="record-session" className="text-sm font-semibold text-text-primary">
@@ -478,6 +537,7 @@ export function SessionSetup() {
                                 onCheckedChange={setPendingRecord}
                             />
                         </div>
+                    </div>
                     </div>
                     </div>
 

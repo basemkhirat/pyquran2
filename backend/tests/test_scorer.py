@@ -14,6 +14,7 @@ from backend.scorer import (
     align_multi_word,
     should_advance,
     should_skip_forward,
+    bounded_continuous_span,
 )
 
 
@@ -213,3 +214,55 @@ class TestShouldSkipForward:
     def test_word_by_word_never_skips_forward(self):
         # In word_by_word mode the reciter repeats the word; never auto-advance on a miss.
         assert should_skip_forward("word_by_word", [0.95], self.THRESHOLD, True) is False
+
+
+class TestBoundedContinuousSpan:
+    """Guards continuous mode against a Muaalem alignment latching onto a distant word.
+
+    The reference window runs 20 words ahead. Without a bound, one false far-ahead match
+    makes every intervening word look attempted and cascades the cursor through the verse.
+    """
+
+    THRESHOLD = 0.76
+    MAX_UNANCHORED = 2
+
+    def _span(self, scores, is_final):
+        return bounded_continuous_span(
+            scores, self.THRESHOLD, self.MAX_UNANCHORED, is_final
+        )
+
+    def test_all_confident_words_are_processed(self):
+        assert self._span([0.9, 0.85, 0.8], is_final=True) == 3
+
+    def test_final_commits_bounded_trailing_misses(self):
+        # Two weak words after the last anchor are within budget; no more audio is coming.
+        assert self._span([0.9, 0.2, 0.3], is_final=True) == 3
+
+    def test_final_stops_at_a_run_longer_than_the_budget(self):
+        # The 0.95 at index 4 is the distant false match; it must not drag the cursor there.
+        assert self._span([0.9, 0.1, 0.1, 0.1, 0.95], is_final=True) == 3
+
+    def test_interim_exposes_only_one_weak_word_past_the_anchor(self):
+        # The trailing weak word is the caller's interim result — repeated ticks on the same
+        # accumulated audio must not commit it as a miss.
+        assert self._span([0.9, 0.2, 0.3], is_final=False) == 2
+
+    def test_interim_with_no_anchor_yields_a_single_word(self):
+        assert self._span([0.2, 0.3, 0.4], is_final=False) == 1
+
+    def test_final_with_no_anchor_is_capped_by_the_budget(self):
+        assert self._span([0.2, 0.3, 0.4], is_final=True) == 2
+
+    def test_a_later_anchor_re_extends_the_span(self):
+        # 0.9 at index 2 re-anchors, so the whole run is trusted.
+        assert self._span([0.9, 0.5, 0.9, 0.85], is_final=True) == 4
+
+    def test_empty_scores(self):
+        assert self._span([], is_final=True) == 0
+        assert self._span([], is_final=False) == 0
+
+    def test_zero_budget_stops_at_the_first_weak_word(self):
+        assert bounded_continuous_span([0.9, 0.1, 0.9], self.THRESHOLD, 0, True) == 1
+
+    def test_negative_budget_is_clamped_to_zero(self):
+        assert bounded_continuous_span([0.9, 0.1], self.THRESHOLD, -5, True) == 1

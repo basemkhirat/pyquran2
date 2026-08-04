@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { SessionSetup } from "./components/SessionSetup";
 import { VerseDisplay } from "./components/VerseDisplay";
+import { ErrorSidebar } from "./components/ErrorSidebar";
 import { DetectedWordToast } from "./components/DetectedWordToast";
+import { SHOW_DETECTED_WORD_TOAST } from "./lib/uiFlags";
 import { useSessionStore } from "./stores/session";
 import { socket } from "./lib/socket";
 import type { SessionEnded } from "./types";
@@ -100,15 +102,21 @@ export default function App() {
       {/* Control bar — fixed at the bottom, always visible */}
       <SessionSetup />
 
-      {/* Verse display — shown when active */}
+      {/* Verse display — shown when active. dir=ltr places the errors sidebar physically
+          on the left (the app is otherwise RTL); the content wrapper re-asserts rtl so the
+          verse layout is unchanged. The sidebar self-hides on mobile and under wav2vec2. */}
       {sessionStatus === "recording" && (
-        <div className="pt-6">
-          <VerseDisplay />
+        <div className="flex" dir="ltr">
+          <ErrorSidebar />
+          <div className="min-w-0 flex-1 pt-6" dir="rtl">
+            <VerseDisplay />
+          </div>
         </div>
       )}
 
-      {/* Bottom-center toast with the detected word text (confirmed words only) */}
-      <DetectedWordToast />
+      {/* Bottom-center toast with the detected word text (confirmed words only).
+          Parked for now — see SHOW_DETECTED_WORD_TOAST. */}
+      {SHOW_DETECTED_WORD_TOAST && <DetectedWordToast />}
     </div>
   );
 }

@@ -4,11 +4,19 @@ import { AudioLines, FileQuestion, MicOff } from "lucide-react";
 import type { SessionPlayback } from "../types";
 import { apiUrl } from "../lib/socket";
 import { useAudioPlayback } from "../hooks/useAudioPlayback";
-import { buildTimelineIndex, nextAttemptAfter, prevAttemptBefore } from "../lib/playbackTimeline";
+import {
+    buildTimelineIndex,
+    cursorAt,
+    nextAttemptAfter,
+    panelTargetAt,
+    prevAttemptBefore,
+} from "../lib/playbackTimeline";
 import { PlaybackHeader } from "../components/playback/PlaybackHeader";
 import { PlaybackVerses } from "../components/playback/PlaybackVerses";
 import { PlaybackAudioBar } from "../components/playback/PlaybackAudioBar";
 import { PlaybackDetectedToast } from "../components/playback/PlaybackDetectedToast";
+import { SHOW_DETECTED_WORD_TOAST } from "../lib/uiFlags";
+import { ErrorPanel, ErrorPanelAside } from "../components/ErrorPanel";
 
 type LoadState =
     | { status: "loading" }
@@ -52,7 +60,11 @@ export function SessionPlaybackPage() {
     const { sessionId } = useParams<{ sessionId: string }>();
     const [loaded, setLoaded] = useState<LoadState>({ status: "loading" });
     const [attempt, setAttempt] = useState(0);
-    const [autoSkip, setAutoSkip] = useState(true);
+    const [autoSkip, setAutoSkip] = useState(false);
+    // Word pinned in the error panel. null = follow the recitation, mirroring how the live
+    // sidebar follows the latest scored word. Clicking a word pins it so playback can run
+    // past it while its detail stays on screen.
+    const [pinnedWord, setPinnedWord] = useState<number | null>(null);
     const playback = useAudioPlayback();
 
     // Derived rather than reset inside the effect: a result belonging to a different id is
@@ -91,6 +103,24 @@ export function SessionPlaybackPage() {
                 ? buildTimelineIndex(session)
                 : { attempts: [], startsMs: [], byWord: new Map(), results: [], durationMs: 0 },
         [session]
+    );
+
+    // The attempt playing right now, for the error panel to follow. Position is published
+    // outside React state (one rAF loop), so this subscribes and re-renders only when the
+    // *attempt* changes — a couple of times per word rather than per frame. Unlike
+    // PlaybackVerses it ignores the attempt's end, since the panel keeps describing the last
+    // word through the silence that follows it instead of blanking out.
+    // A stale index from a previous session needs no reset here: panelTargetAt bounds-checks
+    // it, and the rAF loop republishes a fresh position as soon as the new audio attaches.
+    const [playingAttempt, setPlayingAttempt] = useState(-1);
+    const { subscribe } = playback;
+    useEffect(
+        () =>
+            subscribe((timeMs) => {
+                // setState with an unchanged number bails out, so this is cheap per frame.
+                setPlayingAttempt(cursorAt(index, timeMs));
+            }),
+        [subscribe, index]
     );
 
     // Keyboard transport. Arrows are deliberately NOT mirrored for RTL — every media
@@ -190,13 +220,50 @@ export function SessionPlaybackPage() {
         );
     }
 
+    const panelTarget = panelTargetAt(index, pinnedWord, playingAttempt);
+
     return (
         // Clears the fixed player, which is now the same two rows at every breakpoint.
         <div className="min-h-[100dvh] pb-40">
-            <PlaybackHeader session={state.session} />
-            <PlaybackVerses session={state.session} index={index} playback={playback} />
+            {/* dir=ltr puts the panel physically on the left, as in the live view. The
+                header lives inside the content column (not above the whole row) so the
+                aside spans the full viewport height instead of starting below it. */}
+            <div className="flex" dir="ltr">
+                {state.session.model === "muaalem" && (
+                    <ErrorPanelAside>
+                        <ErrorPanel
+                            wordKey={panelTarget.key}
+                            word={
+                                panelTarget.displayIndex >= 0
+                                    ? state.session.words[panelTarget.displayIndex]
+                                    : undefined
+                            }
+                            result={
+                                panelTarget.attempt >= 0
+                                    ? index.results[panelTarget.attempt]
+                                    : undefined
+                            }
+                            isPinned={pinnedWord !== null}
+                            onUnpin={() => setPinnedWord(null)}
+                            followLabel="متابعة التلاوة"
+                            emptyMessage="شغّل التسجيل أو اختر كلمة لعرض تفاصيل أخطائها."
+                        />
+                    </ErrorPanelAside>
+                )}
+                <div className="min-w-0 flex-1" dir="rtl">
+                    <PlaybackHeader session={state.session} />
+                    <PlaybackVerses
+                        session={state.session}
+                        index={index}
+                        playback={playback}
+                        selectedWordIndex={pinnedWord}
+                        onSelectWord={setPinnedWord}
+                    />
+                </div>
+            </div>
 
-            {state.session.has_recording && (
+            {/* Parked for now — see SHOW_DETECTED_WORD_TOAST. */}
+            {SHOW_DETECTED_WORD_TOAST && state.session.has_recording && (
                 <PlaybackDetectedToast index={index} playback={playback} />
             )}
 

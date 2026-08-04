@@ -22,12 +22,21 @@
   --color-warning: #f59e0b;
   --color-gold: #d4a853;
   --color-gold-light: #f0d78c;
+  /* Tajweed errors only. Gold is the app's accent (active word, buttons, progress), so a gold
+     tajweed badge read as "this word is active"; a cool hue is the one gap in the palette. */
+  --color-info: #38bdf8;
+  --color-info-light: #7dd3fc;
 
   /* UI font — IBM Plex Sans Arabic for all interface text (labels, buttons, menus, etc.) */
   --font-arabic: "IBM Plex Sans Arabic", "Segoe UI", system-ui, sans-serif;
   --font-ui: "IBM Plex Sans Arabic", "Segoe UI", system-ui, sans-serif;
   /* Quran font — used ONLY for rendered ayah text (see VerseDisplay) */
   --font-quran: "UthmanicHafs", "Amiri Quran", "Amiri", "Noto Naskh Arabic", serif;
+  /* Quran Phonetic Script — muaalem's phoneme strings (see ErrorPanel). NOT the same
+     repertoire as ayah text: QPS spells sounds out with letters no mushaf font carries,
+     notably ں (U+06BA) for ghunnah and ڇ (U+0687) for qalqalah, which UthmanicHafs lacks —
+     they fell back to a system font and rendered as dotted circles. */
+  --font-phoneme: "NotoNaskhPhonetic", "Noto Naskh Arabic", serif;
 }
 
 /* Unicode Uthmani Hafs (works with standard uthmani_text) */
@@ -37,6 +46,21 @@
   font-weight: 400;
   src: url("https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2") format("woff2"),
     url("https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* Noto Naskh Arabic (SIL OFL, see public/fonts/NotoNaskhArabic-OFL.txt), instanced at wght
+   400 and subset to U+0600–06FF with its layout features kept, so it shapes the whole Arabic
+   block including the QPS-only letters. Self-hosted rather than CDN-loaded, and only ever
+   referenced by the muaalem error panel, so a wav2vec2 session never downloads these 27KB.
+   Amiri covers the same characters but reports advance widths narrower than it paints: a long
+   phoneme string then "fits" one line as far as layout is concerned and spills out of the
+   card instead of wrapping, whichever overflow-wrap/word-break is set. */
+@font-face {
+  font-family: "NotoNaskhPhonetic";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/fonts/NotoNaskhPhonetic.woff2") format("woff2");
   font-display: swap;
 }
 

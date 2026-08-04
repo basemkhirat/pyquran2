@@ -21,10 +21,15 @@ export function PlaybackVerses({
     session,
     index,
     playback,
+    selectedWordIndex,
+    onSelectWord,
 }: {
     session: SessionPlayback;
     index: TimelineIndex;
     playback: AudioPlayback;
+    /** Word pinned in the error panel, if any. muaalem sessions only. */
+    selectedWordIndex?: number | null;
+    onSelectWord?: (displayIndex: number) => void;
 }) {
     const { subscribe, seek, isPlaying } = playback;
     // Re-render on attempt boundaries only — a couple of times per word rather than per
@@ -110,7 +115,7 @@ export function PlaybackVerses({
                 <div
                     key={`${group.surah}:${group.ayah}`}
                     ref={groupIdx === activeGroupIdx ? activeVerseRef : undefined}
-                    className="mb-6"
+                    className="mb-12"
                 >
                     <div className="mb-3 flex items-center gap-3">
                         <span
@@ -134,17 +139,30 @@ export function PlaybackVerses({
                             const firstAttempt = attempts?.length
                                 ? index.attempts[attempts[0]]
                                 : undefined;
+                            // Clicking a word seeks to the start of its attempt, so the playhead
+                            // lands *inside* it and wordStateAt withholds the verdict — the chip
+                            // went gold with no score while the panel beside it showed the result.
+                            // A pinned word states its verdict outright, from the same attempt the
+                            // panel describes (panelTargetAt also takes the first one).
+                            const isSelected = selectedWordIndex === displayIdx;
+                            const pinnedResult =
+                                isSelected && attempts?.length ? index.results[attempts[0]] : undefined;
+                            const result = pinnedResult ?? state.result;
 
                             return (
                                 <button
                                     key={`${group.surah}:${group.ayah}:${displayIdx}`}
                                     type="button"
                                     disabled={!firstAttempt}
-                                    onClick={() => firstAttempt && seek(firstAttempt.startMs)}
+                                    onClick={() => {
+                                        if (!firstAttempt) return;
+                                        seek(firstAttempt.startMs);
+                                        onSelectWord?.(displayIdx);
+                                    }}
                                     aria-label={
                                         firstAttempt
                                             ? `${word.uthmani_text} — ${
-                                                  state.result?.status === "incorrect" ? "خطأ" : "صحيحة"
+                                                  result?.status === "incorrect" ? "خطأ" : "صحيحة"
                                               }`
                                             : word.uthmani_text
                                     }
@@ -155,11 +173,12 @@ export function PlaybackVerses({
                                 >
                                     <WordChip
                                         word={word}
-                                        result={state.result}
-                                        isActive={state.isActive}
+                                        result={result}
+                                        isActive={state.isActive && !isSelected}
                                         isPast={false}
                                         isInterim={false}
                                         dimUnrecited={false}
+                                        isSelected={isSelected}
                                         badge={
                                             state.attemptCount > 1 ? (
                                                 <span

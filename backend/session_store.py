@@ -80,6 +80,7 @@ class SessionStore:
         session_id: str | None = None,
         *,
         mode: str = "word_by_word",
+        model: str = "wav2vec2",
         score_threshold: float | None = None,
         narration_id: int = 1,
         start_chapter_number: int | None = None,
@@ -89,6 +90,9 @@ class SessionStore:
     ):
         self.session_id = session_id or str(uuid.uuid4())
         self.mode = mode
+        # Which acoustic backend scored this session. Playback needs it to know whether the
+        # per-word tajweed/tashkeel detail below can be present at all.
+        self.model = model
         self.score_threshold = score_threshold
         self.narration_id = narration_id
         # The verse range the session was started with (may span chapters).
@@ -153,13 +157,23 @@ class SessionStore:
         start_time: float,
         end_time: float,
         detected_text: str = "",
+        errors: list | None = None,
+        detected_ph: str | None = None,
+        expected_ph: str | None = None,
     ) -> None:
         """Append a spoken-word timeline entry and persist to disk.
 
         start_time/end_time are given in seconds relative to the start of recording.wav
         and are persisted as integer milliseconds.
+
+        errors/detected_ph/expected_ph are the muaalem backend's pronunciation detail:
+        the classified differences, plus the phonemes the reciter produced for this word's
+        unit and the ones the reference expects. They are written only when supplied, so a
+        wav2vec2 session's entries keep exactly the shape they had before muaalem existed.
+        An empty `errors` list still counts as supplied — that's a muaalem word with nothing
+        wrong with it, as opposed to a backend that measures no errors at all.
         """
-        self._entries.append({
+        entry = {
             "chapter_number": chapter_number,
             "verse_number": verse_number,
             "word_number": word_number,
@@ -170,7 +184,17 @@ class SessionStore:
             "total_score": round(total_score, 3),
             "start_time": round(start_time * 1000),
             "end_time": round(end_time * 1000),
-        })
+        }
+        # `errors` is written whenever it is supplied at all, empty list included: for a
+        # muaalem session every word carries the key, so a reader never has to distinguish
+        # "clean word" from "missing key".
+        if errors is not None:
+            entry["errors"] = errors
+        if detected_ph is not None:
+            entry["detected_ph"] = detected_ph
+        if expected_ph is not None:
+            entry["expected_ph"] = expected_ph
+        self._entries.append(entry)
         self._flush()
 
     # ------------------------------------------------------------------
@@ -181,6 +205,7 @@ class SessionStore:
             "id": self.session_id,
             "type": self.mode,
             "narration_id": self.narration_id,
+            "model": self.model,
             "score_threshold": self.score_threshold,
             "duration": self.duration,
             "start_chapter_number": self.start_chapter_number,

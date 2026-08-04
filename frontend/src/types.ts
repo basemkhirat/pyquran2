@@ -6,7 +6,75 @@ export interface Word {
     uthmani_text: string;
 }
 
-export interface WordResult {
+/** Which acoustic model scores a session. Chosen at start_session; defaults to wav2vec2. */
+export type AcousticModel = "wav2vec2" | "muaalem";
+
+/** How a pronunciation error is classified. Only the muaalem backend reports these. */
+export type ErrorType = "tajweed" | "tashkeel" | "normal";
+
+export interface TajweedRule {
+    name_ar: string;
+    name_en: string;
+    golden_len?: number | null;
+    correctness_type?: "match" | "count" | null;
+}
+
+export interface WordErrorDetail {
+    error_type: ErrorType;
+    /** What the reciter did to the reference: added, dropped, or said something else. */
+    speech_error_type: "insert" | "delete" | "replace";
+    /** Phonemes, in Quran Phonetic Script -- not Arabic text. */
+    expected_ph: string;
+    predicted_ph: string;
+    /** Madd lengths, when the error is one of duration rather than sound. */
+    expected_len?: number | null;
+    predicted_len?: number | null;
+    rules?: TajweedRule[];
+}
+
+/**
+ * What the reciter actually produced for one recitation unit, in Quran Phonetic Script.
+ * A unit is usually one word, but phonetically-merged neighbours (idgham, hamzat wasl) share
+ * a unit, so `words` may list more than one. muaalem only.
+ */
+export interface RecitedUnit {
+    ph: string;
+    expected_ph: string;
+    words: string[];
+}
+
+/** The muaalem-only pronunciation detail carried by a live `word_result`. */
+export interface MuaalemWordDetail {
+    /**
+     * Present only for muaalem sessions. A word can be `status: "correct"` and still carry
+     * errors -- tajweed is surfaced without failing the word unless MUAALEM_WEIGHT_TAJWEED
+     * is raised above 0.
+     */
+    errors?: WordErrorDetail[];
+    /** The most serious error_type on this word, for a single label. */
+    error_type?: ErrorType;
+    tajweed_score?: number;
+    /** The reciter's actual phonemes for this word's unit. */
+    recited?: RecitedUnit;
+}
+
+/**
+ * The muaalem-only detail as *stored* in a session's info.json, and echoed back by playback
+ * and `session_ended`. Flatter than the live event: the recited unit is kept as its two
+ * phoneme strings, and `error_type` / `tajweed_score` are not persisted — both are
+ * derivable from `errors`.
+ */
+export interface MuaalemStoredDetail {
+    /** Present on every word of a muaalem session — `[]` when the word was clean. Absent
+     *  for wav2vec2 sessions, which measure no errors at all. */
+    errors?: WordErrorDetail[];
+    /** What the reciter produced for this word's unit, in Quran Phonetic Script. */
+    detected_ph?: string;
+    /** The phonemes the reference expects for it. */
+    expected_ph?: string;
+}
+
+export interface WordResult extends MuaalemWordDetail {
     chapter_number: number;
     verse_number: number;
     word_number: number;
@@ -32,7 +100,7 @@ export interface SessionVerseRange {
 }
 
 /** One recorded attempt at a word. A word retried in word_by_word mode has several. */
-export interface SessionTimelineEntry {
+export interface SessionTimelineEntry extends MuaalemStoredDetail {
     /** Index into SessionPlayback.words — the bridge between the two naming schemes.
      *  Null when the entry has no matching display word. */
     display_index: number | null;
@@ -63,6 +131,9 @@ export interface SessionPlayback {
     id: string;
     mode: "word_by_word" | "continuous";
     narration_id: number;
+    /** Which acoustic model scored the session. Sessions recorded before per-session model
+     *  selection report "wav2vec2". */
+    model: AcousticModel;
     score_threshold: number | null;
     /** Null when the session recorded nothing and stored no range. */
     range: SessionVerseRange | null;
@@ -78,7 +149,7 @@ export interface SessionPlayback {
 // --- Recorded session handoff (`session_ended` socket event) -----------------------------
 
 /** One spoken word in a finished recording, as stored in the session's info.json. */
-export interface SessionInfoWord {
+export interface SessionInfoWord extends MuaalemStoredDetail {
     chapter_number: number;
     verse_number: number;
     word_number: number;
@@ -106,6 +177,8 @@ export interface SessionEnded {
     id: string;
     type: "word_by_word" | "continuous";
     narration_id: number;
+    /** Which acoustic model scored the session. */
+    model: AcousticModel;
     score_threshold: number | null;
     /** Length of the recording, in milliseconds. */
     duration: number;

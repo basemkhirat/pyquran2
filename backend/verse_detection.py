@@ -14,17 +14,11 @@ import numpy as np
 from jiwer import cer
 
 from backend.config import config
-from backend.acoustic_scorer import _decode_audio, _normalize_text
-from backend.scorer import strip_diacritics
+from backend import acoustic_scorer
 from backend.terminal_arabic import display_arabic
 
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_for_verse_match(text: str) -> str:
-    """Normalize for verse comparison: strip tashkeel then out-of-vocab chars."""
-    return _normalize_text(strip_diacritics(text))
 
 
 @dataclass
@@ -58,30 +52,26 @@ def _verse_start_offsets(words: List[Dict[str, Any]]) -> List[Tuple[int, int, in
 
 
 def _score_offsets(
-    decoded_words: List[str],
+    probe: str,
     words: List[Dict[str, Any]],
     start_indices: List[int],
+    model: Optional[str] = None,
 ) -> Dict[int, float]:
     """Align the decoded utterance against the reference starting at each index.
 
-    For each start index ``s`` the reference window is ``words[s : s + len(decoded)]``
-    (so a longer utterance that runs into the next verse contributes trailing words
-    that distinguish otherwise-identical verses). Score is ``max(0, 1 - CER)`` over
-    base letters (tashkeel stripped).
+    The backend builds the reference window for each start index ``s``, sized to the probe,
+    so a longer utterance that runs into the next verse contributes trailing words that
+    distinguish otherwise-identical verses. Score is ``max(0, 1 - CER)``; both sides are in
+    whichever space the backend compares in (base Arabic letters, or phonemes).
     """
-    decoded_norm = _normalize_for_verse_match(" ".join(decoded_words))
     scores: Dict[int, float] = {}
-    if not decoded_norm:
+    if not probe:
         return scores
-    n = len(decoded_words)
     for s in start_indices:
-        window = words[s : s + n]
-        ref_norm = _normalize_for_verse_match(
-            " ".join(w["emlaey_text"] for w in window)
-        )
-        if not ref_norm:
+        ref = acoustic_scorer.detection_reference(words, s, probe, model)
+        if not ref:
             continue
-        scores[s] = max(0.0, 1.0 - cer(ref_norm, decoded_norm))
+        scores[s] = max(0.0, 1.0 - cer(ref, probe))
     return scores
 
 
@@ -139,6 +129,7 @@ def detect_start_verse(
     start_chapter: Optional[int] = None,
     start_verse: Optional[int] = None,
     is_final: bool = False,
+    model: Optional[str] = None,
 ) -> DetectionResult:
     """Detect which verse the user is reciting from their first utterance.
 
@@ -159,6 +150,9 @@ def detect_start_verse(
     is_final : bool
         True when speech has ended. On a tie this forces a best-guess commit
         instead of waiting forever.
+    model : str, optional
+        The session's acoustic backend. It decides which space the comparison
+        happens in (Arabic letters or phonemes) and therefore the threshold.
 
     Returns
     -------
@@ -166,7 +160,8 @@ def detect_start_verse(
         ``word_index`` (when set) is the index into ``words`` where the matched
         verse begins.
     """
-    threshold = config.verse_detection_threshold
+    backend = acoustic_scorer.get_backend(model)
+    threshold = backend.verse_detection_threshold
     epsilon = config.verse_detection_tie_epsilon
 
     offsets = _verse_start_offsets(words)
@@ -174,21 +169,20 @@ def detect_start_verse(
         logger.warning("No verse candidates found in word list")
         return DetectionResult(status="none")
 
-    decoded_text, _ = _decode_audio(audio)
-    decoded_words = decoded_text.split()
-    if not decoded_words:
-        logger.info("Verse detection: wav2vec2 decoded empty text")
+    probe = acoustic_scorer.detection_probe(audio, words, model)
+    if not probe:
+        logger.info("Verse detection: model decoded nothing")
         return DetectionResult(status="none")
 
     by_index = {idx: (surah, ayah, idx) for (surah, ayah, idx) in offsets}
-    index_scores = _score_offsets(decoded_words, words, list(by_index.keys()))
+    index_scores = _score_offsets(probe, words, list(by_index.keys()), model)
     if not index_scores:
         return DetectionResult(status="none")
 
     best_score = max(index_scores.values())
     logger.info(
         "Verse detection: decoded '%s' (%d verses, best=%.3f, threshold=%.2f)",
-        display_arabic(decoded_text), len(offsets), best_score, threshold,
+        display_arabic(probe), len(offsets), best_score, threshold,
     )
 
     if best_score < threshold:
