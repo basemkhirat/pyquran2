@@ -108,9 +108,13 @@ class Config:
     muaalem_score_threshold: float = float(os.getenv("MUAALEM_SCORE_THRESHOLD", "0.76"))
     # In acoustic-only continuous mode, do not let one distant false match drag the cursor
     # across an arbitrary run of low-confidence words. This many consecutive misses may be
-    # bridged while looking for a nearby confident resynchronization anchor.
-    muaalem_continuous_max_unanchored_words: int = int(
-        os.getenv("MUAALEM_CONTINUOUS_MAX_UNANCHORED_WORDS", "2")
+    # bridged while looking for a nearby confident resynchronization anchor. Applies to both
+    # backends; the MUAALEM_-prefixed name is still read so existing .env files keep working.
+    continuous_max_unanchored_words: int = int(
+        os.getenv(
+            "CONTINUOUS_MAX_UNANCHORED_WORDS",
+            os.getenv("MUAALEM_CONTINUOUS_MAX_UNANCHORED_WORDS", "2"),
+        )
     )
     # Extra words phonetized past the scored chunk. quran_phonetizer applies waqf (pause)
     # rules at the end of whatever text it is given; these padding words absorb that artifact
@@ -193,9 +197,9 @@ class Config:
                 f"MOSHAF_MADD_AARED_LEN={self.moshaf_madd_aared_len} is unsupported; use 4 or 6. "
                 "quran_transcript cannot phonetize a leen madd shorter than 4."
             )
-        if self.muaalem_continuous_max_unanchored_words < 0:
+        if self.continuous_max_unanchored_words < 0:
             raise ValueError(
-                "MUAALEM_CONTINUOUS_MAX_UNANCHORED_WORDS must be zero or greater."
+                "CONTINUOUS_MAX_UNANCHORED_WORDS must be zero or greater."
             )
 
 

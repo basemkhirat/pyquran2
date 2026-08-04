@@ -319,3 +319,56 @@ class TestSkippedWordIsStillRecorded:
         assert entry["word_number"] == 1 and entry["total_score"] == 0.0
         for key in ("errors", "detected_ph", "expected_ph"):
             assert key not in entry
+
+
+# A longer reference run, so a match far ahead has words to cascade through.
+LONG_WORDS = [
+    {"surah": 1, "ayah": 1, "word_index": i + 1, "emlaey_text": f"w{i}", "uthmani_text": f"كلمه{i}"}
+    for i in range(6)
+]
+
+
+def _only_a_distant_word_matched():
+    """Nothing aligns until the last reference word — the classic false resync."""
+    scores = [0.0] * 5 + [0.9]
+    return AcousticResult(
+        scores=list(scores),
+        char_scores=list(scores),
+        diac_scores=list(scores),
+        best_words=[""] * 5 + ["كلمه5"],
+        n_decoded=1,
+        offsets=[None] * 6,
+    )
+
+
+class TestContinuousCascadeIsBounded:
+    """One match far ahead must not fail every word before it.
+
+    `should_skip_forward` reads a later match as "the reciter moved on", so an unbounded run
+    of never-reached words was confirmed at 0% and the cursor jumped to the far match. The
+    resync guard bounds that run — for either backend, not just muaalem.
+    """
+
+    def _confirmed(self, emitted):
+        return [p for p in _word_results(emitted) if not p.get("is_interim")]
+
+    @pytest.mark.parametrize("model", ["wav2vec2", "muaalem"])
+    def test_words_after_the_bound_are_never_confirmed(self, model, stub_scores, emitted):
+        session = _session(model, words=LONG_WORDS)
+        _run(session, stub_scores, _only_a_distant_word_matched())
+        bound = config.continuous_max_unanchored_words
+        assert all(p["word_number"] <= bound for p in self._confirmed(emitted))
+
+    @pytest.mark.parametrize("model", ["wav2vec2", "muaalem"])
+    def test_the_cursor_does_not_jump_to_the_distant_match(self, model, stub_scores, emitted):
+        session = _session(model, words=LONG_WORDS)
+        _run(session, stub_scores, _only_a_distant_word_matched())
+        assert session["current_index"] <= config.continuous_max_unanchored_words
+
+    @pytest.mark.parametrize("model", ["wav2vec2", "muaalem"])
+    def test_nothing_past_the_bound_is_recorded(self, model, stub_scores, emitted):
+        """The recording must not claim the reciter reached — and failed — those words."""
+        session = _session(model, words=LONG_WORDS)
+        _run(session, stub_scores, _only_a_distant_word_matched())
+        bound = config.continuous_max_unanchored_words
+        assert all(e["word_number"] <= bound for e in session["result_words"])

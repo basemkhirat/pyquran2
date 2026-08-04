@@ -52,6 +52,7 @@ interface SessionState {
     addWordResult: (index: number, result: WordResult) => void;
     setSessionStatus: (status: SessionStatus) => void;
     advanceWord: () => void;
+    resetProgress: () => void;
     reset: () => void;
     getCorrectCount: () => number;
 }
@@ -107,6 +108,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         }),
     setSessionStatus: (status) => set({ sessionStatus: status }),
     advanceWord: () => set((state) => ({ currentWordIndex: state.currentWordIndex + 1 })),
+    // Clear the last run's scores while keeping the loaded range, so the same verses can be
+    // recited again. Only `setWords` used to do this, so a second attempt at an unchanged
+    // range began with currentWordIndex already past the last word — i.e. already "finished".
+    resetProgress: () => set({ currentWordIndex: 0, wordResults: {}, selectedWordIndex: null }),
     reset: () =>
         set({
             selectedRange: null,

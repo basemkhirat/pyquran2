@@ -3,6 +3,7 @@ import { SessionSetup } from "./components/SessionSetup";
 import { VerseDisplay } from "./components/VerseDisplay";
 import { ErrorSidebar } from "./components/ErrorSidebar";
 import { DetectedWordToast } from "./components/DetectedWordToast";
+import { SessionEndedToast } from "./components/SessionEndedToast";
 import { SHOW_DETECTED_WORD_TOAST } from "./lib/uiFlags";
 import { useSessionStore } from "./stores/session";
 import { socket } from "./lib/socket";
@@ -37,7 +38,9 @@ export default function App() {
     };
 
     const onSessionComplete = () => {
-      // Keep verse display and results visible; no reset so no blank screen
+      // Keep verse display and results visible; no reset so no blank screen. The other two
+      // reactions to this event live with what they own: useAudioRecorder releases the mic,
+      // SessionEndedToast announces the end.
     };
 
     const onTimeout = () => {
@@ -99,6 +102,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen pb-40 sm:pb-24">
+      {/* Announces the end of the session — most importantly the automatic ones, where the
+          server closes the session because the range ran out. */}
+      <SessionEndedToast />
+
       {/* Control bar — fixed at the bottom, always visible */}
       <SessionSetup />
 

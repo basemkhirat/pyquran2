@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { socket } from "../lib/socket";
 import { useSessionStore } from "../stores/session";
 
@@ -13,6 +13,9 @@ export function useAudioRecorder() {
     const streamRef = useRef<MediaStream | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animFrameRef = useRef<number>(0);
+    // Mirrors `isRecording` for the socket listener and for stopRecording, neither of which
+    // can read the state value (the listener closes over the render it was registered in).
+    const recordingRef = useRef(false);
 
     const startRecording = useCallback(async () => {
         try {
@@ -71,6 +74,7 @@ export function useAudioRecorder() {
             };
             updateVolume();
 
+            recordingRef.current = true;
             setIsRecording(true);
             // Mic is live now — mark the session active so the UI can highlight the current word.
             useSessionStore.getState().setSessionActive(true);
@@ -79,13 +83,23 @@ export function useAudioRecorder() {
         }
     }, []);
 
-    const stopRecording = useCallback(() => {
+    /** Release the mic and the audio graph. Says nothing to the server — the caller decides
+     *  whether the server still needs telling (a user-pressed stop) or already knows (the
+     *  server ended the session itself). */
+    const teardown = useCallback(() => {
+        if (!recordingRef.current) return;
+        recordingRef.current = false;
+
         cancelAnimationFrame(animFrameRef.current);
 
         if (processorRef.current) {
+            // Clear the handler before disconnecting: a callback already queued would
+            // otherwise emit one more audio_chunk into a session that is over.
+            processorRef.current.onaudioprocess = null;
             processorRef.current.disconnect();
             processorRef.current = null;
         }
+        analyserRef.current = null;
         if (contextRef.current) {
             contextRef.current.close();
             contextRef.current = null;
@@ -95,11 +109,28 @@ export function useAudioRecorder() {
             streamRef.current = null;
         }
 
-        socket.emit("stop_session");
         setIsRecording(false);
         setVolume(0);
         useSessionStore.getState().setSessionActive(false);
     }, []);
+
+    const stopRecording = useCallback(() => {
+        teardown();
+        socket.emit("stop_session");
+    }, [teardown]);
+
+    // The server ends a session on its own once the range is exhausted (or the last word is
+    // skipped) — `session_stopped` is that signal, and it arrives without any stop_session
+    // from us. Without this the mic stays open streaming chunks into a finished session, and
+    // every control gated on `isRecording` (the mic button, the range pickers, the review
+    // link) stays stuck in its recording state with no way back.
+    useEffect(() => {
+        const onServerStopped = () => teardown();
+        socket.on("session_stopped", onServerStopped);
+        return () => {
+            socket.off("session_stopped", onServerStopped);
+        };
+    }, [teardown]);
 
     return { isRecording, volume, startRecording, stopRecording };
 }

@@ -58,11 +58,10 @@ export function SessionSetup() {
     const [endVerseCount, setEndVerseCount] = useState(7);
     const initialLoadDone = useRef(false);
 
-    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords, scoreThreshold, setScoreThreshold, sessionMode, setSessionMode, model, setModel, record, setRecord, lastSession } = useSessionStore();
+    const { setSelectedRange, setWords, setSessionStatus, currentWordIndex, words, hideUnrecitedWords, setHideUnrecitedWords, scoreThreshold, setScoreThreshold, sessionMode, setSessionMode, model, setModel, record, setRecord, lastSession, resetProgress } = useSessionStore();
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
     const isSessionActive = isRecording;
     const canSkip = isRecording && words.length > 0 && currentWordIndex < words.length;
-    const isComplete = words.length > 0 && currentWordIndex >= words.length;
 
     const isValidRange = () => {
         if (startChapter < endChapter) return true;
@@ -96,6 +95,9 @@ export function SessionSetup() {
         model: AcousticModel,
         record: boolean
     ) => {
+        // Wipe the previous run's scores so a repeat of the same range starts from its first
+        // word — both on screen and in the index the skip button and word_result use.
+        resetProgress();
         const payload = {
             start_chapter_number: startChapter,
             start_verse_number: startVerse,
@@ -236,23 +238,23 @@ export function SessionSetup() {
         >
             <div className="mx-auto flex max-w-5xl flex-col-reverse gap-3 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="relative flex w-full items-center justify-center gap-2 sm:w-auto sm:justify-start sm:gap-3">
+                    {/* Never disabled on completion: the server ends the session itself at the
+                        end of the range, and greying the button out there left no way to stop
+                        the mic or start another pass. Finishing just returns it to "start". */}
                     <button
                         onClick={toggleRecording}
-                        disabled={isComplete}
                         aria-label={isRecording ? "إيقاف الجلسة" : "بدء جلسة جديدة"}
                         className={cn(
                             "relative w-11 h-11 rounded-full flex items-center justify-center transition-all",
                             isRecording
                                 ? "bg-error mic-recording"
-                                : isComplete
-                                    ? "bg-surface-hover border border-border text-text-muted cursor-not-allowed"
-                                    : "bg-gradient-to-br from-gold to-gold-light hover:opacity-90 shadow-md shadow-gold/20",
+                                : "bg-gradient-to-br from-gold to-gold-light hover:opacity-90 shadow-md shadow-gold/20",
                         )}
                     >
                         {isRecording ? (
                             <MicOff className="w-5 h-5 text-white" />
                         ) : (
-                            <Mic className={cn("w-5 h-5", isComplete ? "text-text-muted" : "text-surface")} />
+                            <Mic className="w-5 h-5 text-surface" />
                         )}
                     </button>
                     {isRecording && sessionMode !== "continuous" && (

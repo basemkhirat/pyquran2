@@ -679,6 +679,29 @@ async def stop_session(sid, _data=None):
 
 # ===================== Streaming Transcription Loop =====================
 
+def _finish_utterance(sid: str, session: Dict[str, Any]) -> None:
+    """Clear per-utterance state so the next audio_chunk can start a fresh loop.
+
+    Must run on EVERY exit path of _streaming_transcription_loop: `audio_chunk` spawns a new
+    loop only when streaming_task is None, so an exit that leaves it set (a short utterance,
+    a decode still in flight, an unexpected exception) stops the session being scored for the
+    rest of the recording.
+
+    Deliberately does NOT touch the VAD. `streaming_flush()` already reset it, and whatever it
+    has accumulated since is the beginning of the *next* utterance — audio that arrived while
+    the final decode was running. Resetting here destroyed it, so a word begun within a decode
+    of the previous utterance's end reached the model with its opening syllables missing.
+    """
+    if sessions.get(sid) is not session or session.get("ended"):
+        return
+    session["timeline_cursor_sec"] = None
+    session["last_interim_index"] = None
+    session["last_interim_acoustic"] = None
+    session["last_interim_n_decoded"] = None
+    session["streaming_task"] = None
+    session["streaming_start_idx"] = session["current_index"]
+
+
 async def _streaming_transcription_loop(sid: str):
     """Periodically transcribe accumulated audio during speech.
 
@@ -687,6 +710,8 @@ async def _streaming_transcription_loop(sid: str):
     When speech ends (VAD detects silence), runs one final pass and stops.
     """
     interval = config.streaming_interval_ms / 1000.0
+    session: Optional[Dict[str, Any]] = None
+    cancelled = False
 
     try:
         while True:
@@ -695,6 +720,13 @@ async def _streaming_transcription_loop(sid: str):
             session = sessions.get(sid)
             if not session or session["current_index"] >= len(session["words"]):
                 return
+
+            # Checked before the flush, not after: flushing hands us the only copy of the
+            # utterance, so bailing out afterwards would drop it entirely. Retrying next tick
+            # is lossless — the silence streak persists, so speech_ended still fires; and if
+            # the reciter resumed meanwhile the streak resets and it stays one utterance.
+            if session.get("transcribing"):
+                continue
 
             vad = session["vad"]
             speech_ended = vad.detect_speech_end()
@@ -718,16 +750,6 @@ async def _streaming_transcription_loop(sid: str):
                     return
                 continue
 
-            # Skip if already transcribing
-            if session.get("transcribing"):
-                if speech_ended:
-                    # Wait a bit and retry
-                    await asyncio.sleep(0.2)
-                    if session.get("transcribing"):
-                        return
-                else:
-                    continue
-
             # --- Detection phase: match verse start instead of scoring words ---
             if session.get("phase") == "detecting":
                 await _detect_verse(sid, audio, is_final=speech_ended)
@@ -738,35 +760,28 @@ async def _streaming_transcription_loop(sid: str):
                     # audio is dropped and the user has to repeat the verse.
                     if session.get("phase") == "reciting":
                         await _process_speech(sid, audio, is_final=True, captured_total=captured_total)
-                    session["vad"].reset()
-                    session["timeline_cursor_sec"] = None
-                    session["last_interim_index"] = None
-                    session["last_interim_acoustic"] = None
-                    session["last_interim_n_decoded"] = None
-                    session["streaming_task"] = None
-                    session["streaming_start_idx"] = session["current_index"]
                     # End this loop; the next audio_chunk spawns a fresh streaming
                     # task (in detecting mode if unmatched, reciting mode if matched).
+                    # Teardown happens in the finally, for every exit path alike.
                     return
                 continue
 
             await _process_speech(sid, audio, is_final=speech_ended, captured_total=captured_total)
 
             if speech_ended:
-                # Reset VAD for next utterance and restart loop
-                session["vad"].reset()
-                session["timeline_cursor_sec"] = None
-                session["last_interim_index"] = None
-                session["last_interim_acoustic"] = None
-                session["last_interim_n_decoded"] = None
-                session["streaming_task"] = None
-                session["streaming_start_idx"] = session["current_index"]
+                # Utterance over. Stop here and let the next audio_chunk start a fresh loop;
+                # the finally clears the per-utterance state.
                 return
 
     except asyncio.CancelledError:
-        pass
+        # stop_session / _end_session cancelled us and owns the teardown from here — in
+        # particular stop_session still reads streaming_start_idx for its own final flush.
+        cancelled = True
     except Exception:
         logger.exception(f"Streaming transcription error for [{sid}]")
+    finally:
+        if session is not None and not cancelled:
+            _finish_utterance(sid, session)
 
 
 # ===================== Verse Detection =====================
@@ -991,7 +1006,7 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
             final_unmatched_budget = _new_final_decode_budget(
                 session,
                 n_decoded_words,
-                config.muaalem_continuous_max_unanchored_words,
+                config.continuous_max_unanchored_words,
             )
             if final_unmatched_budget:
                 logger.info(
@@ -1022,26 +1037,30 @@ async def _do_process_speech(sid: str, session: dict, audio: np.ndarray, is_fina
     else:
         transcribed_words = text.split()
 
-    # Muaalem aligns against a 20-word reference window. After one or two missed words its
-    # phoneme aligner can occasionally latch onto a similar word much farther ahead, making
-    # every intervening reference word look attempted. In continuous mode that would advance
-    # the cursor through the whole false span. Only trust a bounded run of low-confidence
-    # words without a nearby passing score; on interim ticks, leave the trailing weak word
-    # pending so the same accumulated audio cannot advance it again on the next tick.
+    # Either backend aligns against a 20-word reference window, so one word farther ahead that
+    # resembles what was said makes every reference word before it look attempted. In continuous
+    # mode that advances the cursor through the whole false span, marking words the reciter never
+    # reached as 0% misses. Only trust a bounded run of low-confidence words without a nearby
+    # passing score; on interim ticks, leave the trailing weak word pending so the same
+    # accumulated audio cannot advance it again on the next tick.
+    #
+    # Not muaalem-only: wav2vec2 hits this harder, because `should_skip_forward` accepts *any*
+    # nonzero later score on a final pass and its best-match scoring rarely returns a clean zero.
     if (
-        uses_muaalem
+        config.enable_acoustic_score
+        and not config.enable_text_score
         and session.get("mode", "word_by_word") == "continuous"
         and transcribed_words
     ):
         safe_span = scorer.bounded_continuous_span(
             acoustic_scores_full[: len(transcribed_words)],
             score_threshold,
-            config.muaalem_continuous_max_unanchored_words,
+            config.continuous_max_unanchored_words,
             is_final,
         )
         if safe_span < len(transcribed_words):
             logger.info(
-                "  Muaalem continuous resync guard: limiting %d aligned words to %d",
+                "  Continuous resync guard: limiting %d aligned words to %d",
                 len(transcribed_words),
                 safe_span,
             )

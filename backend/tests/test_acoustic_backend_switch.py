@@ -193,8 +193,8 @@ class TestConfigValidation:
             Config(acoustic_backend="bogus")
 
     def test_negative_unanchored_limit_is_rejected(self):
-        with pytest.raises(ValueError, match="MUAALEM_CONTINUOUS_MAX_UNANCHORED_WORDS"):
-            Config(muaalem_continuous_max_unanchored_words=-1)
+        with pytest.raises(ValueError, match="CONTINUOUS_MAX_UNANCHORED_WORDS"):
+            Config(continuous_max_unanchored_words=-1)
 
 
 class TestWav2Vec2BackendDelegates:

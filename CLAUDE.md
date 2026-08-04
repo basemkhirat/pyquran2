@@ -159,7 +159,7 @@ Copy `.env.example` to `.env` in the project root. Key vars:
 | `MUAALEM_MODEL` / `MUAALEM_DEVICE` / `MUAALEM_DTYPE` | Muaalem checkpoint and placement (empty device/dtype = auto) |
 | `MUAALEM_SCORE_THRESHOLD` | Pass/fail cutoff for muaalem sessions (its score distribution is more bimodal than wav2vec2's) |
 | `MUAALEM_WEIGHT_TAJWEED` | How much tajweed pulls a word's total score (default `0` = reported but never fails a word) |
-| `MUAALEM_CONTINUOUS_MAX_UNANCHORED_WORDS` | Continuous-mode resync bound; stops one distant false match cascading the cursor |
+| `CONTINUOUS_MAX_UNANCHORED_WORDS` | Continuous-mode resync bound for **both** backends; stops one distant false match cascading the cursor and failing words the reciter never reached. Falls back to the older `MUAALEM_CONTINUOUS_MAX_UNANCHORED_WORDS` |
 | `MUAALEM_CONTEXT_PAD_WORDS` | Extra words phonetized past the chunk to absorb end-of-text waqf rules |
 | `MUAALEM_VERSE_DETECTION_THRESHOLD` | Verse-detection cutoff in phoneme space |
 | `MOSHAF_*` | Recitation style passed to `quran_phonetizer`. `MOSHAF_MADD_AARED_LEN` **must be 4 or 6** |
