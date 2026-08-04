@@ -25,7 +25,9 @@ export function PlaybackHeader({ session }: { session: SessionPlayback }) {
 
     return (
         <header className="mx-auto w-full max-w-4xl px-4 pt-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
+            {/* pe-12 keeps the badges clear of the mobile error-panel button, which is pinned to
+                this corner (see MobileErrorPanelSheet); the desktop panel needs no such gap. */}
+            <div className="mb-4 flex items-center justify-between gap-3 pe-12 md:pe-0">
                 <Link
                     to="/"
                     className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"

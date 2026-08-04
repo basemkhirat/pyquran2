@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Dialog as DialogPrimitive } from "radix-ui";
+import { ListChecks } from "lucide-react";
 import type {
     ErrorType,
     MuaalemWordDetail,
@@ -270,14 +272,57 @@ export function ErrorPanel({
 }
 
 /**
- * Shared shell: a fixed, desktop-only column that never scrolls with the page. Hidden on
- * mobile, where width is scarce. The parent is a `flex` row, but a fixed element takes no
- * space in flow — so a same-sized spacer sits alongside it purely to reserve the gap the
- * real (fixed) aside occupies.
+ * Mobile-only: the panel as a sheet that slides in from the same physical side the desktop
+ * column occupies, opened from a button pinned to the top corner. Everything here is
+ * `md:hidden`, so the desktop layout is untouched. Radix handles the backdrop, Escape, focus
+ * trapping and scroll locking; the sheet itself scrolls like the desktop column does.
+ */
+function MobileErrorPanelSheet({ children }: { children: React.ReactNode }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+            <DialogPrimitive.Trigger asChild>
+                <button
+                    type="button"
+                    aria-label="تفاصيل الأخطاء"
+                    // Physical left, like the desktop column: the shell is mounted inside a
+                    // dir=ltr wrapper, so a logical `end-3` would have landed on the right.
+                    className="fixed left-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-surface/90 text-text-secondary shadow-lg shadow-black/30 backdrop-blur transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 md:hidden"
+                >
+                    <ListChecks className="h-5 w-5" />
+                </button>
+            </DialogPrimitive.Trigger>
+            <DialogPrimitive.Portal>
+                <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 md:hidden" />
+                <DialogPrimitive.Content
+                    dir="rtl"
+                    className="fixed inset-y-0 left-0 z-50 flex w-[88%] max-w-sm flex-col overflow-y-auto overscroll-contain border-s border-border/60 bg-surface-elevated px-4 pt-6 pb-40 [scrollbar-color:var(--color-border-light)_transparent] [scrollbar-width:thin] data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left md:hidden"
+                >
+                    {/* Radix requires a title; the panel renders its own visible heading. */}
+                    <DialogPrimitive.Title className="sr-only">تفاصيل الأخطاء</DialogPrimitive.Title>
+                    {children}
+                </DialogPrimitive.Content>
+            </DialogPrimitive.Portal>
+        </DialogPrimitive.Root>
+    );
+}
+
+/**
+ * Shared shell for the panel, in two forms.
+ *
+ * Desktop (md+): a fixed column that never scrolls with the page. The parent is a `flex` row,
+ * but a fixed element takes no space in flow — so a same-sized spacer sits alongside it purely
+ * to reserve the gap the real (fixed) aside occupies.
+ *
+ * Mobile: width is too scarce for a permanent column, so the same panel opens on demand from a
+ * button in the top corner. `children` is rendered in both, but only one is ever visible; each
+ * copy keeps its own open-tab state, which resets per word anyway.
  */
 export function ErrorPanelAside({ children }: { children: React.ReactNode }) {
     return (
         <>
+            <MobileErrorPanelSheet>{children}</MobileErrorPanelSheet>
             <div aria-hidden className="hidden w-80 shrink-0 md:block" />
             <aside
                 dir="rtl"
